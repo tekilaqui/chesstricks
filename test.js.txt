@@ -1,0 +1,52 @@
+console.log('1. Iniciando...');
+
+try {
+  require('dotenv').config();
+  console.log('2. dotenv cargado');
+} catch (e) {
+  console.error('ERROR en dotenv:', e.message);
+}
+
+try {
+  const express = require('express');
+  console.log('3. express cargado');
+} catch (e) {
+  console.error('ERROR en express:', e.message);
+}
+
+try {
+  const http = require('http');
+  console.log('4. http cargado');
+} catch (e) {
+  console.error('ERROR en http:', e.message);
+}
+
+try {
+  const { Server } = require('socket.io');
+  console.log('5. socket.io cargado');
+} catch (e) {
+  console.error('ERROR en socket.io:', e.message);
+}
+
+try {
+  const jwt = require('jsonwebtoken');
+  console.log('6. jsonwebtoken cargado');
+} catch (e) {
+  console.error('ERROR en jsonwebtoken:', e.message);
+}
+
+try {
+  const helmet = require('helmet');
+  console.log('7. helmet cargado');
+} catch (e) {
+  console.error('ERROR en helmet:', e.message);
+}
+
+try {
+  const rateLimit = require('express-rate-limit');
+  console.log('8. express-rate-limit cargado');
+} catch (e) {
+  console.error('ERROR en express-rate-limit:', e.message);
+}
+
+console.log('✅ TODAS LAS LIBRERÍAS CARGADAS CORRECTAMENTE');
