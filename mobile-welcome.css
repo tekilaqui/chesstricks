@@ -1,0 +1,119 @@
+/* ═══════════════════════════════════════════════════════════
+   📱 MOBILE WELCOME SCREEN - Pantalla inicial para móvil
+   ═══════════════════════════════════════════════════════════ */
+
+#mobile-welcome-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    z-index: 10000;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeIn 0.3s ease;
+}
+
+#mobile-welcome-screen.active {
+    display: flex;
+}
+
+.welcome-logo {
+    width: 120px;
+    height: 120px;
+    margin-bottom: 20px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(34, 197, 94, 0.3);
+}
+
+.welcome-title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.welcome-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+.welcome-menu {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.welcome-option {
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.welcome-option:hover,
+.welcome-option:active {
+    background: rgba(34, 197, 94, 0.1);
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(34, 197, 94, 0.2);
+}
+
+.welcome-option-icon {
+    font-size: 2.5rem;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(34, 197, 94, 0.1);
+    border-radius: 12px;
+}
+
+.welcome-option-content {
+    flex: 1;
+}
+
+.welcome-option-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 5px;
+}
+
+.welcome-option-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Solo mostrar en móvil */
+@media (min-width: 769px) {
+    #mobile-welcome-screen {
+        display: none !important;
+    }
+}

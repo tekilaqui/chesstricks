@@ -19,9 +19,51 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="mobile-welcome.css">
 </head>
 
 <body>
+    <!-- 📱 MOBILE WELCOME SCREEN -->
+    <div id="mobile-welcome-screen">
+        <img src="logo.jpg" alt="Chess Tricks Logo" class="welcome-logo">
+        <h1 class="welcome-title">CHESS <span style="color:var(--accent)">TRICKS</span></h1>
+        <p class="welcome-subtitle">Elige tu modo de juego</p>
+
+        <div class="welcome-menu">
+            <div class="welcome-option" data-mode="ai">
+                <div class="welcome-option-icon">🤖</div>
+                <div class="welcome-option-content">
+                    <div class="welcome-option-title">Jugar vs IA</div>
+                    <div class="welcome-option-desc">Entrena contra Stockfish con diferentes niveles</div>
+                </div>
+            </div>
+
+            <div class="welcome-option" data-mode="local">
+                <div class="welcome-option-icon">🌐</div>
+                <div class="welcome-option-content">
+                    <div class="welcome-option-title">Juego Online</div>
+                    <div class="welcome-option-desc">Juega contra otros jugadores en tiempo real</div>
+                </div>
+            </div>
+
+            <div class="welcome-option" data-mode="exercises">
+                <div class="welcome-option-icon">🧩</div>
+                <div class="welcome-option-content">
+                    <div class="welcome-option-title">Puzzles</div>
+                    <div class="welcome-option-desc">Resuelve problemas tácticos y mejora tu ELO</div>
+                </div>
+            </div>
+
+            <div class="welcome-option" data-mode="study">
+                <div class="welcome-option-icon">📚</div>
+                <div class="welcome-option-content">
+                    <div class="welcome-option-title">Estudio</div>
+                    <div class="welcome-option-desc">Aprende aperturas y analiza partidas</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="toast-container"></div>
     <div class="app-header">
         <div style="display:flex; align-items:center; gap:12px;">
