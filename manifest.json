@@ -1,0 +1,17 @@
+{
+  "name": "Chess Tricks Online",
+  "short_name": "ChessTricks",
+  "description": "Aprende y domina el ajedrez con el Maestro IA",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#fbbf24",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3233/3233483.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

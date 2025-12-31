@@ -1,0 +1,28 @@
+{
+  "pepe": {
+    "hash": "b3ecc72bb757f84f2d48b926f029407cf488ee7972b0458196826f3ef828c744cb37dfc1c3b32e30dc90da027c5c8a98a66c385cad9824235f727142f0fba066",
+    "salt": "412604cdd457193e3ee039e9f7845ab8773cd7c04cf9388c6be8fdbaf74bb47e",
+    "email": "pepeguses@gmail.com",
+    "elo": 500,
+    "puzElo": 500,
+    "createdAt": "2025-12-30T00:45:27.201Z",
+    "stats": {
+      "wins": 1,
+      "losses": 3,
+      "draws": 0
+    }
+  },
+  "pepegus": {
+    "hash": "14727c3d220c0aaf751eb6a5db1f00e6a3e4e07cd9963eb32299ba9f5dc5508e83b138af84833c7bca8a272787dcbc7f32071587fd31b97404c8389cdcfd809d",
+    "salt": "4610dc5033f53e73e7c0c332f502aba0f61868259f18ec3d18d493691dd67838",
+    "email": "tekilaqui@gmail.com",
+    "elo": 500,
+    "puzElo": 524,
+    "createdAt": "2025-12-30T01:06:41.740Z",
+    "stats": {
+      "wins": 3,
+      "losses": 1,
+      "draws": 0
+    }
+  }
+}

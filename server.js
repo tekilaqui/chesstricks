@@ -7,23 +7,59 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
+app.use(cors());
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: process.env.ALLOWED_ORIGINS || "*",
-    methods: ["GET", "POST"]
-  }
+const io = new Server(server);
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { error: "Demasiadas peticiones desde esta IP, intente de nuevo en 15 minutos" }
 });
 
-app.use(helmet({ contentSecurityPolicy: false }));
-app.use(express.json());
-app.use(express.static(__dirname));
+const authLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: { error: "Demasiados intentos de acceso, intente de nuevo en una hora" }
+});
+
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:", "http:"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https:", "http:"],
+      imgSrc: ["'self'", "data:", "https:", "http:"],
+      connectSrc: ["'self'", "wss:", "https:", "http:"],
+      mediaSrc: ["'self'", "https:", "http:"],
+      fontSrc: ["'self'", "https:", "http:"],
+      objectSrc: ["'none'"],
+    },
+  },
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+app.use(express.json({ limit: '10kb' }));
+app.use(express.static(__dirname, { dotfiles: 'allow' }));
+app.use('/login', authLimiter);
+app.use('/register', authLimiter);
 
 const DB_PATH = path.join(__dirname, 'users.json');
 let users = {};
+
+function sanitize(str) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/[&<>"']/g, (m) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[m]);
+}
 
 function loadUsers() {
   if (fs.existsSync(DB_PATH)) {
@@ -80,8 +116,31 @@ function validateEmail(email) {
 }
 
 const activeChallenges = new Map();
-const activeGames = new Map();
 const connectedUsers = new Map();
+
+const GAMES_PATH = path.join(__dirname, 'active_games.json');
+let activeGames = {};
+
+function loadGames() {
+  if (fs.existsSync(GAMES_PATH)) {
+    try {
+      activeGames = JSON.parse(fs.readFileSync(GAMES_PATH, 'utf8'));
+    } catch (e) {
+      console.error("Error cargando juegos:", e);
+      activeGames = {};
+    }
+  }
+}
+
+function saveGames() {
+  try {
+    fs.writeFileSync(GAMES_PATH, JSON.stringify(activeGames, null, 2));
+  } catch (e) {
+    console.error("Error guardando juegos:", e);
+  }
+}
+
+loadGames();
 
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
@@ -97,6 +156,19 @@ io.use((socket, next) => {
 
 io.on('connection', (socket) => {
   console.log('Usuario conectado:', socket.id);
+
+  // Auto-login if token was valid
+  if (socket.authenticated && users[socket.username]) {
+    const u = users[socket.username];
+    socket.emit('auth_success', {
+      user: socket.username,
+      elo: u.elo || 500, // Ensure updated to 500 default
+      puzElo: u.puzElo || 500,
+      token: socket.handshake.auth.token // Echo back
+    });
+    connectedUsers.set(socket.id, socket.username);
+  }
+
   socket.emit('lobby_update', Array.from(activeChallenges.values()));
 
   socket.on('register', (data) => {
@@ -108,20 +180,20 @@ io.on('connection', (socket) => {
 
       const salt = crypto.randomBytes(32).toString('hex');
       const hash = hashPassword(data.pass, salt);
-      
+
       users[data.user] = {
         hash, salt, email: data.email,
-        elo: 1200, puzElo: 1200,
+        elo: 500, puzElo: 500,
         createdAt: new Date().toISOString(),
         stats: { wins: 0, losses: 0, draws: 0 }
       };
-      
+
       saveUsers();
       const token = generateToken(data.user);
       socket.username = data.user;
       socket.authenticated = true;
       connectedUsers.set(socket.id, data.user);
-      
+
       socket.emit('auth_success', { user: data.user, elo: 1200, puzElo: 1200, token });
     } catch (error) {
       console.error('Error en registro:', error);
@@ -162,42 +234,81 @@ io.on('connection', (socket) => {
 
   socket.on('create_challenge', (data) => {
     if (!socket.authenticated) return socket.emit('error', 'Debes iniciar sesión');
-    const challengeId = crypto.randomBytes(16).toString('hex');
+    // Use the ID provided by the client to ensure sync
+    const challengeId = data.id || crypto.randomBytes(16).toString('hex');
     const challenge = {
       id: challengeId,
-      creator: socket.username,
-      creatorElo: users[socket.username]?.elo || 1200,
+      user: socket.username, // Changed from creator to user to match client expectation
+      creatorElo: users[socket.username]?.elo || 1200, // Keep this for backend logic if needed
+      elo: users[socket.username]?.elo || 1200, // Add this for client display consistency
       timeControl: data.timeControl || '10+0',
+      time: data.time || 10, // Ensure 'time' property exists as client expects
       createdAt: Date.now()
     };
     activeChallenges.set(challengeId, challenge);
     socket.join(`game_${challengeId}`);
-    io.emit('new_challenge', challenge);
+    socket.broadcast.emit('new_challenge', challenge);
   });
 
   socket.on('join_challenge', (data) => {
     if (!socket.authenticated) return socket.emit('error', 'Debes iniciar sesión');
     const challenge = activeChallenges.get(data.id);
     if (!challenge) return socket.emit('error', 'Reto no encontrado');
-    if (challenge.creator === socket.username) return socket.emit('error', 'No puedes unirte a tu propio reto');
+    if (challenge.user === socket.username) return socket.emit('error', 'No puedes unirte a tu propio reto');
 
     activeChallenges.delete(data.id);
     socket.join(`game_${data.id}`);
-    activeGames.set(data.id, {
-      white: challenge.creator,
+
+    const gameTime = (challenge.time || 10) * 60;
+    activeGames[data.id] = {
+      id: data.id,
+      white: challenge.user,
       black: socket.username,
       startTime: Date.now(),
-      moves: []
-    });
-    
+      moves: [],
+      fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+      turn: 'w',
+      whiteTime: gameTime,
+      blackTime: gameTime,
+      lastUpdate: Date.now()
+    };
+
+    saveGames();
     io.emit('lobby_update', Array.from(activeChallenges.values()));
-    socket.to(`game_${data.id}`).emit('opponent_joined', { user: socket.username, elo: users[socket.username]?.elo || 1200 });
+    socket.to(`game_${data.id}`).emit('opponent_joined', {
+      user: socket.username,
+      elo: users[socket.username]?.elo || 1200
+    });
+  });
+
+  socket.on('get_my_games', () => {
+    if (!socket.authenticated) return;
+    const myGames = Object.values(activeGames).filter(g =>
+      g.white === socket.username || g.black === socket.username
+    );
+    socket.emit('my_games_list', myGames);
   });
 
   socket.on('move', (data) => {
     if (!socket.authenticated) return;
-    const game = activeGames.get(data.gameId);
-    if (game) game.moves.push({ from: data.from, to: data.to, timestamp: Date.now() });
+    const game = activeGames[data.gameId];
+    if (game) {
+      const now = Date.now();
+      const elapsed = Math.floor((now - game.lastUpdate) / 1000);
+
+      // Update time of the player who just moved
+      if (game.turn === 'w') {
+        game.whiteTime = Math.max(0, game.whiteTime - elapsed);
+      } else {
+        game.blackTime = Math.max(0, game.blackTime - elapsed);
+      }
+
+      game.moves.push(data.move);
+      game.fen = data.fen || game.fen;
+      game.turn = game.turn === 'w' ? 'b' : 'w';
+      game.lastUpdate = now;
+      saveGames();
+    }
     socket.to(`game_${data.gameId}`).emit('move', data);
   });
 
@@ -205,7 +316,7 @@ io.on('connection', (socket) => {
     if (!socket.authenticated) return;
     const sanitizedMessage = {
       user: socket.username,
-      message: data.message.substring(0, 500),
+      message: sanitize(data.message).substring(0, 500),
       gameId: data.gameId,
       timestamp: Date.now()
     };
@@ -218,20 +329,32 @@ io.on('connection', (socket) => {
 
   socket.on('resign_game', (data) => {
     if (!socket.authenticated) return;
-    const game = activeGames.get(data.gameId);
+    const game = activeGames[data.gameId];
     if (game) {
       if (users[game.white]) users[game.white].stats.wins++;
       if (users[game.black]) users[game.black].stats.losses++;
       saveUsers();
-      activeGames.delete(data.gameId);
+      delete activeGames[data.gameId];
+      saveGames();
     }
     socket.to(`game_${data.gameId}`).emit('player_resigned', { user: socket.username });
   });
 
   socket.on('abort_online_game', (data) => {
     if (!socket.authenticated) return;
-    activeGames.delete(data.gameId);
-    socket.to(`game_${data.gameId}`).emit('game_aborted', { user: socket.username });
+
+    let wasChallenge = false;
+    if (activeChallenges.has(data.gameId)) {
+      activeChallenges.delete(data.gameId);
+      io.emit('lobby_update', Array.from(activeChallenges.values()));
+      wasChallenge = true;
+    }
+
+    if (activeGames[data.gameId]) {
+      delete activeGames[data.gameId];
+      saveGames();
+      socket.to(`game_${data.gameId}`).emit('game_aborted', { user: socket.username });
+    }
   });
 
   socket.on('get_leaderboard', () => {
@@ -250,6 +373,28 @@ io.on('connection', (socket) => {
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+const https = require('https');
+
+app.get('/puzzles', (req, res) => {
+  const { themes, min_rating, max_rating, limit } = req.query;
+  const url = `https://chess-puzzles-api.vercel.app/puzzles?themes=${themes || 'mate'}&min_rating=${min_rating || 1000}&max_rating=${max_rating || 1500}&limit=${limit || 50}&_t=${Date.now()}`;
+
+  https.get(url, (apiRes) => {
+    let data = '';
+    apiRes.on('data', (chunk) => { data += chunk; });
+    apiRes.on('end', () => {
+      try {
+        res.json(JSON.parse(data));
+      } catch (e) {
+        res.status(500).json({ error: 'Failed to parse puzzles' });
+      }
+    });
+  }).on('error', (err) => {
+    console.error('Error proxying puzzles:', err);
+    res.status(500).json({ error: 'Failed to fetch puzzles' });
+  });
 });
 
 app.get('/', (req, res) => {
