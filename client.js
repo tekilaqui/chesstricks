@@ -1795,3 +1795,54 @@ $(window).on('resize', function () {
     }
 });
 
+// ═══════════════════════════════════════════════════════════
+// 📱 MOBILE ACTIONS MENU LOGIC
+// ═══════════════════════════════════════════════════════════
+
+$('#btn-more-options').on('click', function (e) {
+    e.stopPropagation();
+    $('#mobile-actions-menu').fadeToggle(200);
+});
+
+$(document).on('click', function (e) {
+    if (!$(e.target).closest('#mobile-actions-menu, #btn-more-options').length) {
+        $('#mobile-actions-menu').fadeOut(200);
+    }
+});
+
+$('#btn-flip-mobile').on('click', function () {
+    board.flip();
+    $('#mobile-actions-menu').fadeOut(200);
+    showToast("Tablero girado", "🔄");
+});
+
+$('#btn-analyze-mobile').on('click', function () {
+    $('#mobile-actions-menu').fadeOut(200);
+    // Switch to study mode or trigger analysis
+    const studyPill = $('.mode-pill[data-mode="study"]');
+    if (studyPill.length) studyPill.click();
+    showToast("Modo Análisis", "🔍");
+});
+
+$('#btn-hint-mobile').on('click', function () {
+    $('#mobile-actions-menu').fadeOut(200);
+    toggleHints($('#btn-ai-hint')[0]);
+    showToast("Sugerencia IA activada", "💡");
+});
+
+$('#btn-editor-mobile').on('click', function () {
+    $('#mobile-actions-menu').fadeOut(200);
+    // Switch to study and open editor if exists
+    $('.mode-pill[data-mode="study"]').click();
+    $('#btn-editor').click();
+    showToast("Editor de tablero", "⛏️");
+});
+
+$('#btn-welcome-mobile').on('click', function () {
+    $('#mobile-actions-menu').fadeOut(200);
+    $('#mobile-welcome-screen').addClass('active');
+    sessionStorage.removeItem('chess_welcome_seen'); // Permitir que se muestre de nuevo
+});
+
+
+
