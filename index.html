@@ -25,24 +25,40 @@
 <body>
     <!-- 📱 MOBILE WELCOME SCREEN -->
     <div id="mobile-welcome-screen">
-        <img src="logo.jpg" alt="Chess Tricks Logo" class="welcome-logo">
-        <h1 class="welcome-title">CHESS <span style="color:var(--accent)">TRICKS</span></h1>
-        <p class="welcome-subtitle">Elige tu modo de juego</p>
+        <div class="welcome-header">
+            <img src="logo.jpg" alt="Chess Tricks Logo" class="welcome-logo">
+            <h1 class="welcome-title">CHESS <span style="color:var(--accent)">TRICKS</span></h1>
+            <div class="welcome-user-info">
+                <span id="welcome-elo-main">500 ELO</span>
+                <span id="welcome-elo-puz">500 🧩</span>
+            </div>
+        </div>
 
         <div class="welcome-menu">
-            <div class="welcome-option" data-mode="ai">
-                <div class="welcome-option-icon">🤖</div>
-                <div class="welcome-option-content">
-                    <div class="welcome-option-title">Jugar vs IA</div>
-                    <div class="welcome-option-desc">Entrena contra Stockfish con diferentes niveles</div>
+            <!-- CATEGORIA JUGAR -->
+            <div class="welcome-category" id="cat-play">
+                <div class="welcome-option category-trigger">
+                    <div class="welcome-option-icon">⚔️</div>
+                    <div class="welcome-option-content">
+                        <div class="welcome-option-title">Jugar</div>
+                        <div class="welcome-option-desc">Elige contra quién quieres combatir</div>
+                    </div>
+                    <div class="category-arrow">▼</div>
                 </div>
-            </div>
 
-            <div class="welcome-option" data-mode="local">
-                <div class="welcome-option-icon">🌐</div>
-                <div class="welcome-option-content">
-                    <div class="welcome-option-title">Juego Online</div>
-                    <div class="welcome-option-desc">Juega contra otros jugadores en tiempo real</div>
+                <div class="category-items">
+                    <div class="welcome-sub-option" data-mode="ai">
+                        <div class="sub-option-icon">🤖</div>
+                        <span>Maestro IA</span>
+                    </div>
+                    <div class="welcome-sub-option" data-mode="local">
+                        <div class="sub-option-icon">🌐</div>
+                        <span>Partida Online</span>
+                    </div>
+                    <div class="welcome-sub-option" data-mode="friend">
+                        <div class="sub-option-icon">👥</div>
+                        <span>Con un Amigo (Local)</span>
+                    </div>
                 </div>
             </div>
 
@@ -50,15 +66,22 @@
                 <div class="welcome-option-icon">🧩</div>
                 <div class="welcome-option-content">
                     <div class="welcome-option-title">Puzzles</div>
-                    <div class="welcome-option-desc">Resuelve problemas tácticos y mejora tu ELO</div>
+                    <div class="welcome-option-desc">Resuelve problemas y sube tu ELO</div>
                 </div>
             </div>
 
             <div class="welcome-option" data-mode="study">
                 <div class="welcome-option-icon">📚</div>
                 <div class="welcome-option-content">
-                    <div class="welcome-option-title">Estudio</div>
-                    <div class="welcome-option-desc">Aprende aperturas y analiza partidas</div>
+                    <div class="welcome-option-title">Entrenamiento</div>
+                    <div class="welcome-option-desc">Analiza y aprende aperturas</div>
+                </div>
+            </div>
+
+            <!-- MAESTRO IA INFO PREVIEW -->
+            <div class="welcome-coach-preview">
+                <div class="coach-avatar-tiny">👴</div>
+                <div class="coach-msg-tiny" id="welcome-coach-txt">El Maestro IA está listo para analizar tus jugadas.
                 </div>
             </div>
         </div>
@@ -175,6 +198,7 @@
             <div class="mode-selectors">
                 <div class="mode-pill active" data-mode="local"><span>🌐</span><span>Online</span></div>
                 <div class="mode-pill" data-mode="ai"><span>🤖</span><span>Vs IA</span></div>
+                <div class="mode-pill" data-mode="friend"><span>👥</span><span>Amigo</span></div>
                 <div class="mode-pill" data-mode="study"><span>📚</span><span>Estudio</span></div>
                 <div class="mode-pill" data-mode="exercises"><span>🧩</span><span>Puzzles</span></div>
             </div>
