@@ -479,8 +479,9 @@
 
             #myBoard {
                 width: 100%;
-                max-width: 550px;
-                max-height: 550px;
+                max-width: min(550px, 75vh);
+                max-height: min(550px, 75vh);
+                aspect-ratio: 1/1;
             }
 
             .sidebar-right {
