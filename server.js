@@ -61,10 +61,11 @@ function sanitize(str) {
   })[m]);
 }
 
-function loadUsers() {
+async function loadUsers() {
   if (fs.existsSync(DB_PATH)) {
     try {
-      users = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+      const data = await fs.promises.readFile(DB_PATH, 'utf8');
+      users = JSON.parse(data);
     } catch (e) {
       console.error("Error cargando DB:", e);
       users = {};
@@ -72,15 +73,15 @@ function loadUsers() {
   }
 }
 
-function saveUsers() {
+async function saveUsers() {
   try {
-    fs.writeFileSync(DB_PATH, JSON.stringify(users, null, 2));
+    await fs.promises.writeFile(DB_PATH, JSON.stringify(users, null, 2));
   } catch (e) {
     console.error("Error guardando DB:", e);
   }
 }
 
-loadUsers();
+
 
 function hashPassword(password, salt) {
   return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
@@ -121,10 +122,11 @@ const connectedUsers = new Map();
 const GAMES_PATH = path.join(__dirname, 'active_games.json');
 let activeGames = {};
 
-function loadGames() {
+async function loadGames() {
   if (fs.existsSync(GAMES_PATH)) {
     try {
-      activeGames = JSON.parse(fs.readFileSync(GAMES_PATH, 'utf8'));
+      const data = await fs.promises.readFile(GAMES_PATH, 'utf8');
+      activeGames = JSON.parse(data);
     } catch (e) {
       console.error("Error cargando juegos:", e);
       activeGames = {};
@@ -132,17 +134,17 @@ function loadGames() {
   }
 }
 
-function saveGames() {
+async function saveGames() {
   try {
-    fs.writeFileSync(GAMES_PATH, JSON.stringify(activeGames, null, 2));
+    await fs.promises.writeFile(GAMES_PATH, JSON.stringify(activeGames, null, 2));
   } catch (e) {
     console.error("Error guardando juegos:", e);
   }
 }
 
-loadGames();
 
 io.use((socket, next) => {
+
   const token = socket.handshake.auth.token;
   if (token) {
     const decoded = verifyToken(token);
@@ -223,14 +225,37 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('update_elo', (data) => {
-    if (!socket.authenticated || socket.username !== data.user) return;
-    if (users[data.user]) {
-      users[data.user].elo = Math.max(0, Math.min(3000, data.elo));
-      users[data.user].puzElo = Math.max(0, Math.min(3000, data.puzElo));
-      saveUsers();
+  const calculateElo = (currentElo, opponentElo, result) => {
+    const k = 32;
+    const expectedScore = 1 / (1 + Math.pow(10, (opponentElo - currentElo) / 400));
+    return Math.round(currentElo + k * (result - expectedScore));
+  };
+
+  socket.on('game_result', async (data) => {
+    if (!socket.authenticated) return;
+    const u = users[socket.username];
+    if (!u) return;
+
+    // Solo el servidor decide el cambio de ELO
+    // data.result (1: gana, 0.5: tablas, 0: pierde)
+    // data.opponentElo: ELO del oponente (IA o Humano)
+    const result = parseFloat(data.result);
+    const oppElo = parseInt(data.opponentElo) || 1200;
+
+    if (data.isPuzzle) {
+      u.puzElo = Math.max(100, calculateElo(u.puzElo || 1200, oppElo, result));
+    } else {
+      u.elo = Math.max(100, calculateElo(u.elo || 1200, oppElo, result));
+      if (!u.stats) u.stats = { wins: 0, losses: 0, draws: 0 };
+      if (result === 1) u.stats.wins++;
+      else if (result === 0) u.stats.losses++;
+      else u.stats.draws++;
     }
+
+    await saveUsers();
+    socket.emit('elo_updated', { elo: u.elo, puzElo: u.puzElo, stats: u.stats });
   });
+
 
   socket.on('create_challenge', (data) => {
     if (!socket.authenticated) return socket.emit('error', 'Debes iniciar sesión');
@@ -401,8 +426,17 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🔥 Servidor corriendo en puerto ${PORT}`);
-  console.log(`🔒 Modo: ${process.env.NODE_ENV || 'development'}`);
-});
+async function init() {
+  console.log("💾 Cargando base de datos...");
+  await loadUsers();
+  await loadGames();
+
+  server.listen(PORT, () => {
+    console.log(`🔥 Servidor corriendo en puerto ${PORT}`);
+    console.log(`🔒 Modo: ${process.env.NODE_ENV || 'development'}`);
+    console.log("✅ Integridad de datos verificada.");
+  });
+}
+
+init();
+
