@@ -81,7 +81,11 @@
                     </div>
                     <div class="welcome-sub-option" data-mode="study" data-sub="openings">
                         <div class="sub-option-icon">📖</div>
-                        <span>Biblioteca Aperturas</span>
+                        <span>Elegir Apertura</span>
+                    </div>
+                    <div class="welcome-sub-option" data-mode="study" data-sub="pgn">
+                        <div class="sub-option-icon">📂</div>
+                        <span>Importar PGN</span>
                     </div>
                     <div class="welcome-sub-option" data-mode="study" data-sub="editor">
                         <div class="sub-option-icon">⛏️</div>
@@ -274,7 +278,11 @@
             <!-- HUD DE ESTUDIO (SOLO MÓVIL) -->
             <div id="study-hud-mobile" class="mobile-only"
                 style="display:none; width:100%; max-width:450px; background:rgba(30, 41, 59, 0.9); backdrop-filter:blur(10px); border-radius:12px; padding:10px; margin-bottom:10px; border:1px solid var(--accent); gap:8px; justify-content:space-between; align-items:center;">
-                <div style="font-size:0.7rem; font-weight:700; color:var(--accent);">MODO ESTUDIO</div>
+                <div style="display:flex; flex-direction:column; align-items:flex-start;">
+                    <div style="font-size:0.6rem; font-weight:700; color:var(--accent);">MODO ESTUDIO</div>
+                    <div id="study-best-move-text"
+                        style="font-size:0.8rem; font-weight:900; color:#fff; min-height:1.2rem;"></div>
+                </div>
                 <div style="display:flex; gap:8px;">
                     <button class="btn-tool" id="btn-study-hint-toggle"
                         style="padding:6px 12px; background:rgba(56, 189, 248, 0.2); border-color:var(--accent); color:white; font-size:0.6rem;">💡

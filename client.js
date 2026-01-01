@@ -460,12 +460,14 @@ try {
                 if (pv && pv[1]) {
                     if (hintsActive) {
                         $('#best-move-display').html("💡 Sugerencia: <b style='color:white'>" + pv[1] + "</b>").show();
+                        $('#study-best-move-text').text("Sug: " + pv[1]);
                         $('.square-55d63').removeClass('highlight-hint');
                         $('[data-square="' + pv[1].substring(0, 2) + '"]').addClass('highlight-hint');
                         $('[data-square="' + pv[1].substring(2, 4) + '"]').addClass('highlight-hint');
                     } else {
                         $('.square-55d63').removeClass('highlight-hint');
                         $('#best-move-display').hide();
+                        $('#study-best-move-text').text("");
                     }
 
                     // Analyze move quality - ALWAYS in AI mode, during history review, or when hints/analysis active
@@ -1944,11 +1946,14 @@ function selectMode(selectedMode, subMode = null) {
                 hintsActive = true;
                 $('#btn-ai-hint, #btn-study-hint-toggle').addClass('active');
                 $('#study-hint-status').text("ON");
-                $('#btn-suggest-move').click(); // Trigger initial analysis
+                updateUI(true); // Trigger initial analysis
             }
         } else if (subMode === 'openings') {
             showToast('Selecciona una apertura', '📖');
-            $('#opening-sel').focus();
+            setTimeout(() => $('#opening-sel').focus(), 500);
+        } else if (subMode === 'pgn') {
+            showToast('Importar PGN', '📂');
+            setTimeout(() => $('#btn-pgn').click(), 500);
         } else if (subMode === 'editor') {
             showToast('Abriendo Editor', '⛏️');
             $('#btn-editor').click();
