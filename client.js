@@ -1883,35 +1883,26 @@ function hideMobileWelcome() {
 // Show welcome screen on mobile
 showMobileWelcome();
 
-// Handle Expandable Category
-$('.category-trigger').click(function (e) {
-    e.stopPropagation();
-    $(this).parent().toggleClass('expanded');
+// Handle main navigation between views
+$('#btn-show-play-view').click(function () {
+    showWelcomeSubView('view-play');
 });
 
-// Handle sub-option clicks
-$('.welcome-sub-option').click(function (e) {
+$('#btn-show-study-view').click(function () {
+    showWelcomeSubView('view-study');
+});
+
+// Handle Study Sub-options (these are now welcome-options in the sub-view)
+$('#btn-sub-analysis').click(function () { showWelcomeSubView('view-analysis'); });
+$('#btn-sub-openings').click(function () { showWelcomeSubView('view-openings'); populateWelcomeOpenings(); });
+$('#btn-sub-pgn').click(function () { showWelcomeSubView('view-pgn'); });
+$('#btn-sub-editor').click(function () { showWelcomeSubView('view-editor'); });
+
+// Handle sub-option clicks (for modes that direct-start like AI/Online)
+$('.welcome-sub-option').off('click').on('click', function (e) {
     e.stopPropagation();
     const mode = $(this).data('mode');
     const sub = $(this).data('sub');
-
-    if (mode === 'study') {
-        if (sub === 'openings') {
-            showWelcomeSubView('view-openings');
-            populateWelcomeOpenings();
-            return;
-        } else if (sub === 'pgn') {
-            showWelcomeSubView('view-pgn');
-            return;
-        } else if (sub === 'analysis') {
-            showWelcomeSubView('view-analysis');
-            return;
-        } else if (sub === 'editor') {
-            showWelcomeSubView('view-editor');
-            return;
-        }
-    }
-
     selectMode(mode, sub);
 });
 

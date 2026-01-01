@@ -78,8 +78,9 @@
         }
 
         .logo-inline h1 {
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             margin: 0;
+            letter-spacing: 0.5px;
         }
 
         .app-container {
@@ -939,7 +940,7 @@
             border-radius: 0 0 var(--radius-md) var(--radius-md);
             flex: 1;
             overflow-y: auto;
-            min-height: 200px;
+            min-height: 100px;
             box-shadow: var(--shadow-premium);
         }
 

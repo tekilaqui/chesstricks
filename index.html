@@ -38,62 +38,24 @@
         <div class="welcome-container">
             <div class="welcome-view active" id="view-main">
                 <div class="welcome-menu">
-                    <!-- CATEGORIA JUGAR -->
-                    <div class="welcome-category" id="cat-play">
-                        <div class="welcome-option category-trigger">
-                            <div class="welcome-option-icon">⚔️</div>
-                            <div class="welcome-option-content">
-                                <div class="welcome-option-title">Jugar</div>
-                                <div class="welcome-option-desc">Elige contra quién quieres combatir</div>
-                            </div>
-                            <div class="category-arrow">▼</div>
+                    <!-- OPCIÓN JUGAR -->
+                    <div class="welcome-option" id="btn-show-play-view">
+                        <div class="welcome-option-icon">⚔️</div>
+                        <div class="welcome-option-content">
+                            <div class="welcome-option-title">Jugar</div>
+                            <div class="welcome-option-desc">Contra la IA, Online o Amigos</div>
                         </div>
-
-                        <div class="category-items">
-                            <div class="welcome-sub-option" data-mode="ai">
-                                <div class="sub-option-icon">🤖</div>
-                                <span>Maestro IA</span>
-                            </div>
-                            <div class="welcome-sub-option" data-mode="local">
-                                <div class="sub-option-icon">🌐</div>
-                                <span>Partida Online</span>
-                            </div>
-                            <div class="welcome-sub-option" data-mode="friend">
-                                <div class="sub-option-icon">👥</div>
-                                <span>Con un Amigo (Local)</span>
-                            </div>
-                        </div>
+                        <div class="category-arrow">▶</div>
                     </div>
 
-                    <!-- CATEGORIA ENTRENAMIENTO -->
-                    <div class="welcome-category" id="cat-study">
-                        <div class="welcome-option category-trigger">
-                            <div class="welcome-option-icon">📚</div>
-                            <div class="welcome-option-content">
-                                <div class="welcome-option-title">Entrenamiento</div>
-                                <div class="welcome-option-desc">Analiza y aprende aperturas</div>
-                            </div>
-                            <div class="category-arrow">▼</div>
+                    <!-- OPCIÓN ENTRENAMIENTO -->
+                    <div class="welcome-option" id="btn-show-study-view">
+                        <div class="welcome-option-icon">📚</div>
+                        <div class="welcome-option-content">
+                            <div class="welcome-option-title">Entrenamiento</div>
+                            <div class="welcome-option-desc">Análisis, Aperturas y Editor</div>
                         </div>
-
-                        <div class="category-items">
-                            <div class="welcome-sub-option" data-mode="study" data-sub="analysis">
-                                <div class="sub-option-icon">🔍</div>
-                                <span>Análisis Maestro</span>
-                            </div>
-                            <div class="welcome-sub-option" data-mode="study" data-sub="openings">
-                                <div class="sub-option-icon">📖</div>
-                                <span>Elegir Apertura</span>
-                            </div>
-                            <div class="welcome-sub-option" data-mode="study" data-sub="pgn">
-                                <div class="sub-option-icon">📂</div>
-                                <span>Importar PGN</span>
-                            </div>
-                            <div class="welcome-sub-option" data-mode="study" data-sub="editor">
-                                <div class="sub-option-icon">⛏️</div>
-                                <span>Editor de Tablero</span>
-                            </div>
-                        </div>
+                        <div class="category-arrow">▶</div>
                     </div>
 
                     <div class="welcome-option" data-mode="exercises">
@@ -109,6 +71,75 @@
                         <div class="coach-avatar-tiny">👴</div>
                         <div class="coach-msg-tiny" id="welcome-coach-txt">El Maestro IA está listo para analizar tus
                             jugadas.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUB-VIEW: OPCIONES DE JUEGO -->
+            <div class="welcome-view" id="view-play">
+                <div class="welcome-sub-header">
+                    <button class="btn-back-welcome">⬅ Volver</button>
+                    <h3>ELIGE MODO JUEGO</h3>
+                </div>
+                <div class="welcome-menu">
+                    <div class="welcome-option" data-mode="ai">
+                        <div class="welcome-option-icon">🤖</div>
+                        <div class="welcome-option-content">
+                            <div class="welcome-option-title">Maestro IA</div>
+                            <div class="welcome-option-desc">Practica contra el engine Stockfish</div>
+                        </div>
+                    </div>
+                    <div class="welcome-option" data-mode="local">
+                        <div class="welcome-option-icon">🌐</div>
+                        <div class="welcome-option-content">
+                            <div class="welcome-option-title">Partida Online</div>
+                            <div class="welcome-option-desc">Juega contra otros usuarios</div>
+                        </div>
+                    </div>
+                    <div class="welcome-option" data-mode="friend">
+                        <div class="welcome-option-icon">👥</div>
+                        <div class="welcome-option-content">
+                            <div class="welcome-option-title">Amigo Local</div>
+                            <div class="welcome-option-desc">Juega en el mismo dispositivo</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUB-VIEW: OPCIONES DE ENTRENAMIENTO -->
+            <div class="welcome-view" id="view-study">
+                <div class="welcome-sub-header">
+                    <button class="btn-back-welcome">⬅ Volver</button>
+                    <h3>HERRAMIENTAS</h3>
+                </div>
+                <div class="welcome-menu">
+                    <div class="welcome-option" id="btn-sub-analysis">
+                        <div class="welcome-option-icon">🔍</div>
+                        <div class="welcome-option-content">
+                            <div class="welcome-option-title">Análisis Maestro</div>
+                            <div class="welcome-option-desc">Optimiza tus movimientos</div>
+                        </div>
+                    </div>
+                    <div class="welcome-option" id="btn-sub-openings">
+                        <div class="welcome-option-icon">📖</div>
+                        <div class="welcome-option-content">
+                            <div class="welcome-option-title">Aperturas</div>
+                            <div class="welcome-option-desc">Aprende teoría clásica</div>
+                        </div>
+                    </div>
+                    <div class="welcome-option" id="btn-sub-pgn">
+                        <div class="welcome-option-icon">📂</div>
+                        <div class="welcome-option-content">
+                            <div class="welcome-option-title">Importar PGN</div>
+                            <div class="welcome-option-desc">Analiza partidas guardadas</div>
+                        </div>
+                    </div>
+                    <div class="welcome-option" id="btn-sub-editor">
+                        <div class="welcome-option-icon">⛏️</div>
+                        <div class="welcome-option-content">
+                            <div class="welcome-option-title">Editor</div>
+                            <div class="welcome-option-desc">Crea tus propias posiciones</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -173,8 +204,8 @@
         <div style="display:flex; align-items:center; gap:12px;">
             <div id="hamburger-menu" style="cursor:pointer; font-size:1.4rem; color:var(--accent);">☰</div>
             <div class="logo-inline">
-                <img src="logo.jpg" alt="Logo" style="height:32px; width:32px; object-fit:contain; border-radius:4px;">
-                <h1>CHESS <span style="color:var(--accent)">TRICKS</span></h1>
+                <img src="logo.jpg" alt="Logo" style="height:28px; width:28px; object-fit:contain; border-radius:4px;">
+                <h1 style="font-size:0.8rem">CHESS <span style="color:var(--accent)">TRICKS</span></h1>
             </div>
         </div>
         <div id="header-user-info" style="display:flex; align-items:center; gap:10px;">
