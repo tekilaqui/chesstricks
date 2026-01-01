@@ -1,3 +1,294 @@
+<<<<<<< HEAD
+/* ═══════════════════════════════════════════════════════════
+   📱 MOBILE WELCOME SCREEN - Pantalla inicial para móvil
+   ═══════════════════════════════════════════════════════════ */
+
+#mobile-welcome-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: radial-gradient(circle at top right, #1e293b 0%, #0f172a 100%);
+    z-index: 10000;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 60px 24px 30px 24px;
+    animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-y: auto;
+}
+
+#mobile-welcome-screen.active {
+    display: flex;
+}
+
+.welcome-logo {
+    width: 100px;
+    height: 100px;
+    margin-bottom: 24px;
+    border-radius: 24px;
+    box-shadow: 0 15px 40px rgba(14, 165, 233, 0.3);
+    border: 2px solid rgba(14, 165, 233, 0.2);
+    animation: float 4s ease-in-out infinite;
+}
+
+.welcome-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 32px;
+}
+
+.welcome-user-info {
+    margin-top: 12px;
+    display: flex;
+    gap: 12px;
+}
+
+.welcome-user-info span {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 4px 12px;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+#welcome-elo-main {
+    color: var(--accent);
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+#welcome-elo-puz {
+    color: #3b82f6;
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.welcome-subtitle {
+    font-size: 1rem;
+    color: #94a3b8;
+    margin-bottom: 24px;
+    text-align: center;
+    font-weight: 500;
+}
+
+.welcome-menu {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.welcome-option {
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    opacity: 0;
+    transform: translateY(20px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+#mobile-welcome-screen.active .welcome-option {
+    animation: slideUpIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.welcome-option:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.welcome-option:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.welcome-option:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.welcome-option:nth-child(4) {
+    animation-delay: 0.4s;
+}
+
+.welcome-option:active {
+    background: rgba(14, 165, 233, 0.2);
+    border-color: #0ea5e9;
+    transform: scale(0.98);
+}
+
+.welcome-option-icon {
+    font-size: 2rem;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(14, 165, 233, 0.1);
+    border-radius: 14px;
+    color: #0ea5e9;
+    flex-shrink: 0;
+}
+
+.welcome-category {
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.category-items {
+    max-height: 0;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 0 0 20px 20px;
+    margin-top: -10px;
+    padding: 0 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.welcome-category.expanded .category-items {
+    max-height: 300px;
+    padding: 20px 10px 15px 10px;
+}
+
+.welcome-category.expanded .welcome-option {
+    border-radius: 20px 20px 0 0;
+    border-bottom: none;
+    background: rgba(14, 165, 233, 0.1);
+}
+
+.category-arrow {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    transition: transform 0.3s ease;
+}
+
+.welcome-category.expanded .category-arrow {
+    transform: rotate(180deg);
+}
+
+.welcome-sub-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    color: #cbd5e1;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.welcome-sub-option:active {
+    background: rgba(255, 255, 255, 0.08);
+    transform: scale(0.98);
+}
+
+.sub-option-icon {
+    font-size: 1.2rem;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.welcome-option-content {
+    flex: 1;
+}
+
+.welcome-option-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 2px;
+}
+
+.welcome-option-desc {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    line-height: 1.3;
+}
+
+.welcome-coach-preview {
+    margin-top: 32px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.coach-avatar-tiny {
+    font-size: 2rem;
+    background: rgba(34, 197, 94, 0.1);
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+}
+
+.coach-msg-tiny {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-style: italic;
+    line-height: 1.4;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUpIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+/* UI Logic for desktop */
+@media (min-width: 769px) {
+    #mobile-welcome-screen {
+        display: none !important;
+    }
+=======
 /* ═══════════════════════════════════════════════════════════
    📱 MOBILE WELCOME SCREEN - Pantalla inicial para móvil
    ═══════════════════════════════════════════════════════════ */
@@ -318,4 +609,5 @@
     #mobile-welcome-screen {
         display: none !important;
     }
+>>>>>>> 38bd149 (Refactor mobile welcome screen, add Study sub-menu, Study HUD with best move toggle, and local multiplayer mode)
 }
