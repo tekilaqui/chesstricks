@@ -128,6 +128,12 @@ var userElo = parseInt(localStorage.getItem('chess_user_elo')) || 500;
 var userName = localStorage.getItem('chess_username') || "Invitado";
 var isAuth = localStorage.getItem('chess_is_auth') === 'true';
 
+const updateWelcomeStats = () => {
+    $('#welcome-elo-main').text(userElo + " ELO");
+    $('#welcome-elo-puz').text(userPuzzleElo + " 🧩");
+    $('#welcome-coach-txt').text(isAuth ? `Hola ${userName}, el Maestro IA está listo.` : "¡Hola! Regístrate para guardar tu progreso.");
+};
+
 // SOUND SYSTEM
 var soundOn = localStorage.getItem('chess_sound') !== 'false';
 const sounds = {
@@ -270,32 +276,49 @@ function getAiElo() {
 }
 
 function updateElo(opponentElo, result, isPuzzle = false) {
-    const k = 32;
-    const currentElo = isPuzzle ? userPuzzleElo : userElo;
-    const expectedScore = 1 / (1 + Math.pow(10, (opponentElo - currentElo) / 400));
-    const newElo = Math.round(currentElo + k * (result - expectedScore));
+    // Si no está autenticado, actualizamos localmente
+    if (!isAuth) {
+        const k = 32;
+        const currentElo = isPuzzle ? userPuzzleElo : userElo;
+        const expectedScore = 1 / (1 + Math.pow(10, (opponentElo - currentElo) / 400));
+        const newElo = Math.round(currentElo + k * (result - expectedScore));
 
-    if (isPuzzle) {
-        userPuzzleElo = Math.max(100, newElo);
-        localStorage.setItem('chess_puz_elo', userPuzzleElo);
-        $('#header-elo-puz, #puz-elo-display').text(userPuzzleElo + (isPuzzle ? "🧩" : ""));
+        if (isPuzzle) {
+            userPuzzleElo = Math.max(100, newElo);
+            localStorage.setItem('chess_puz_elo', userPuzzleElo);
+            $('#header-elo-puz, #puz-elo-display').text(userPuzzleElo + "🧩");
+        } else {
+            userElo = Math.max(100, newElo);
+            localStorage.setItem('chess_user_elo', userElo);
+            $('#header-elo').text(userElo + " ELO");
+        }
+        $('#coach-txt').append(`<br><b style="color:var(--accent)">ELO (Local): ${newElo}</b>`);
     } else {
-        userElo = Math.max(100, newElo);
-        localStorage.setItem('chess_user_elo', userElo);
-        $('#header-elo').text(userElo + " ELO");
-    }
-
-    // Sync with Server (Global ELO)
-    if (isAuth) {
-        socket.emit('update_elo', {
-            user: userName,
-            elo: userElo,
-            puzElo: userPuzzleElo
+        // Si está autenticado, el servidor manda
+        socket.emit('game_result', {
+            result: result,
+            opponentElo: opponentElo,
+            isPuzzle: isPuzzle
         });
     }
-
-    $('#coach-txt').append(`<br><b style="color:var(--accent)">${isPuzzle ? 'Puzzle ELO' : 'ELO'}: ${newElo}</b>`);
 }
+
+// Receptor de ELO desde el servidor (Seguridad)
+socket.on('elo_updated', (data) => {
+    userElo = data.elo;
+    userPuzzleElo = data.puzElo;
+    localStorage.setItem('chess_user_elo', userElo);
+    localStorage.setItem('chess_puz_elo', userPuzzleElo);
+
+    $('#header-elo').text(userElo + " ELO");
+    $('#header-elo-puz, #puz-elo-display').text(userPuzzleElo + "🧩");
+    $('#drawer-user-elo').text("ELO: " + userElo);
+    updateWelcomeStats();
+    if (data.stats) {
+        // Opcional: mostrar stats actualizadas
+    }
+});
+
 
 var solvedPuzzles = JSON.parse(localStorage.getItem('chess_solved_puzzles') || '[]');
 
@@ -815,19 +838,22 @@ function onDrop(source, target) {
 
     if (currentMode === 'local') {
         socket.emit('move', { move: move.san, gameId: gameId, fen: game.fen() });
-
-        setTimeout(() => {
-            socket.emit('get_my_games');
-            setTimeout(() => {
-                const nextTurn = [...$('.active-game-item')].find(el => $(el).find('b').length > 0 && !$(el).attr('onclick').includes(gameId));
-                if (nextTurn) {
-                    showToast("Siguiente turno...", "♟️");
-                    nextTurn.click();
-                }
-            }, 600);
-        }, 500);
+        // ... handled in socket ...
+    } else if (currentMode === 'friend') {
+        // Local multiplayer - no socket emit
+        playSnd(move.captured ? 'capture' : 'move');
     }
 
+    setTimeout(() => {
+        socket.emit('get_my_games');
+        setTimeout(() => {
+            const nextTurn = [...$('.active-game-item')].find(el => $(el).find('b').length > 0 && !$(el).attr('onclick').includes(gameId));
+            if (nextTurn) {
+                showToast("Siguiente turno...", "♟️");
+                nextTurn.click();
+            }
+        }, 600);
+    }, 500);
     updateUI(true);
     checkGameOver();
 }
@@ -1005,22 +1031,7 @@ $(document).ready(() => {
         }
     });
 
-    $('.mode-pill').click(function () {
-        $('.mode-pill').removeClass('active'); $(this).addClass('active');
-        currentMode = $(this).data('mode');
-        $('.mode-section').removeClass('active');
-        $('#sec-' + currentMode).addClass('active');
-        stopClock();
-        gameStarted = false;
 
-        if (currentMode === 'exercises') {
-            loadRandomPuzzle();
-        } else {
-            game.reset(); board.start(); updateUI();
-            historyPositions = ['start']; currentHistoryIndex = 0;
-            resetTimers();
-        }
-    });
 
     $('.time-btn').click(function () {
         $(this).siblings().removeClass('active');
@@ -1669,14 +1680,22 @@ $('.mode-pill').click(function () {
     $('.tab-content').removeClass('active');
     $('#tab-play').addClass('active');
 
+    stopClock();
+    gameStarted = false;
+
     if (currentMode === 'ai') $('#opp-name').text('Stockfish');
     else if (currentMode === 'local') $('#opp-name').text('Oponente Online');
     else if (currentMode === 'exercises') loadRandomPuzzle();
-    else $('#opp-name').text('Oponente (Estudio)');
+    else if (currentMode === 'study') {
+        $('#opp-name').text('Análisis / Estudio');
+        game.reset(); board.start(); updateUI();
+        historyPositions = ['start']; currentHistoryIndex = 0;
+    }
 
     resetTimers();
     updateUI();
 });
+
 
 $('#btn-pgn').click(function () {
     const pgn = prompt("Pega el PGN de la partida:");
@@ -1690,12 +1709,114 @@ $('#btn-pgn').click(function () {
             })];
             currentHistoryIndex = historyPositions.length - 1;
             updateUI(true);
-            alert("Partida cargada correctamente.");
+            showToast("Partida cargada", "📂");
         } else {
             alert("Error: PGN no válido.");
         }
     }
 });
+
+$('#btn-reset').click(() => {
+    game.reset();
+    board.start();
+    historyPositions = ['start'];
+    currentHistoryIndex = 0;
+    updateUI();
+    $('#study-controls').hide();
+    showToast("Posición reiniciada", "🔄");
+});
+
+$('#btn-fen').click(() => {
+    const fen = game.fen();
+    const newFen = prompt("FEN actual (puedes pegar uno nuevo):", fen);
+    if (newFen && newFen !== fen) {
+        if (game.load(newFen)) {
+            board.position(newFen);
+            historyPositions = [newFen];
+            currentHistoryIndex = 0;
+            updateUI(true);
+            showToast("FEN cargado", "📋");
+        } else {
+            alert("Error: FEN no válido.");
+        }
+    }
+});
+
+$('#btn-editor').click(function () {
+    window.isEditorActive = !window.isEditorActive;
+    $(this).toggleClass('active', window.isEditorActive);
+
+    if (window.isEditorActive) {
+        $('body').addClass('editor-mode');
+        board = Chessboard('myBoard', {
+            draggable: true,
+            dropOffBoard: 'trash',
+            sparePieces: true,
+            position: game.fen(),
+            pieceTheme: getPieceTheme
+        });
+
+        setTimeout(() => {
+            board.resize();
+            // Re-apply board theme after recreation
+            $('#board-theme-sel').trigger('change');
+        }, 100);
+
+        $('#material-display').hide();
+
+        // Hook to update game on any board change
+        $(window).on('mouseup touchend', () => {
+            if (window.isEditorActive) {
+                setTimeout(() => {
+                    const fen = board.fen() + " w - - 0 1";
+                    game.load(fen);
+                    updateUI();
+                }, 100);
+            }
+        });
+        $('#btn-start-analysis').fadeIn();
+        showToast("Modo Editor: ON", "⛏️");
+    } else {
+        $('body').removeClass('editor-mode');
+        $(window).off('mouseup touchend');
+        board = Chessboard('myBoard', {
+            draggable: true,
+            position: game.fen(),
+            pieceTheme: getPieceTheme,
+            onDrop: onDrop,
+            onSnapEnd: onSnapEnd
+        });
+        setTimeout(board.resize, 100);
+        $('#material-display').show();
+        updateUI();
+        $('#btn-start-analysis').fadeOut();
+        showToast("Modo Juego: ON", "♟️");
+    }
+});
+
+$('#btn-start-analysis').click(function () {
+    // 1. Desactivar editor si está abierto
+    if (window.isEditorActive) {
+        $('#btn-editor').click();
+    }
+
+    // 2. Cambiar a modo estudio/análisis
+    if (currentMode !== 'study') {
+        $('.mode-pill[data-mode="study"]').click();
+    }
+
+    // 3. Activar el motor (pistas) si no lo está
+    if (!hintsActive) {
+        toggleHints($('#btn-suggest-move')[0]);
+    } else {
+        updateUI(true); // Forzar re-análisis
+    }
+
+    showToast("Análisis iniciado", "🔍");
+});
+
+
+
 
 // Initial mode setup
 $('.mode-section').removeClass('active');
@@ -1713,6 +1834,7 @@ $('#btn-logout-drawer').click(() => {
 // Init Language
 $('#lang-sel').val(currentLang);
 setLanguage(currentLang);
+updateWelcomeStats();
 
 // UI Auth Check for Drawer
 if (isAuth) {
@@ -1746,6 +1868,7 @@ function showMobileWelcome() {
         const hasSeenWelcome = sessionStorage.getItem('chess_welcome_seen');
         if (!hasSeenWelcome) {
             $('#mobile-welcome-screen').addClass('active');
+            updateWelcomeStats();
         }
     }
 }
@@ -1758,10 +1881,33 @@ function hideMobileWelcome() {
 // Show welcome screen on mobile
 showMobileWelcome();
 
-// Handle welcome option clicks
-$('.welcome-option').click(function () {
-    const selectedMode = $(this).data('mode');
+// Handle Expandable Category
+$('.category-trigger').click(function (e) {
+    e.stopPropagation();
+    $(this).parent().toggleClass('expanded');
+});
 
+// Handle sub-option clicks
+$('.welcome-sub-option').click(function (e) {
+    e.stopPropagation();
+    const mode = $(this).data('mode');
+    const sub = $(this).data('sub');
+    selectMode(mode, sub);
+});
+
+// Handle main option clicks
+$('.welcome-option:not(.category-trigger)').click(function () {
+    const selectedMode = $(this).data('mode');
+    if (selectedMode) selectMode(selectedMode);
+});
+
+// Hamburger on welcome screen
+$('#hamburger-menu-welcome').click(function (e) {
+    e.stopPropagation();
+    $('#hamburger-menu').click();
+});
+
+function selectMode(selectedMode, subMode = null) {
     // Hide welcome screen
     hideMobileWelcome();
 
@@ -1770,22 +1916,63 @@ $('.welcome-option').click(function () {
     $('.mode-pill').removeClass('active');
     $(`.mode-pill[data-mode="${selectedMode}"]`).addClass('active');
     $('.mode-section').removeClass('active');
-    $('#sec-' + selectedMode).addClass('active');
+
+    if (selectedMode === 'friend') {
+        $('#sec-local').addClass('active');
+        showToast('Partida local iniciada. Juega por turnos.', '👥');
+        game.reset(); board.start(); updateUI();
+    } else {
+        $('#sec-' + (selectedMode === 'study' ? 'study' : selectedMode)).addClass('active');
+    }
+
+    // HUD Toggle for Study (Mobile)
+    if (selectedMode === 'study' && isMobileDevice()) {
+        $('#study-hud-mobile').css('display', 'flex');
+    } else {
+        $('#study-hud-mobile').hide();
+    }
 
     // Auto-start based on mode
     if (selectedMode === 'ai') {
-        // Don't auto-start, let user configure
         showToast('Configura tu partida contra la IA', '🤖');
     } else if (selectedMode === 'exercises') {
-        // Auto-load first puzzle
-        setTimeout(() => {
-            loadRandomPuzzle();
-        }, 300);
+        setTimeout(() => loadRandomPuzzle(), 300);
     } else if (selectedMode === 'study') {
-        showToast('Selecciona una apertura para estudiar', '📚');
+        if (subMode === 'analysis') {
+            showToast('Modo Análisis Maestro activado', '🔍');
+            if (stockfish) {
+                hintsActive = true;
+                $('#btn-ai-hint, #btn-study-hint-toggle').addClass('active');
+                $('#study-hint-status').text("ON");
+                $('#btn-suggest-move').click(); // Trigger initial analysis
+            }
+        } else if (subMode === 'openings') {
+            showToast('Selecciona una apertura', '📖');
+            $('#opening-sel').focus();
+        } else if (subMode === 'editor') {
+            showToast('Abriendo Editor', '⛏️');
+            $('#btn-editor').click();
+        } else {
+            showToast('Selecciona una herramienta de estudio', '📚');
+        }
     } else if (selectedMode === 'local') {
         showToast('Crea un reto o únete a uno existente', '🌐');
     }
+}
+
+// Study HUD Handlers
+$('#btn-study-hint-toggle').click(function () {
+    toggleHints($('#btn-ai-hint')[0]);
+    const active = $('#btn-ai-hint').hasClass('active');
+    $(this).toggleClass('active', active);
+    $('#study-hint-status').text(active ? "ON" : "OFF");
+    if (active) $(this).css('background', 'rgba(56, 189, 248, 0.4)');
+    else $(this).css('background', 'rgba(56, 189, 248, 0.2)');
+});
+
+$('#btn-study-reset-mobile').click(function () {
+    $('#btn-reset').click();
+    showToast("Tablero reseteado", "🔄");
 });
 
 // Reset welcome screen on window resize if switching from desktop to mobile
@@ -1794,4 +1981,55 @@ $(window).on('resize', function () {
         showMobileWelcome();
     }
 });
+
+// ═══════════════════════════════════════════════════════════
+// 📱 MOBILE ACTIONS MENU LOGIC
+// ═══════════════════════════════════════════════════════════
+
+$('#btn-more-options').on('click', function (e) {
+    e.stopPropagation();
+    $('#mobile-actions-menu').fadeToggle(200);
+});
+
+$(document).on('click', function (e) {
+    if (!$(e.target).closest('#mobile-actions-menu, #btn-more-options').length) {
+        $('#mobile-actions-menu').fadeOut(200);
+    }
+});
+
+$('#btn-flip-mobile').on('click', function () {
+    board.flip();
+    $('#mobile-actions-menu').fadeOut(200);
+    showToast("Tablero girado", "🔄");
+});
+
+$('#btn-analyze-mobile').on('click', function () {
+    $('#mobile-actions-menu').fadeOut(200);
+    // Switch to study mode or trigger analysis
+    const studyPill = $('.mode-pill[data-mode="study"]');
+    if (studyPill.length) studyPill.click();
+    showToast("Modo Análisis", "🔍");
+});
+
+$('#btn-hint-mobile').on('click', function () {
+    $('#mobile-actions-menu').fadeOut(200);
+    toggleHints($('#btn-ai-hint')[0]);
+    showToast("Sugerencia IA activada", "💡");
+});
+
+$('#btn-editor-mobile').on('click', function () {
+    $('#mobile-actions-menu').fadeOut(200);
+    // Switch to study and open editor if exists
+    $('.mode-pill[data-mode="study"]').click();
+    $('#btn-editor').click();
+    showToast("Editor de tablero", "⛏️");
+});
+
+$('#btn-welcome-mobile').on('click', function () {
+    $('#mobile-actions-menu').fadeOut(200);
+    $('#mobile-welcome-screen').addClass('active');
+    sessionStorage.removeItem('chess_welcome_seen'); // Permitir que se muestre de nuevo
+});
+
+
 

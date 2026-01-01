@@ -25,24 +25,68 @@
 <body>
     <!-- 📱 MOBILE WELCOME SCREEN -->
     <div id="mobile-welcome-screen">
-        <img src="logo.jpg" alt="Chess Tricks Logo" class="welcome-logo">
-        <h1 class="welcome-title">CHESS <span style="color:var(--accent)">TRICKS</span></h1>
-        <p class="welcome-subtitle">Elige tu modo de juego</p>
+        <div class="welcome-header">
+            <div id="hamburger-menu-welcome" class="hamburger-icon">☰</div>
+            <img src="logo.jpg" alt="Chess Tricks Logo" class="welcome-logo-small">
+            <h1 class="welcome-title">CHESS <span style="color:var(--accent)">TRICKS</span></h1>
+            <div class="welcome-user-info">
+                <span id="welcome-elo-main">500 ELO</span>
+                <span id="welcome-elo-puz">500 🧩</span>
+            </div>
+        </div>
 
         <div class="welcome-menu">
-            <div class="welcome-option" data-mode="ai">
-                <div class="welcome-option-icon">🤖</div>
-                <div class="welcome-option-content">
-                    <div class="welcome-option-title">Jugar vs IA</div>
-                    <div class="welcome-option-desc">Entrena contra Stockfish con diferentes niveles</div>
+            <!-- CATEGORIA JUGAR -->
+            <div class="welcome-category" id="cat-play">
+                <div class="welcome-option category-trigger">
+                    <div class="welcome-option-icon">⚔️</div>
+                    <div class="welcome-option-content">
+                        <div class="welcome-option-title">Jugar</div>
+                        <div class="welcome-option-desc">Elige contra quién quieres combatir</div>
+                    </div>
+                    <div class="category-arrow">▼</div>
+                </div>
+
+                <div class="category-items">
+                    <div class="welcome-sub-option" data-mode="ai">
+                        <div class="sub-option-icon">🤖</div>
+                        <span>Maestro IA</span>
+                    </div>
+                    <div class="welcome-sub-option" data-mode="local">
+                        <div class="sub-option-icon">🌐</div>
+                        <span>Partida Online</span>
+                    </div>
+                    <div class="welcome-sub-option" data-mode="friend">
+                        <div class="sub-option-icon">👥</div>
+                        <span>Con un Amigo (Local)</span>
+                    </div>
                 </div>
             </div>
 
-            <div class="welcome-option" data-mode="local">
-                <div class="welcome-option-icon">🌐</div>
-                <div class="welcome-option-content">
-                    <div class="welcome-option-title">Juego Online</div>
-                    <div class="welcome-option-desc">Juega contra otros jugadores en tiempo real</div>
+            <!-- CATEGORIA ENTRENAMIENTO -->
+            <div class="welcome-category" id="cat-study">
+                <div class="welcome-option category-trigger">
+                    <div class="welcome-option-icon">📚</div>
+                    <div class="welcome-option-content">
+                        <div class="welcome-option-title">Entrenamiento</div>
+                        <div class="welcome-option-desc">Analiza y aprende aperturas</div>
+                    </div>
+                    <div class="category-arrow">▼</div>
+                </div>
+
+                <div class="category-items">
+                    <div class="welcome-sub-option" data-mode="study" data-sub="analysis">
+                        <div class="sub-option-icon">🔍</div>
+                        <span>Análisis Maestro</span>
+                    </div>
+                    <div class="welcome-sub-option" data-mode="study" data-sub="openings">
+                        <div class="sub-option-icon">📖</div>
+                        <span>Biblioteca Aperturas</span>
+                    </div>
+                    <div class="welcome-sub-option" data-mode="study" data-sub="editor">
+                        <div class="sub-option-icon">⛏️</div>
+                        <span>Editor de Tablero</span>
+                    </div>
                 </div>
             </div>
 
@@ -50,15 +94,14 @@
                 <div class="welcome-option-icon">🧩</div>
                 <div class="welcome-option-content">
                     <div class="welcome-option-title">Puzzles</div>
-                    <div class="welcome-option-desc">Resuelve problemas tácticos y mejora tu ELO</div>
+                    <div class="welcome-option-desc">Resuelve problemas y sube tu ELO</div>
                 </div>
             </div>
 
-            <div class="welcome-option" data-mode="study">
-                <div class="welcome-option-icon">📚</div>
-                <div class="welcome-option-content">
-                    <div class="welcome-option-title">Estudio</div>
-                    <div class="welcome-option-desc">Aprende aperturas y analiza partidas</div>
+            <!-- MAESTRO IA INFO PREVIEW -->
+            <div class="welcome-coach-preview">
+                <div class="coach-avatar-tiny">👴</div>
+                <div class="coach-msg-tiny" id="welcome-coach-txt">El Maestro IA está listo para analizar tus jugadas.
                 </div>
             </div>
         </div>
@@ -175,6 +218,7 @@
             <div class="mode-selectors">
                 <div class="mode-pill active" data-mode="local"><span>🌐</span><span>Online</span></div>
                 <div class="mode-pill" data-mode="ai"><span>🤖</span><span>Vs IA</span></div>
+                <div class="mode-pill" data-mode="friend"><span>👥</span><span>Amigo</span></div>
                 <div class="mode-pill" data-mode="study"><span>📚</span><span>Estudio</span></div>
                 <div class="mode-pill" data-mode="exercises"><span>🧩</span><span>Puzzles</span></div>
             </div>
@@ -205,7 +249,7 @@
                 <div id="opp-timer" class="timer-box">10:00</div>
             </div>
 
-            <div id="board-container" style="position:relative; width:100%; max-width:450px; display:flex; gap:8px;">
+            <div id="board-container" style="position:relative; width:100%; max-width:480px; display:flex; gap:8px;">
                 <!-- BARRA DE EVALUACIÓN VERTICAL ESTILO LICHESS -->
                 <div class="eval-bar-v-wrap">
                     <div class="eval-bar-fill" id="eval-fill-master" style="height:50%;"></div>
@@ -227,6 +271,19 @@
                 </div>
             </div>
 
+            <!-- HUD DE ESTUDIO (SOLO MÓVIL) -->
+            <div id="study-hud-mobile" class="mobile-only"
+                style="display:none; width:100%; max-width:450px; background:rgba(30, 41, 59, 0.9); backdrop-filter:blur(10px); border-radius:12px; padding:10px; margin-bottom:10px; border:1px solid var(--accent); gap:8px; justify-content:space-between; align-items:center;">
+                <div style="font-size:0.7rem; font-weight:700; color:var(--accent);">MODO ESTUDIO</div>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn-tool" id="btn-study-hint-toggle"
+                        style="padding:6px 12px; background:rgba(56, 189, 248, 0.2); border-color:var(--accent); color:white; font-size:0.6rem;">💡
+                        MEJOR JUGADA: <span id="study-hint-status">OFF</span></button>
+                    <button class="btn-tool" id="btn-study-reset-mobile" style="padding:6px 10px; font-size:0.6rem;">🔄
+                        RESET</button>
+                </div>
+            </div>
+
             <!-- CONTROLES DE NAVEGACIÓN -->
             <div class="nav-toolbar">
                 <button class="btn-nav" id="btn-nav-first" title="Inicio">⏮</button>
@@ -243,7 +300,10 @@
                 <button class="dropdown-item" id="btn-analyze-mobile">🔍 Analizar</button>
                 <button class="dropdown-item" id="btn-hint-mobile">💡 Pista IA</button>
                 <button class="dropdown-item" id="btn-editor-mobile">⛏️ Editor</button>
+                <button class="dropdown-item" id="btn-welcome-mobile"
+                    style="color:var(--accent); border-top:1px solid rgba(255,255,255,0.1)">🏠 Menú Principal</button>
             </div>
+
 
             <!-- TIMER JUGADOR -->
             <div class="player-info" id="p-bottom">
@@ -350,13 +410,13 @@
                             style="font-size:0.75rem; text-align:center; min-height:15px; margin-bottom:10px;"></div>
 
                         <div class="tool-grid">
-                            <button class="btn-tool"
-                                onclick="game.reset(); board.start(); updateUI(); $('#study-controls').hide();">🔄
-                                RESET</button>
+                            <button class="btn-tool" id="btn-reset">🔄 RESET</button>
                             <button class="btn-tool" id="btn-pgn">📂 PGN</button>
                             <button class="btn-tool" id="btn-editor">⛏️ EDITOR</button>
-                            <button class="btn-tool" onclick="alert(game.fen())">📋 FEN</button>
+                            <button class="btn-tool" id="btn-fen">📋 FEN</button>
                         </div>
+                        <button class="btn-primary" id="btn-start-analysis"
+                            style="width:100%; margin-top:8px; display:none;">🔍 Analizar Posición Actual</button>
                     </div>
                 </div>
 
