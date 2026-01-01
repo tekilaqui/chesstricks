@@ -35,77 +35,134 @@
             </div>
         </div>
 
-        <div class="welcome-menu">
-            <!-- CATEGORIA JUGAR -->
-            <div class="welcome-category" id="cat-play">
-                <div class="welcome-option category-trigger">
-                    <div class="welcome-option-icon">⚔️</div>
-                    <div class="welcome-option-content">
-                        <div class="welcome-option-title">Jugar</div>
-                        <div class="welcome-option-desc">Elige contra quién quieres combatir</div>
-                    </div>
-                    <div class="category-arrow">▼</div>
-                </div>
+        <div class="welcome-container">
+            <div class="welcome-view active" id="view-main">
+                <div class="welcome-menu">
+                    <!-- CATEGORIA JUGAR -->
+                    <div class="welcome-category" id="cat-play">
+                        <div class="welcome-option category-trigger">
+                            <div class="welcome-option-icon">⚔️</div>
+                            <div class="welcome-option-content">
+                                <div class="welcome-option-title">Jugar</div>
+                                <div class="welcome-option-desc">Elige contra quién quieres combatir</div>
+                            </div>
+                            <div class="category-arrow">▼</div>
+                        </div>
 
-                <div class="category-items">
-                    <div class="welcome-sub-option" data-mode="ai">
-                        <div class="sub-option-icon">🤖</div>
-                        <span>Maestro IA</span>
+                        <div class="category-items">
+                            <div class="welcome-sub-option" data-mode="ai">
+                                <div class="sub-option-icon">🤖</div>
+                                <span>Maestro IA</span>
+                            </div>
+                            <div class="welcome-sub-option" data-mode="local">
+                                <div class="sub-option-icon">🌐</div>
+                                <span>Partida Online</span>
+                            </div>
+                            <div class="welcome-sub-option" data-mode="friend">
+                                <div class="sub-option-icon">👥</div>
+                                <span>Con un Amigo (Local)</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="welcome-sub-option" data-mode="local">
-                        <div class="sub-option-icon">🌐</div>
-                        <span>Partida Online</span>
+
+                    <!-- CATEGORIA ENTRENAMIENTO -->
+                    <div class="welcome-category" id="cat-study">
+                        <div class="welcome-option category-trigger">
+                            <div class="welcome-option-icon">📚</div>
+                            <div class="welcome-option-content">
+                                <div class="welcome-option-title">Entrenamiento</div>
+                                <div class="welcome-option-desc">Analiza y aprende aperturas</div>
+                            </div>
+                            <div class="category-arrow">▼</div>
+                        </div>
+
+                        <div class="category-items">
+                            <div class="welcome-sub-option" data-mode="study" data-sub="analysis">
+                                <div class="sub-option-icon">🔍</div>
+                                <span>Análisis Maestro</span>
+                            </div>
+                            <div class="welcome-sub-option" data-mode="study" data-sub="openings">
+                                <div class="sub-option-icon">📖</div>
+                                <span>Elegir Apertura</span>
+                            </div>
+                            <div class="welcome-sub-option" data-mode="study" data-sub="pgn">
+                                <div class="sub-option-icon">📂</div>
+                                <span>Importar PGN</span>
+                            </div>
+                            <div class="welcome-sub-option" data-mode="study" data-sub="editor">
+                                <div class="sub-option-icon">⛏️</div>
+                                <span>Editor de Tablero</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="welcome-sub-option" data-mode="friend">
-                        <div class="sub-option-icon">👥</div>
-                        <span>Con un Amigo (Local)</span>
+
+                    <div class="welcome-option" data-mode="exercises">
+                        <div class="welcome-option-icon">🧩</div>
+                        <div class="welcome-option-content">
+                            <div class="welcome-option-title">Puzzles</div>
+                            <div class="welcome-option-desc">Resuelve problemas y sube tu ELO</div>
+                        </div>
+                    </div>
+
+                    <!-- MAESTRO IA INFO PREVIEW -->
+                    <div class="welcome-coach-preview">
+                        <div class="coach-avatar-tiny">👴</div>
+                        <div class="coach-msg-tiny" id="welcome-coach-txt">El Maestro IA está listo para analizar tus
+                            jugadas.</div>
                     </div>
                 </div>
             </div>
 
-            <!-- CATEGORIA ENTRENAMIENTO -->
-            <div class="welcome-category" id="cat-study">
-                <div class="welcome-option category-trigger">
-                    <div class="welcome-option-icon">📚</div>
-                    <div class="welcome-option-content">
-                        <div class="welcome-option-title">Entrenamiento</div>
-                        <div class="welcome-option-desc">Analiza y aprende aperturas</div>
-                    </div>
-                    <div class="category-arrow">▼</div>
+            <!-- SUB-VIEW: LISTA DE APERTURAS -->
+            <div class="welcome-view" id="view-openings">
+                <div class="welcome-sub-header">
+                    <button class="btn-back-welcome">⬅ Volver</button>
+                    <h3>ELEGIR APERTURA</h3>
                 </div>
-
-                <div class="category-items">
-                    <div class="welcome-sub-option" data-mode="study" data-sub="analysis">
-                        <div class="sub-option-icon">🔍</div>
-                        <span>Análisis Maestro</span>
-                    </div>
-                    <div class="welcome-sub-option" data-mode="study" data-sub="openings">
-                        <div class="sub-option-icon">📖</div>
-                        <span>Elegir Apertura</span>
-                    </div>
-                    <div class="welcome-sub-option" data-mode="study" data-sub="pgn">
-                        <div class="sub-option-icon">📂</div>
-                        <span>Importar PGN</span>
-                    </div>
-                    <div class="welcome-sub-option" data-mode="study" data-sub="editor">
-                        <div class="sub-option-icon">⛏️</div>
-                        <span>Editor de Tablero</span>
-                    </div>
+                <div class="welcome-list" id="welcome-openings-list">
+                    <!-- Cargado dinámicamente -->
                 </div>
             </div>
 
-            <div class="welcome-option" data-mode="exercises">
-                <div class="welcome-option-icon">🧩</div>
-                <div class="welcome-option-content">
-                    <div class="welcome-option-title">Puzzles</div>
-                    <div class="welcome-option-desc">Resuelve problemas y sube tu ELO</div>
+            <!-- SUB-VIEW: IMPORTAR PGN -->
+            <div class="welcome-view" id="view-pgn">
+                <div class="welcome-sub-header">
+                    <button class="btn-back-welcome">⬅ Volver</button>
+                    <h3>IMPORTAR PGN</h3>
+                </div>
+                <div class="welcome-pgn-box">
+                    <p style="font-size: 0.7rem; color: #94a3b8; margin-bottom: 10px;">Pega el contenido PGN de tu
+                        partida aquí:</p>
+                    <textarea id="welcome-pgn-input" placeholder="[Event '...'] 1. e4 e5 ..."></textarea>
+                    <button class="btn-primary" id="btn-welcome-load-pgn">CARGAR PARTIDA</button>
                 </div>
             </div>
 
-            <!-- MAESTRO IA INFO PREVIEW -->
-            <div class="welcome-coach-preview">
-                <div class="coach-avatar-tiny">👴</div>
-                <div class="coach-msg-tiny" id="welcome-coach-txt">El Maestro IA está listo para analizar tus jugadas.
+            <!-- SUB-VIEW: ANÁLISIS MAESTRO -->
+            <div class="welcome-view" id="view-analysis">
+                <div class="welcome-sub-header">
+                    <button class="btn-back-welcome">⬅ Volver</button>
+                    <h3>ANÁLISIS MAESTRO</h3>
+                </div>
+                <div class="welcome-pgn-box">
+                    <p style="font-size: 0.8rem; color: #cbd5e1; margin-bottom: 15px;">
+                        El Maestro IA analizará tu posición y te dará consejos tácticos y estratégicos.
+                    </p>
+                    <button class="btn-primary" id="btn-welcome-start-analysis">INICIAR ANÁLISIS</button>
+                </div>
+            </div>
+
+            <!-- SUB-VIEW: EDITOR -->
+            <div class="welcome-view" id="view-editor">
+                <div class="welcome-sub-header">
+                    <button class="btn-back-welcome">⬅ Volver</button>
+                    <h3>EDITOR DE TABLERO</h3>
+                </div>
+                <div class="welcome-pgn-box">
+                    <p style="font-size: 0.8rem; color: #cbd5e1; margin-bottom: 15px;">
+                        Coloca las piezas libremente para estudiar posiciones específicas.
+                    </p>
+                    <button class="btn-primary" id="btn-welcome-start-editor">ABRIR EDITOR</button>
                 </div>
             </div>
         </div>

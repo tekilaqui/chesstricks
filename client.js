@@ -1894,7 +1894,78 @@ $('.welcome-sub-option').click(function (e) {
     e.stopPropagation();
     const mode = $(this).data('mode');
     const sub = $(this).data('sub');
+
+    if (mode === 'study') {
+        if (sub === 'openings') {
+            showWelcomeSubView('view-openings');
+            populateWelcomeOpenings();
+            return;
+        } else if (sub === 'pgn') {
+            showWelcomeSubView('view-pgn');
+            return;
+        } else if (sub === 'analysis') {
+            showWelcomeSubView('view-analysis');
+            return;
+        } else if (sub === 'editor') {
+            showWelcomeSubView('view-editor');
+            return;
+        }
+    }
+
     selectMode(mode, sub);
+});
+
+function showWelcomeSubView(viewId) {
+    $('.welcome-view').removeClass('active');
+    $('#' + viewId).addClass('active');
+}
+
+$('.btn-back-welcome').click(function () {
+    showWelcomeSubView('view-main');
+});
+
+function populateWelcomeOpenings() {
+    const list = $('#welcome-openings-list');
+    list.empty();
+    OPENINGS_DATA.forEach(group => {
+        group.items.forEach(op => {
+            const item = $(`<div class="welcome-list-item">${op.name}</div>`);
+            item.click(function () {
+                selectMode('study', 'openings');
+                // Apply opening after a small delay to ensure mode is set
+                setTimeout(() => {
+                    $('#opening-sel').val(op.name).trigger('change');
+                }, 100);
+            });
+            list.append(item);
+        });
+    });
+}
+
+$('#btn-welcome-load-pgn').click(function () {
+    const pgn = $('#welcome-pgn-input').val();
+    if (!pgn) return showToast("Pega un PGN primero", "❌");
+
+    selectMode('study', 'pgn');
+    setTimeout(() => {
+        try {
+            if (game.load_pgn(pgn)) {
+                board.position(game.fen());
+                updateUI(true);
+                showToast("Partida cargada", "📂");
+            } else {
+                showToast("PGN inválido", "❌");
+            }
+        } catch (e) { showToast("Error al cargar PGN", "❌"); }
+    }, 300);
+});
+
+$('#btn-welcome-start-analysis').click(function () {
+    selectMode('study', 'analysis');
+});
+
+$('#btn-welcome-start-editor').click(function () {
+    selectMode('study', 'editor');
 });
 
 // Handle main option clicks
