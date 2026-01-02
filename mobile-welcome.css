@@ -17,6 +17,7 @@
     padding: 60px 24px 30px 24px;
     animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     overflow-y: auto;
+    padding-bottom: 100px;
 }
 
 #mobile-welcome-screen.active {
@@ -109,6 +110,8 @@
     max-width: 400px;
     position: relative;
     min-height: 300px;
+    padding-bottom: 80px;
+    /* Room for bottom nav underneath */
 }
 
 .welcome-view {

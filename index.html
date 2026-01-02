@@ -4,22 +4,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description"
+        content="Chess Tricks: El mejor lugar para jugar ajedrez online, resolver puzzles y aprender con el Maestro IA.">
+
+    <!-- Open Graph / Social Media -->
+    <meta property="og:title" content="Chess Tricks | Maestro IA & Puzzles">
+    <meta property="og:description" content="Domina el tablero con el Maestro IA y resuelve miles de puzzles tácticos.">
+    <meta property="og:image" content="logo.jpg">
+    <meta property="og:type" content="website">
+
     <title>Chess Tricks | Maestro IA & Puzzles</title>
 
-    <!-- LIBRERÍAS (CDN para que funcione en internet sin líos de archivos si faltan) -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+    <!-- Fallback Logic for Scripts -->
+    <script>
+        function loadFallback(src) {
+            var script = document.createElement('script');
+            script.src = src;
+            document.head.appendChild(script);
+        }
+    </script>
+
+    <!-- LIBRERÍAS (CDN with Fallbacks) -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+        onerror="loadFallback('node_modules/jquery/dist/jquery.min.js')"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"
+        onerror="loadFallback('node_modules/@chrisoakman/chessboardjs/dist/chessboard-1.0.0.min.js')"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"
+        onerror="loadFallback('./chess.js')"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"
+        onerror="loadFallback('node_modules/socket.io-client/dist/socket.io.min.js')"></script>
+
     <link rel="manifest" href="manifest.json">
-    <script src="puzzles_data.js"></script>
-    <meta name="theme-color" content="#22c55e">
+    <meta name="theme-color" content="#38bdf8">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Modularized CSS (Development) / Production uses Webpack bundle -->
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="mobile-welcome.css">
 </head>
 
 <body>
@@ -38,33 +62,38 @@
         <div class="welcome-container">
             <div class="welcome-view active" id="view-main">
                 <div class="welcome-menu">
+                    <!-- OPCIÓN PUZZLES -->
+                    <div class="welcome-option" id="btn-show-puzzles-view">
+                        <div class="welcome-option-icon">🧩</div>
+                        <div class="welcome-option-content">
+                            <div class="welcome-option-title">Puzzles</div>
+                            <div class="welcome-option-desc">Táctica diaria y problemas</div>
+                        </div>
+                        <div class="category-arrow">▶</div>
+                    </div>
+
                     <!-- OPCIÓN JUGAR -->
                     <div class="welcome-option" id="btn-show-play-view">
                         <div class="welcome-option-icon">⚔️</div>
                         <div class="welcome-option-content">
                             <div class="welcome-option-title">Jugar</div>
-                            <div class="welcome-option-desc">Contra la IA, Online o Amigos</div>
+                            <div class="welcome-option-desc">IA, Online o Amigos</div>
                         </div>
                         <div class="category-arrow">▶</div>
                     </div>
 
-                    <!-- OPCIÓN ENTRENAMIENTO -->
+                    <!-- OPCIÓN ESTUDIO -->
                     <div class="welcome-option" id="btn-show-study-view">
                         <div class="welcome-option-icon">📚</div>
                         <div class="welcome-option-content">
-                            <div class="welcome-option-title">Entrenamiento</div>
+                            <div class="welcome-option-title">Estudio</div>
                             <div class="welcome-option-desc">Análisis, Aperturas y Editor</div>
                         </div>
                         <div class="category-arrow">▶</div>
                     </div>
 
-                    <div class="welcome-option" data-mode="exercises">
-                        <div class="welcome-option-icon">🧩</div>
-                        <div class="welcome-option-content">
-                            <div class="welcome-option-title">Puzzles</div>
-                            <div class="welcome-option-desc">Resuelve problemas y sube tu ELO</div>
-                        </div>
-                    </div>
+
+
 
                     <!-- MAESTRO IA INFO PREVIEW -->
                     <div class="welcome-coach-preview">
@@ -82,35 +111,87 @@
                     <h3>ELIGE MODO JUEGO</h3>
                 </div>
                 <div class="welcome-menu">
-                    <div class="welcome-option" data-mode="ai">
+                    <div class="welcome-option" id="btn-sub-ai">
                         <div class="welcome-option-icon">🤖</div>
                         <div class="welcome-option-content">
                             <div class="welcome-option-title">Maestro IA</div>
                             <div class="welcome-option-desc">Practica contra el engine Stockfish</div>
                         </div>
+                        <div class="category-arrow">▶</div>
                     </div>
-                    <div class="welcome-option" data-mode="local">
+                    <div class="welcome-option" id="btn-sub-online">
                         <div class="welcome-option-icon">🌐</div>
                         <div class="welcome-option-content">
                             <div class="welcome-option-title">Partida Online</div>
                             <div class="welcome-option-desc">Juega contra otros usuarios</div>
                         </div>
+                        <div class="category-arrow">▶</div>
                     </div>
-                    <div class="welcome-option" data-mode="friend">
+                    <div class="welcome-option" id="btn-sub-friend">
                         <div class="welcome-option-icon">👥</div>
                         <div class="welcome-option-content">
                             <div class="welcome-option-title">Amigo Local</div>
                             <div class="welcome-option-desc">Juega en el mismo dispositivo</div>
                         </div>
+                        <div class="category-arrow">▶</div>
                     </div>
+
                 </div>
             </div>
 
-            <!-- SUB-VIEW: OPCIONES DE ENTRENAMIENTO -->
+            <!-- SUB-VIEW: CONFIGURACIÓN IA -->
+            <div class="welcome-view" id="view-ai-setup">
+                <div class="welcome-sub-header">
+                    <button class="btn-back-welcome" data-target="view-play">⬅ Volver</button>
+                    <h3>RETO CONTRA EL MAESTRO</h3>
+                </div>
+                <div class="welcome-pgn-box">
+                    <label class="label-tiny">DIFICULTAD</label>
+                    <select class="btn-control" id="welcome-diff-sel"
+                        style="margin-bottom:12px; padding: 12px; font-size: 0.8rem;">
+                        <option value="1">Nivel 1 (Aprendiz - 500 ELO)</option>
+                        <option value="5">Nivel 5 (Intermedio - 1100 ELO)</option>
+                        <option value="10" selected>Nivel 10 (Maestro - 1700 ELO)</option>
+                        <option value="20">Nivel 20 (Gran Maestro - 2500+ ELO)</option>
+                    </select>
+
+                    <label class="label-tiny">TU COLOR</label>
+                    <div style="display:flex; gap:10px; margin-bottom: 20px;">
+                        <button class="btn-tool welcome-color-btn active" data-color="w"
+                            style="flex:1; font-size: 1.2rem;">⚪</button>
+                        <button class="btn-tool welcome-color-btn" data-color="b"
+                            style="flex:1; font-size: 1.2rem;">⚫</button>
+                        <button class="btn-tool welcome-color-btn" data-color="random"
+                            style="flex:1; font-size: 1.2rem;">🎲</button>
+                    </div>
+
+                    <button class="btn-primary" id="btn-welcome-start-ai">EMPEZAR PARTIDA</button>
+                </div>
+            </div>
+
+            <!-- SUB-VIEW: PARTIDA ONLINE -->
+            <div class="welcome-view" id="view-online-setup">
+                <div class="welcome-sub-header">
+                    <button class="btn-back-welcome" data-target="view-play">⬅ Volver</button>
+                    <h3>SALA ONLINE</h3>
+                </div>
+                <div class="welcome-pgn-box">
+                    <p style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 12px;">Busca un oponente o crea tu
+                        propio reto.</p>
+                    <div id="welcome-challenges-list"
+                        style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 8px; margin-bottom: 15px;">
+                        <div style="text-align: center; color: #64748b; font-size: 0.7rem; padding: 20px;">No hay retos
+                            activos ahora mismo.</div>
+                    </div>
+                    <button class="btn-primary" id="btn-welcome-create-challenge">CREAR MI RETO ⚔️</button>
+                </div>
+            </div>
+
+            <!-- SUB-VIEW: OPCIONES DE ESTUDIO -->
             <div class="welcome-view" id="view-study">
                 <div class="welcome-sub-header">
                     <button class="btn-back-welcome">⬅ Volver</button>
-                    <h3>HERRAMIENTAS</h3>
+                    <h3>ESTUDIO</h3>
                 </div>
                 <div class="welcome-menu">
                     <div class="welcome-option" id="btn-sub-analysis">
@@ -119,6 +200,7 @@
                             <div class="welcome-option-title">Análisis Maestro</div>
                             <div class="welcome-option-desc">Optimiza tus movimientos</div>
                         </div>
+                        <div class="category-arrow">▶</div>
                     </div>
                     <div class="welcome-option" id="btn-sub-openings">
                         <div class="welcome-option-icon">📖</div>
@@ -126,13 +208,7 @@
                             <div class="welcome-option-title">Aperturas</div>
                             <div class="welcome-option-desc">Aprende teoría clásica</div>
                         </div>
-                    </div>
-                    <div class="welcome-option" id="btn-sub-pgn">
-                        <div class="welcome-option-icon">📂</div>
-                        <div class="welcome-option-content">
-                            <div class="welcome-option-title">Importar PGN</div>
-                            <div class="welcome-option-desc">Analiza partidas guardadas</div>
-                        </div>
+                        <div class="category-arrow">▶</div>
                     </div>
                     <div class="welcome-option" id="btn-sub-editor">
                         <div class="welcome-option-icon">⛏️</div>
@@ -140,14 +216,38 @@
                             <div class="welcome-option-title">Editor</div>
                             <div class="welcome-option-desc">Crea tus propias posiciones</div>
                         </div>
+                        <div class="category-arrow">▶</div>
+                    </div>
+                    <div class="welcome-option" id="btn-sub-pgn">
+                        <div class="welcome-option-icon">📂</div>
+                        <div class="welcome-option-content">
+                            <div class="welcome-option-title">Importar PGN</div>
+                            <div class="welcome-option-desc">Analiza archivos de partidas</div>
+                        </div>
+                        <div class="category-arrow">▶</div>
+                    </div>
+                    <div class="welcome-option" id="btn-sub-fen">
+                        <div class="welcome-option-icon">📋</div>
+                        <div class="welcome-option-content">
+                            <div class="welcome-option-title">Copiar FEN</div>
+                            <div class="welcome-option-desc">Obtener código de posición</div>
+                        </div>
+                    </div>
+                    <div class="welcome-option" id="btn-sub-reset-study">
+                        <div class="welcome-option-icon">🔄</div>
+                        <div class="welcome-option-content">
+                            <div class="welcome-option-title">Resetear Tablero</div>
+                            <div class="welcome-option-desc">Limpiar posición actual</div>
+                        </div>
                     </div>
                 </div>
             </div>
 
+
             <!-- SUB-VIEW: LISTA DE APERTURAS -->
             <div class="welcome-view" id="view-openings">
                 <div class="welcome-sub-header">
-                    <button class="btn-back-welcome">⬅ Volver</button>
+                    <button class="btn-back-welcome" data-target="view-study">⬅ Volver</button>
                     <h3>ELEGIR APERTURA</h3>
                 </div>
                 <div class="welcome-list" id="welcome-openings-list">
@@ -158,7 +258,7 @@
             <!-- SUB-VIEW: IMPORTAR PGN -->
             <div class="welcome-view" id="view-pgn">
                 <div class="welcome-sub-header">
-                    <button class="btn-back-welcome">⬅ Volver</button>
+                    <button class="btn-back-welcome" data-target="view-study">⬅ Volver</button>
                     <h3>IMPORTAR PGN</h3>
                 </div>
                 <div class="welcome-pgn-box">
@@ -172,7 +272,7 @@
             <!-- SUB-VIEW: ANÁLISIS MAESTRO -->
             <div class="welcome-view" id="view-analysis">
                 <div class="welcome-sub-header">
-                    <button class="btn-back-welcome">⬅ Volver</button>
+                    <button class="btn-back-welcome" data-target="view-study">⬅ Volver</button>
                     <h3>ANÁLISIS MAESTRO</h3>
                 </div>
                 <div class="welcome-pgn-box">
@@ -186,7 +286,7 @@
             <!-- SUB-VIEW: EDITOR -->
             <div class="welcome-view" id="view-editor">
                 <div class="welcome-sub-header">
-                    <button class="btn-back-welcome">⬅ Volver</button>
+                    <button class="btn-back-welcome" data-target="view-study">⬅ Volver</button>
                     <h3>EDITOR DE TABLERO</h3>
                 </div>
                 <div class="welcome-pgn-box">
@@ -196,6 +296,49 @@
                     <button class="btn-primary" id="btn-welcome-start-editor">ABRIR EDITOR</button>
                 </div>
             </div>
+
+            <!-- SUB-VIEW: AMIGO LOCAL SETUP -->
+            <div class="welcome-view" id="view-friend-setup">
+                <div class="welcome-sub-header">
+                    <button class="btn-back-welcome" data-target="view-play">⬅ Volver</button>
+                    <h3>PARTIDA LOCAL</h3>
+                </div>
+                <div class="welcome-pgn-box">
+                    <p style="font-size: 0.8rem; color: #cbd5e1; margin-bottom: 20px;">
+                        Juega cara a cara con un amigo en este mismo móvil. El tablero se rotará automáticamente si lo
+                        deseas.
+                    </p>
+                    <button class="btn-primary" id="btn-welcome-start-friend">EMPEZAR DUELO ⚔️</button>
+                </div>
+            </div>
+
+
+            <!-- SUB-VIEW: CONFIGURACIÓN PUZZLES -->
+            <div class="welcome-view" id="view-puzzles-setup">
+                <div class="welcome-sub-header">
+                    <button class="btn-back-welcome" data-target="view-main">⬅ Volver</button>
+                    <h3>RETO DE PUZZLES</h3>
+                </div>
+                <div class="welcome-pgn-box">
+                    <label class="label-tiny">CATEGORÍA</label>
+                    <select class="btn-control" id="welcome-puz-cat-sel" style="margin-bottom:15px; padding:12px;">
+                        <option value="all">Todos los puzzles</option>
+                        <option value="opening">Aperturas</option>
+                        <option value="middlegame">Juego Medio</option>
+                        <option value="endgame">Finales</option>
+                        <option value="mate">Mates</option>
+                        <option value="advantage">Ventaja Material</option>
+                    </select>
+
+                    <p style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 20px;">
+                        Resuelve problemas tácticos adaptados a tu nivel actual de <b><span
+                                id="welcome-puz-elo-val">500</span> ELO</b>.
+                    </p>
+
+                    <button class="btn-primary" id="btn-welcome-start-puzzles">EMPEZAR PUZZLES 🧩</button>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -241,19 +384,47 @@
                         style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer;">👁️</span>
                 </div>
             </div>
+            <!-- GRUPO RESET PASSWORD -->
+            <div class="input-group" id="reset-group" style="display:none;">
+                <label>EMAIL</label>
+                <input type="email" id="reset-email" placeholder="correo@ejemplo.com">
+                <label style="margin-top:10px;">CÓDIGO DE RECUPERACIÓN</label>
+                <input type="text" id="reset-code" placeholder="123456">
+                <label style="margin-top:10px;">NUEVA CONTRASEÑA</label>
+                <input type="password" id="reset-pass-new" placeholder="******">
+            </div>
+
             <button class="btn-primary" id="btn-auth-submit">ENTRAR</button>
+            <button class="btn-primary" id="btn-reset-submit" style="display:none;">CAMBIAR CONTRASEÑA</button>
+
+            <p id="auth-forgot"
+                style="font-size:0.65rem; text-align:center; margin-top:10px; cursor:pointer; color:var(--text-muted); text-decoration: underline;">
+                ¿Olvidaste tu contraseña?
+            </p>
             <p id="auth-privacy" style="font-size:0.6rem; color:var(--text-muted); margin-top:10px; text-align:center;">
                 🔒 Tus datos se cifran y guardan de forma segura conforme a la normativa de privacidad.
             </p>
             <p id="auth-switch"
                 style="font-size:0.7rem; text-align:center; margin-top:15px; cursor:pointer; color:var(--text-muted);">
                 ¿No tienes cuenta? <span style="color:var(--accent)">Regístrate</span></p>
+
             <button class="btn-tool" id="btn-auth-close" style="width:100%; margin-top:10px;">CERRAR</button>
         </div>
     </div>
 
     <div id="side-drawer-overlay"></div>
     <div id="side-drawer">
+        <!-- SECCIÓN NAVEGACIÓN (NUEVA) -->
+        <div class="drawer-section" style="margin-bottom:20px;">
+            <label class="label-tiny">MENÚ PRINCIPAL</label>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+                <button class="btn-drawer-nav" data-target="home" style="text-align:left;">🏠 Inicio</button>
+                <button class="btn-drawer-nav" data-target="play" style="text-align:left;">⚔️ Jugar</button>
+                <button class="btn-drawer-nav" data-target="study" style="text-align:left;">📚 Estudio</button>
+                <button class="btn-drawer-nav" data-target="puzzles" style="text-align:left;">🧩 Puzzles</button>
+            </div>
+        </div>
+
         <div class="drawer-section" style="margin-bottom:20px;">
             <label class="label-tiny" id="lbl-user">👤 USUARIO</label>
             <div id="drawer-user-card"
@@ -381,25 +552,26 @@
             </div>
 
             <!-- CONTROLES DE NAVEGACIÓN -->
-            <div class="nav-toolbar">
-                <button class="btn-nav" id="btn-nav-first" title="Inicio">⏮</button>
-                <button class="btn-nav" id="btn-nav-prev" title="Anterior">◀</button>
-                <button class="btn-nav" id="btn-nav-next" title="Siguiente">▶</button>
-                <button class="btn-nav" id="btn-nav-last" title="Fin">⏭</button>
-                <!-- BOTÓN MÁS OPCIONES (SOLO MÓVIL) -->
-                <button class="btn-nav mobile-only" id="btn-more-options" title="Más">⋮</button>
-            </div>
+            <div style="position: relative; width: 100%; max-width: 480px;">
+                <div class="nav-toolbar">
+                    <button class="btn-nav" id="btn-nav-first" title="Inicio">⏮</button>
+                    <button class="btn-nav" id="btn-nav-prev" title="Anterior">◀</button>
+                    <button class="btn-nav" id="btn-nav-next" title="Siguiente">▶</button>
+                    <button class="btn-nav" id="btn-nav-last" title="Fin">⏭</button>
+                    <button class="btn-nav mobile-only" id="btn-more-options" title="Más">⋮</button>
+                </div>
 
-            <!-- MENÚ DESPLEGABLE DE ACCIONES MÓVIL -->
-            <div id="mobile-actions-menu" class="glass-dropdown">
-                <button class="dropdown-item" id="btn-flip-mobile">🔄 Girar Tablero</button>
-                <button class="dropdown-item" id="btn-analyze-mobile">🔍 Analizar</button>
-                <button class="dropdown-item" id="btn-hint-mobile">💡 Pista IA</button>
-                <button class="dropdown-item" id="btn-editor-mobile">⛏️ Editor</button>
-                <button class="dropdown-item" id="btn-welcome-mobile"
-                    style="color:var(--accent); border-top:1px solid rgba(255,255,255,0.1)">🏠 Menú Principal</button>
+                <!-- MENÚ DESPLEGABLE DE ACCIONES MÓVIL -->
+                <div id="mobile-actions-menu" class="glass-dropdown">
+                    <button class="dropdown-item" id="btn-flip-mobile">🔄 Girar Tablero</button>
+                    <button class="dropdown-item" id="btn-analyze-mobile">🔍 Analizar</button>
+                    <button class="dropdown-item" id="btn-hint-mobile">💡 Pista IA</button>
+                    <button class="dropdown-item" id="btn-editor-mobile">⛏️ Editor</button>
+                    <button class="dropdown-item" id="btn-welcome-mobile"
+                        style="color:var(--accent); border-top:1px solid rgba(255,255,255,0.1)">🏠 Menú
+                        Principal</button>
+                </div>
             </div>
-
 
             <!-- TIMER JUGADOR -->
             <div class="player-info" id="p-bottom">
@@ -421,7 +593,6 @@
 
             <!-- TAB: JUEGO -->
             <div class="tab-content active" id="tab-play">
-                <!-- MODO LOCAL / ONLINE -->
                 <div class="mode-section active" id="sec-local">
                     <label class="label-tiny">TIEMPO DE JUEGO</label>
                     <div class="time-selector-grid" id="local-time-selector">
@@ -437,7 +608,6 @@
                         <div style="font-size:0.65rem; color:var(--text-muted); text-align:center; padding:10px;">
                             Cargando partidas...</div>
                     </div>
-
                     <label class="label-tiny">SALA DE JUEGO (RETOS)</label>
                     <div id="challenges-list"
                         style="max-height:150px; overflow-y:auto; background:rgba(0,0,0,0.2); border-radius:8px; margin-bottom:10px; padding:5px;">
@@ -454,7 +624,6 @@
                         ANALIZAR PARTIDA</button>
                 </div>
 
-                <!-- MODO IA -->
                 <div class="mode-section" id="sec-ai">
                     <label class="label-tiny">TIEMPO DE JUEGO</label>
                     <div class="time-selector-grid" id="ai-time-selector">
@@ -484,39 +653,29 @@
                         PISTAS</button>
                 </div>
 
-                <!-- MODO ESTUDIO -->
                 <div class="mode-section" id="sec-study">
+                    <button class="btn-tool" id="btn-suggest-move"
+                        style="width:100%; margin-bottom:5px; color:var(--accent); border-color:var(--accent);">💡
+                        Sugerir Mejor Jugada</button>
+                    <div id="suggest-msg"
+                        style="font-size:0.75rem; text-align:center; min-height:15px; margin-bottom:10px;"></div>
+
                     <label class="label-tiny">BIBLIOTECA DE APERTURAS</label>
                     <select class="btn-control" id="opening-sel">
                         <option value="">-- Seleccionar --</option>
                     </select>
 
-                    <div id="study-controls"
-                        style="display:none; margin-top:10px; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;">
-                        <button class="btn-primary" id="btn-study-next" style="width:100%; margin-bottom:5px;">⏩
-                            Siguiente Jugada</button>
-                        <button class="btn-tool" id="btn-study-prev" style="width:100%">⏪ Anterior</button>
-                    </div>
-
                     <div style="margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
                         <label class="label-tiny">HERRAMIENTAS</label>
-                        <button class="btn-tool" id="btn-suggest-move"
-                            style="width:100%; margin-bottom:5px; color:var(--accent);">💡 Sugerir Mejor Jugada</button>
-                        <div id="suggest-msg"
-                            style="font-size:0.75rem; text-align:center; min-height:15px; margin-bottom:10px;"></div>
-
                         <div class="tool-grid">
                             <button class="btn-tool" id="btn-reset">🔄 RESET</button>
                             <button class="btn-tool" id="btn-pgn">📂 PGN</button>
                             <button class="btn-tool" id="btn-editor">⛏️ EDITOR</button>
                             <button class="btn-tool" id="btn-fen">📋 FEN</button>
                         </div>
-                        <button class="btn-primary" id="btn-start-analysis"
-                            style="width:100%; margin-top:8px; display:none;">🔍 Analizar Posición Actual</button>
                     </div>
                 </div>
 
-                <!-- MODO PUZZLES -->
                 <div class="mode-section" id="sec-exercises">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                         <label class="label-tiny" style="margin:0;">CATEGORÍA</label>
@@ -564,8 +723,6 @@
                         <button class="btn-emoji" data-emoji="👏">👏</button>
                         <button class="btn-emoji" data-emoji="😮">😮</button>
                         <button class="btn-emoji" data-emoji="🤝">🤝</button>
-                        <button class="btn-emoji" data-emoji="💀">💀</button>
-                        <button class="btn-emoji" data-emoji="⭐">⭐</button>
                     </div>
                     <div class="chat-input-wrap" style="margin-top:5px;">
                         <input type="text" id="chat-input" class="chat-input" placeholder="Mensaje...">
@@ -595,7 +752,17 @@
         </aside>
     </div>
 
-    <script src="client.js"></script>
+    <!-- 📱 MOBILE BOTTOM NAVIGATION (Chess.com Style) -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" id="nav-home"><span>🏠</span><span>Inicio</span></div>
+        <div class="nav-item" id="nav-play"><span>⚔️</span><span>Jugar</span></div>
+        <div class="nav-item" id="nav-puzzles"><span>🧩</span><span>Puzzles</span></div>
+        <div class="nav-item" id="nav-analysis"><span>🔍</span><span>Análisis</span></div>
+        <div class="nav-item" id="nav-ranking"><span>🏆</span><span>Ranking</span></div>
+    </nav>
+
+    <script type="module" src="src/client/modules/index.js"></script>
+
 </body>
 
 </html>

@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: chess-pro-app
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET}
+      - DB_TYPE=sqlite # Placeholder for future PG migration
+      - SENTRY_DSN=${SENTRY_DSN}
+    volumes:
+      - ./logs:/app/logs
+      - chess_data:/app/data
+    restart: always
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15-alpine
+    container_name: chess-pro-db
+    environment:
+      - POSTGRES_USER=${DB_USER:-chessadmin}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-chesspass123}
+      - POSTGRES_DB=${DB_NAME:-chesspro}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    container_name: chess-pro-redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+volumes:
+  postgres_data:
+  chess_data:
