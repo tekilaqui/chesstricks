@@ -482,22 +482,36 @@ function handleStockfishMessage(e) {
 
         if (bestMove && bestMove !== '(none)') {
             // 1. If AI turn, make the move
-            if (currentMode === 'ai' && game.turn() !== myColor) {
-                console.log(`🤖 AI decidió: ${bestMove}`);
-                setTimeout(() => {
-                    if (game.turn() !== myColor) {
-                        const m = game.move({
-                            from: bestMove.substring(0, 2),
-                            to: bestMove.substring(2, 4),
-                            promotion: bestMove.length > 4 ? bestMove[4] : 'q'
-                        });
+            // 1. If AI turn, make the move
+            if (currentMode === 'ai') {
+                if (game.turn() !== myColor) {
+                    console.log(`🤖 EJECUTANDO MOVIMIENTO IA: ${bestMove}`);
+                    setTimeout(() => {
+                        // Doble check por si cambio turno
+                        if (game.turn() !== myColor) {
+                            const m = game.move({
+                                from: bestMove.substring(0, 2),
+                                to: bestMove.substring(2, 4),
+                                promotion: bestMove.length > 4 ? bestMove[4] : 'q'
+                            });
 
-                        if (m) {
-                            board.position(game.fen());
-                            handleMoveSuccess(m);
+                            if (m) {
+                                board.position(game.fen());
+                                handleMoveSuccess(m);
+                                console.log("✅ IA Jugada Completada");
+                            } else {
+                                console.error("❌ IA Movimiento ilegal visualizado:", bestMove);
+                                // Fallback: try random move
+                                const moves = game.moves();
+                                if (moves.length > 0) {
+                                    game.move(moves[0]);
+                                    board.position(game.fen());
+                                    handleMoveSuccess(game.history({ verbose: true }).pop());
+                                }
+                            }
                         }
-                    }
-                }, 600);
+                    }, 500);
+                }
             }
 
             // 2. If hints/study active, show it
