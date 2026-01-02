@@ -67,10 +67,12 @@ export function getOpenings() { return OPENINGS_DATA; }
 // INIT
 export function initGame() {
     // Board Setup
+    // Board Setup
     board = Chessboard('myBoard', {
         draggable: true,
         position: 'start',
         pieceTheme: getPieceTheme,
+        onDragStart: onDragStart,
         onDrop: onDrop,
         onSnapEnd: onSnapEnd
     });
@@ -366,6 +368,24 @@ function handleMoveSuccess(move) {
 
 function onSnapEnd() {
     board.position(game.fen());
+}
+
+function onDragStart(source, piece, position, orientation) {
+    if (game.game_over()) return false;
+
+    // Solo permitir mover propias piezas
+    if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
+        (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
+        return false;
+    }
+
+    // En modo AI, no mover piezas de la IA
+    if (currentMode === 'ai' && game.turn() !== myColor) return false;
+
+    // En modo Online, no mover piezas del rival
+    if (currentMode === 'local' && gameId && myColor && game.turn() !== myColor) return false;
+
+    return true;
 }
 
 // LOGIC HELPERS
