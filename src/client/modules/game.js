@@ -65,45 +65,56 @@ const OPENINGS_DATA = [
 export function getOpenings() { return OPENINGS_DATA; }
 
 // INIT
-// INIT
 export function initGame() {
-    // 1. Limpieza Crítica: Eliminar listeners previos para evitar duplicación
-    $(document).off('mousedown touchstart', '.square-55d63');
-    $('#btn-flip, #btn-reset, #btn-resign-ai, #btn-resign-local, #btn-abort, #btn-start-ai, #btn-create, #btn-nav-first, #btn-nav-prev, #btn-nav-next, #btn-nav-last, #btn-ai-hint, #btn-suggest-move, #opening-sel, .mode-pill').off();
+    console.log("🚀 Inicializando Juego...");
 
-    // 2. Limpieza Visual: Si ya existe tablero, destruir o limpiar contenedor
-    if (board && typeof board.destroy === 'function') {
-        board.destroy();
-    } else {
-        $('#myBoard').empty(); // Fallback por si destroy no existe o falla
+    // 1. Limpieza segura de listeners
+    try {
+        $(document).off('mousedown touchstart', '.square-55d63');
+        // NOTA: No usamos .off() en los botones aquí, porque setupGameListeners usa .click() que es acumulativo.
+        // Lo ideal es usar .off('click') antes de .click() DENTRO de setupGameListeners,
+        // o asegurarnos de que setupGameListeners se llame solo una vez.
+        // Por seguridad, limpiamos click handlers específicos:
+        $('#btn-flip, #btn-reset, #btn-resign-ai, #btn-resign-local, #btn-abort, #btn-start-ai, #btn-create, #btn-nav-first, #btn-nav-prev, #btn-nav-next, #btn-nav-last, #btn-ai-hint, #btn-suggest-move, #opening-sel, .mode-pill').off('click');
+        $('#opening-sel').off('change');
+    } catch (e) { console.warn("Error cleaning listeners", e); }
+
+    // 2. Limpieza del tablero (fuerza bruta segura)
+    $('#myBoard').empty();
+    // Variable global protection
+    if (window.board && window.board.destroy) {
+        try { window.board.destroy(); } catch (e) { }
     }
 
-    // 3. Inicializar Tablero Nuevo
-    board = Chessboard('myBoard', {
-        draggable: true,
-        position: 'start',
-        pieceTheme: getPieceTheme,
-        onDragStart: onDragStart,
-        onDrop: onDrop,
-        onSnapEnd: onSnapEnd,
-        sparePieces: false // Asegurar que no salgan piezas extra
-    });
+    // 3. Crear nuevo tablero
+    try {
+        board = Chessboard('myBoard', {
+            draggable: true,
+            position: 'start',
+            pieceTheme: getPieceTheme,
+            onDragStart: onDragStart,
+            onDrop: onDrop,
+            onSnapEnd: onSnapEnd,
+            sparePieces: false
+        });
+        window.board = board; // Expose for debugging
+    } catch (e) {
+        console.error("❌ Error creando tablero:", e);
+        // Fallback or alert
+    }
 
-    // 4. Inicializar Stockfish (Singleton interno ya lo maneja, pero por seguridad)
+    // 4. Init Stockfish
     initStockfish();
 
-    // 5. Vincular Listeners (UNA SOLA VEZ AHORA)
+    // 5. Global Click Listener for mobile/tablets
     $(document).on('mousedown touchstart', '.square-55d63', function (e) {
-        // Evitar doble firing en touch devices
-        if (e.type === 'touchstart') return;
+        if (e.type === 'touchstart') return; // Prevent double firing
         onSquareClick($(this).data('square'));
     });
 
     setupGameListeners();
-
-    // Forzar actualización de UI inicial
     updateUI();
-    console.log("✅ Tablero y Juego Reinicializados Correctamente");
+    console.log("✅ InitGame Completado");
 }
 
 function setupGameListeners() {
