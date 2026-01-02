@@ -31,6 +31,13 @@ $(document).ready(() => {
     initWelcome();
     setLanguage(currentLang, isAuth);
 
+    // 🖥️ PC: Cargar juego inmediatamente
+    if (window.innerWidth > 900) {
+        ensureGameLoaded().then(() => {
+            console.log("🖥️ PC: Juego inicializado automáticamente.");
+        });
+    }
+
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(err => console.error('SW Error', err));
     }
