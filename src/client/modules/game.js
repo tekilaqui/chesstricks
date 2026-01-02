@@ -66,27 +66,25 @@ export function getOpenings() { return OPENINGS_DATA; }
 
 // INIT
 export function initGame() {
-    console.log("🚀 Inicializando Juego...");
+    console.log("🚀 Inicializando Juego v3.6...");
 
-    // 1. Limpieza segura de listeners
+    // 0. Listeners PRIMERO (Vital para que botones funcionen pase lo que pase)
     try {
         $(document).off('mousedown touchstart', '.square-55d63');
-        // NOTA: No usamos .off() en los botones aquí, porque setupGameListeners usa .click() que es acumulativo.
-        // Lo ideal es usar .off('click') antes de .click() DENTRO de setupGameListeners,
-        // o asegurarnos de que setupGameListeners se llame solo una vez.
-        // Por seguridad, limpiamos click handlers específicos:
         $('#btn-flip, #btn-reset, #btn-resign-ai, #btn-resign-local, #btn-abort, #btn-start-ai, #btn-create, #btn-nav-first, #btn-nav-prev, #btn-nav-next, #btn-nav-last, #btn-ai-hint, #btn-suggest-move, #opening-sel, .mode-pill').off('click');
         $('#opening-sel').off('change');
+
+        setupGameListeners(); // <--- LISTENER SETUP NOW
+        console.log("✅ Listeners configurados.");
     } catch (e) { console.warn("Error cleaning listeners", e); }
 
-    // 2. Limpieza del tablero (fuerza bruta segura)
+    // 1. Limpieza segura del tablero
     $('#myBoard').empty();
-    // Variable global protection
     if (window.board && window.board.destroy) {
         try { window.board.destroy(); } catch (e) { }
     }
 
-    // 3. Crear nuevo tablero
+    // 2. Crear tablero PRO
     try {
         board = Chessboard('myBoard', {
             draggable: true,
@@ -97,14 +95,16 @@ export function initGame() {
             onSnapEnd: onSnapEnd,
             sparePieces: false
         });
-        window.board = board; // Expose for debugging
+        window.board = board;
     } catch (e) {
         console.error("❌ Error creando tablero:", e);
-        // Fallback or alert
+        $('#myBoard').html('<div style="color:red; padsding:20px;">Error al cargar tablero. Recarga la página.</div>');
     }
 
-    // 4. Init Stockfish
-    initStockfish();
+    // 3. Init Stockfish (Safe)
+    try {
+        initStockfish();
+    } catch (e) { console.error("SF Init Error", e); }
 
     // 5. Global Click Listener for mobile/tablets
     $(document).on('mousedown touchstart', '.square-55d63', function (e) {
@@ -112,7 +112,7 @@ export function initGame() {
         onSquareClick($(this).data('square'));
     });
 
-    setupGameListeners();
+    // setupGameListeners ya fue llamado al principio.
     updateUI();
     console.log("✅ InitGame Completado");
 }
