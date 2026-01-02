@@ -41,14 +41,24 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
-  'https://chesspro-online.com'
+  'https://chesspro-online.com',
+  'https://chesstricks.onrender.com'
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    // Permitir requests sin origin (como apps móviles o Postman)
+    if (!origin) return callback(null, true);
+
+    // En producción, permitir cualquier subdominio de onrender.com
+    if (process.env.NODE_ENV === 'production' && origin.includes('.onrender.com')) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      console.warn(`⚠️ CORS bloqueado para origen: ${origin}`);
       callback(new Error('Bloqueado por CORS'));
     }
   },
