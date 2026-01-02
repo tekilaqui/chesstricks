@@ -65,27 +65,45 @@ const OPENINGS_DATA = [
 export function getOpenings() { return OPENINGS_DATA; }
 
 // INIT
+// INIT
 export function initGame() {
-    // Board Setup
-    // Board Setup
+    // 1. Limpieza Crítica: Eliminar listeners previos para evitar duplicación
+    $(document).off('mousedown touchstart', '.square-55d63');
+    $('#btn-flip, #btn-reset, #btn-resign-ai, #btn-resign-local, #btn-abort, #btn-start-ai, #btn-create, #btn-nav-first, #btn-nav-prev, #btn-nav-next, #btn-nav-last, #btn-ai-hint, #btn-suggest-move, #opening-sel, .mode-pill').off();
+
+    // 2. Limpieza Visual: Si ya existe tablero, destruir o limpiar contenedor
+    if (board && typeof board.destroy === 'function') {
+        board.destroy();
+    } else {
+        $('#myBoard').empty(); // Fallback por si destroy no existe o falla
+    }
+
+    // 3. Inicializar Tablero Nuevo
     board = Chessboard('myBoard', {
         draggable: true,
         position: 'start',
         pieceTheme: getPieceTheme,
         onDragStart: onDragStart,
         onDrop: onDrop,
-        onSnapEnd: onSnapEnd
+        onSnapEnd: onSnapEnd,
+        sparePieces: false // Asegurar que no salgan piezas extra
     });
 
-    // Stockfish Setup
+    // 4. Inicializar Stockfish (Singleton interno ya lo maneja, pero por seguridad)
     initStockfish();
 
-    // Click Handlers (Mobile/Global)
-    $(document).on('mousedown touchstart', '.square-55d63', function () {
+    // 5. Vincular Listeners (UNA SOLA VEZ AHORA)
+    $(document).on('mousedown touchstart', '.square-55d63', function (e) {
+        // Evitar doble firing en touch devices
+        if (e.type === 'touchstart') return;
         onSquareClick($(this).data('square'));
     });
 
     setupGameListeners();
+
+    // Forzar actualización de UI inicial
+    updateUI();
+    console.log("✅ Tablero y Juego Reinicializados Correctamente");
 }
 
 function setupGameListeners() {
