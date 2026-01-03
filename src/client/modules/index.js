@@ -7,7 +7,7 @@ import './sentry.js';
 
 import { initSocket } from './socket.js';
 import { initAuth, isAuth } from './auth.js';
-import { setLanguage, currentLang } from './ui.js';
+import { setLanguage, currentLang, setupDrawer } from './ui.js';
 import { initWelcome } from './welcome.js';
 
 let gameModule = null;
@@ -29,6 +29,7 @@ $(document).ready(() => {
 
     initAuth(socket);
     initWelcome();
+    setupDrawer();
     setLanguage(currentLang, isAuth);
 
     // 🖥️ PC: Cargar juego inmediatamente

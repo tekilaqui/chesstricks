@@ -96,3 +96,41 @@ export function formatTime(s) {
     }
     return (m < 10 ? "0" : "") + m + ":" + (sec < 10 ? "0" : "") + sec;
 }
+
+export function setupDrawer() {
+    const drawer = $('#side-drawer');
+    const overlay = $('#side-drawer-overlay');
+
+    function openDrawer() {
+        drawer.addClass('open');
+        overlay.fadeIn(200);
+    }
+
+    function closeDrawer() {
+        drawer.removeClass('open');
+        overlay.fadeOut(200);
+    }
+
+    $('#hamburger-menu').on('click', function (e) {
+        e.stopPropagation();
+        openDrawer();
+    });
+
+    overlay.on('click', closeDrawer);
+
+    // Close on any drawer item click if it navigates (optional, but good UX)
+    // The welcome.js handles specific nav items, but let's ensure generic behavior
+    $('#btn-auth-drawer, #btn-logout-drawer').click(closeDrawer);
+}
+
+export function updateWelcomeStats() {
+    // Requires access to auth exported values, but circular dependency could vary.
+    // Better to have auth update UI or pass values. 
+    // However, for simplicity let's read from DOM or variable if available.
+    // Or simpler: access text of main headers
+    const mainElo = $('#header-elo').text() || '500 ELO';
+    const mainPuz = $('#header-elo-puz').text() || '500 🧩';
+
+    $('#welcome-elo-main').text(mainElo);
+    $('#welcome-elo-puz').text(mainPuz);
+}

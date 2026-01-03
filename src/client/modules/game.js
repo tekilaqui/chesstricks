@@ -5,13 +5,48 @@ import { playSnd, showToast, formatTime, LANGS, currentLang } from './ui.js';
 import { updateElo, userName, isAuth, userElo } from './auth.js';
 import { handlePuzzleMove, loadRandomPuzzle } from './puzzles.js';
 import { getSocket } from './socket.js';
+import * as ChessLib from 'chess.js';
 
-import { Chess } from 'chess.js';
+// ROBUST CHESS LOADER
+let ChessCtor;
+if (typeof ChessLib === 'function') {
+    ChessCtor = ChessLib;
+} else if (ChessLib.Chess) {
+    ChessCtor = ChessLib.Chess;
+} else if (ChessLib.default) {
+    if (typeof ChessLib.default === 'function') {
+        ChessCtor = ChessLib.default;
+    } else if (ChessLib.default.Chess) {
+        ChessCtor = ChessLib.default.Chess;
+    }
+}
+
+if (!ChessCtor) {
+    console.error("CRITICAL: Could not find Chess constructor in chess.js export:", ChessLib);
+    // Fallback?
+    // Attempt global if loaded via script tag fallback (which we have in index.html as a backup plan?)
+    if (window.Chess && typeof window.Chess === 'function') {
+        ChessCtor = window.Chess;
+    }
+}
 
 // GAME STATE
-export const game = new Chess();
+export let game;
+
+try {
+    if (ChessCtor) {
+        game = new ChessCtor();
+    } else {
+        throw new Error("Chess constructor not found");
+    }
+} catch (e) {
+    console.error("Chess instantiation error:", e);
+    // Alert user visibly
+    setTimeout(() => alert("Error crítico de sistema: Fallo al cargar motor de ajedrez. Recarga la página."), 1000);
+}
+
 window.game = game; // For debugging and global access
-window.Chess = Chess; // For modules expecting it on window
+if (ChessCtor) window.Chess = ChessCtor;
 export let board = null;
 export let currentMode = 'local';
 export let gameId = null;
