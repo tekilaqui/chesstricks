@@ -646,27 +646,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-const https = require('https');
 
-app.get('/puzzles', (req, res) => {
-  const { themes, min_rating, max_rating, limit } = req.query;
-  const url = `https://chess-puzzles-api.vercel.app/puzzles?themes=${themes || 'mate'}&min_rating=${min_rating || 1000}&max_rating=${max_rating || 1500}&limit=${limit || 50}&_t=${Date.now()}`;
-
-  https.get(url, (apiRes) => {
-    let data = '';
-    apiRes.on('data', (chunk) => { data += chunk; });
-    apiRes.on('end', () => {
-      try {
-        res.json(JSON.parse(data));
-      } catch (e) {
-        res.status(500).json({ error: 'Failed to parse puzzles' });
-      }
-    });
-  }).on('error', (err) => {
-    console.error('Error proxying puzzles:', err);
-    res.status(500).json({ error: 'Failed to fetch puzzles' });
-  });
-});
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
