@@ -5,48 +5,13 @@ import { playSnd, showToast, formatTime, LANGS, currentLang } from './ui.js';
 import { updateElo, userName, isAuth, userElo } from './auth.js';
 import { handlePuzzleMove, loadRandomPuzzle } from './puzzles.js';
 import { getSocket } from './socket.js';
-import * as ChessLib from 'chess.js';
 
-// ROBUST CHESS LOADER
-let ChessCtor;
-if (typeof ChessLib === 'function') {
-    ChessCtor = ChessLib;
-} else if (ChessLib.Chess) {
-    ChessCtor = ChessLib.Chess;
-} else if (ChessLib.default) {
-    if (typeof ChessLib.default === 'function') {
-        ChessCtor = ChessLib.default;
-    } else if (ChessLib.default.Chess) {
-        ChessCtor = ChessLib.default.Chess;
-    }
-}
-
-if (!ChessCtor) {
-    console.error("CRITICAL: Could not find Chess constructor in chess.js export:", ChessLib);
-    // Fallback?
-    // Attempt global if loaded via script tag fallback (which we have in index.html as a backup plan?)
-    if (window.Chess && typeof window.Chess === 'function') {
-        ChessCtor = window.Chess;
-    }
-}
+import { Chess } from 'chess.js';
 
 // GAME STATE
-export let game;
-
-try {
-    if (ChessCtor) {
-        game = new ChessCtor();
-    } else {
-        throw new Error("Chess constructor not found");
-    }
-} catch (e) {
-    console.error("Chess instantiation error:", e);
-    // Alert user visibly
-    setTimeout(() => alert("Error crítico de sistema: Fallo al cargar motor de ajedrez. Recarga la página."), 1000);
-}
-
+export const game = new Chess();
 window.game = game; // For debugging and global access
-if (ChessCtor) window.Chess = ChessCtor;
+window.Chess = Chess; // For modules expecting it on window
 export let board = null;
 export let currentMode = 'local';
 export let gameId = null;
@@ -100,40 +65,25 @@ const OPENINGS_DATA = [
 export function getOpenings() { return OPENINGS_DATA; }
 
 // INIT
-// INIT
 export function initGame() {
-    console.log("🚀 Inicializando Juego v3.6 (Restored Logic)...");
+    // Board Setup
+    board = Chessboard('myBoard', {
+        draggable: true,
+        position: 'start',
+        pieceTheme: getPieceTheme,
+        onDrop: onDrop,
+        onSnapEnd: onSnapEnd
+    });
 
-    // 1. Board Setup
-    try {
-        board = Chessboard('myBoard', {
-            draggable: true,
-            position: 'start',
-            pieceTheme: getPieceTheme,
-            onDrop: onDrop,
-            onSnapEnd: onSnapEnd,
-            onDragStart: onDragStart // Keep this from new version if needed, or stick to backup? Backup didn't have it in initGame config? 
-            // Backup had: onDrop, onSnapEnd. New version has onDragStart too. Let's keep new features but use backup structure.
-        });
-        window.board = board;
-    } catch (e) { console.error("Board init error", e); }
+    // Stockfish Setup
+    initStockfish();
 
-    // 2. Stockfish Setup
-    try {
-        initStockfish();
-    } catch (e) { console.error("SF init error", e); }
-
-    // 3. Click Handlers (Mobile/Global)
-    $(document).off('mousedown touchstart', '.square-55d63'); // efficient clear
-    $(document).on('mousedown touchstart', '.square-55d63', function (e) {
-        if (e.type === 'touchstart') return;
+    // Click Handlers (Mobile/Global)
+    $(document).on('mousedown touchstart', '.square-55d63', function () {
         onSquareClick($(this).data('square'));
     });
 
-    // 4. Setup Listeners
     setupGameListeners();
-    updateUI();
-    console.log("✅ InitGame Completado");
 }
 
 function setupGameListeners() {
@@ -418,24 +368,6 @@ function onSnapEnd() {
     board.position(game.fen());
 }
 
-function onDragStart(source, piece, position, orientation) {
-    if (game.game_over()) return false;
-
-    // Solo permitir mover propias piezas
-    if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
-        (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
-        return false;
-    }
-
-    // En modo AI, no mover piezas de la IA
-    if (currentMode === 'ai' && game.turn() !== myColor) return false;
-
-    // En modo Online, no mover piezas del rival
-    if (currentMode === 'local' && gameId && myColor && game.turn() !== myColor) return false;
-
-    return true;
-}
-
 // LOGIC HELPERS
 export function updateUI(moved = false) {
     $('.square-55d63').removeClass('highlight-selected highlight-hint');
@@ -501,36 +433,22 @@ function handleStockfishMessage(e) {
 
         if (bestMove && bestMove !== '(none)') {
             // 1. If AI turn, make the move
-            // 1. If AI turn, make the move
-            if (currentMode === 'ai') {
-                if (game.turn() !== myColor) {
-                    console.log(`🤖 EJECUTANDO MOVIMIENTO IA: ${bestMove}`);
-                    setTimeout(() => {
-                        // Doble check por si cambio turno
-                        if (game.turn() !== myColor) {
-                            const m = game.move({
-                                from: bestMove.substring(0, 2),
-                                to: bestMove.substring(2, 4),
-                                promotion: bestMove.length > 4 ? bestMove[4] : 'q'
-                            });
+            if (currentMode === 'ai' && game.turn() !== myColor) {
+                console.log(`🤖 AI decidió: ${bestMove}`);
+                setTimeout(() => {
+                    if (game.turn() !== myColor) {
+                        const m = game.move({
+                            from: bestMove.substring(0, 2),
+                            to: bestMove.substring(2, 4),
+                            promotion: bestMove.length > 4 ? bestMove[4] : 'q'
+                        });
 
-                            if (m) {
-                                board.position(game.fen());
-                                handleMoveSuccess(m);
-                                console.log("✅ IA Jugada Completada");
-                            } else {
-                                console.error("❌ IA Movimiento ilegal visualizado:", bestMove);
-                                // Fallback: try random move
-                                const moves = game.moves();
-                                if (moves.length > 0) {
-                                    game.move(moves[0]);
-                                    board.position(game.fen());
-                                    handleMoveSuccess(game.history({ verbose: true }).pop());
-                                }
-                            }
+                        if (m) {
+                            board.position(game.fen());
+                            handleMoveSuccess(m);
                         }
-                    }, 500);
-                }
+                    }
+                }, 600);
             }
 
             // 2. If hints/study active, show it

@@ -1,0 +1,11 @@
+/* 
+   CHESS TRICKS - Main Stylesheet 
+   This file imports the modular CSS system.
+*/
+
+@import url('src/client/styles/variables.css');
+@import url('src/client/styles/layout.css');
+@import url('src/client/styles/components.css');
+@import url('src/client/styles/responsive.css');
+
+/* Legacy fixes or overrides can go here temporarily */
