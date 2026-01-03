@@ -4,7 +4,7 @@
 
 import { formatTime, showToast, playSnd } from './ui.js';
 import { userPuzzleElo, setPuzzleElo, userName, isAuth } from './auth.js';
-import { updateElo } from './game.js'; // We might need a unified updateElo, or use the one in game.js if we move it there
+import { updateElo } from './auth.js';
 
 // STATE
 let currentPuzzle = null;
