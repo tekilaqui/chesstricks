@@ -8,7 +8,7 @@
     "createdAt": "2025-12-30T00:45:27.201Z",
     "stats": {
       "wins": 1,
-      "losses": 3,
+      "losses": 5,
       "draws": 0
     }
   },
@@ -20,8 +20,21 @@
     "puzElo": 524,
     "createdAt": "2025-12-30T01:06:41.740Z",
     "stats": {
-      "wins": 3,
+      "wins": 5,
       "losses": 1,
+      "draws": 0
+    }
+  },
+  "Pepegus": {
+    "hash": "d8da4cd6511132b8961435c13cdc490be878fda55eb25e91f44f75056e6b056ab98bd59e9bca64f5957d14f401d8576c4fb016f1c2f11ae7300a2bb322d2b82d",
+    "salt": "b3b329d2396b6316ee6698edf1356d718f998f8f330db1e4ca292eaa1d12a912",
+    "email": "Tekilaqui@gmail.com",
+    "elo": 500,
+    "puzElo": 500,
+    "createdAt": "2026-01-05T22:26:45.680Z",
+    "stats": {
+      "wins": 0,
+      "losses": 0,
       "draws": 0
     }
   }

@@ -27,22 +27,29 @@ const authLimiter = rateLimit({
   message: { error: "Demasiados intentos de acceso, intente de nuevo en una hora" }
 });
 
-app.use(helmet({
+/* app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:", "http:"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:", "http:", "blob:"],
       styleSrc: ["'self'", "'unsafe-inline'", "https:", "http:"],
       imgSrc: ["'self'", "data:", "https:", "http:"],
       connectSrc: ["'self'", "wss:", "https:", "http:"],
       mediaSrc: ["'self'", "https:", "http:"],
       fontSrc: ["'self'", "https:", "http:"],
+      workerSrc: ["'self'", "blob:"],
       objectSrc: ["'none'"],
     },
   },
   crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
+})); */
 app.use(express.json({ limit: '10kb' }));
+app.get('/*', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
 app.use(express.static(__dirname, { dotfiles: 'allow' }));
 app.use('/login', authLimiter);
 app.use('/register', authLimiter);
@@ -250,6 +257,31 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('new_challenge', challenge);
   });
 
+  socket.on('get_lobby', () => {
+    socket.emit('lobby_update', Array.from(activeChallenges.values()));
+    if (socket.username) {
+      const userGames = Object.values(activeGames).filter(g => g.white === socket.username || g.black === socket.username);
+      socket.emit('active_games_update', userGames);
+    }
+  });
+
+  socket.on('join_game', (data) => {
+    const game = activeGames[data.gameId];
+    if (game && (game.white === socket.username || game.black === socket.username)) {
+      socket.join(`game_${data.gameId}`);
+      socket.emit('game_resume', {
+        id: game.id,
+        fen: game.fen,
+        white: game.white,
+        black: game.black,
+        whiteTime: game.whiteTime,
+        blackTime: game.blackTime,
+        turn: game.turn,
+        moves: game.moves
+      });
+    }
+  });
+
   socket.on('join_challenge', (data) => {
     if (!socket.authenticated) return socket.emit('error', 'Debes iniciar sesión');
     const challenge = activeChallenges.get(data.id);
@@ -259,11 +291,13 @@ io.on('connection', (socket) => {
     activeChallenges.delete(data.id);
     socket.join(`game_${data.id}`);
 
+    const isWhite = Math.random() > 0.5;
     const gameTime = (challenge.time || 10) * 60;
+
     activeGames[data.id] = {
       id: data.id,
-      white: challenge.user,
-      black: socket.username,
+      white: isWhite ? challenge.user : socket.username,
+      black: isWhite ? socket.username : challenge.user,
       startTime: Date.now(),
       moves: [],
       fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
@@ -275,9 +309,13 @@ io.on('connection', (socket) => {
 
     saveGames();
     io.emit('lobby_update', Array.from(activeChallenges.values()));
-    socket.to(`game_${data.id}`).emit('opponent_joined', {
-      user: socket.username,
-      elo: users[socket.username]?.elo || 1200
+
+    // Notificar a ambos jugadores el inicio y sus colores
+    io.to(`game_${data.id}`).emit('game_start', {
+      gameId: data.id,
+      white: activeGames[data.id].white,
+      black: activeGames[data.id].black,
+      time: challenge.time || 10
     });
   });
 
@@ -308,8 +346,17 @@ io.on('connection', (socket) => {
       game.turn = game.turn === 'w' ? 'b' : 'w';
       game.lastUpdate = now;
       saveGames();
+
+      // Emit with updated server times to keep clients in sync
+      const moveData = {
+        ...data,
+        whiteTime: game.whiteTime,
+        blackTime: game.blackTime,
+        turn: game.turn
+      };
+      socket.to(`game_${data.gameId}`).emit('move', moveData);
+      socket.emit('move_ack', moveData); // Confirm to the sender too
     }
-    socket.to(`game_${data.gameId}`).emit('move', data);
   });
 
   socket.on('chat_message', (data) => {

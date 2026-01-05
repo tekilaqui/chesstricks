@@ -26,6 +26,7 @@
     <div class="app-header">
         <div style="display:flex; align-items:center; gap:12px;">
             <div id="hamburger-menu" style="cursor:pointer; font-size:1.4rem; color:var(--accent);">☰</div>
+            <button id="btn-mobile-menu-back" style="display:none;">⬅️</button>
             <div class="logo-inline">
                 <img src="logo.jpg" alt="Logo" style="height:32px; width:32px; object-fit:contain; border-radius:4px;">
                 <h1>CHESS <span style="color:var(--accent)">TRICKS</span></h1>
@@ -130,13 +131,105 @@
 
     <div class="app-container">
         <aside class="sidebar-left">
-            <div class="mode-selectors">
-                <div class="mode-pill active" data-mode="local"><span>🌐</span><span>Online</span></div>
-                <div class="mode-pill" data-mode="ai"><span>🤖</span><span>Vs IA</span></div>
-                <div class="mode-pill" data-mode="study"><span>📚</span><span>Estudio</span></div>
-                <div class="mode-pill" data-mode="exercises"><span>🧩</span><span>Puzzles</span></div>
+            <div id="main-menu-container">
+                <!-- MENU PRINCIPAL (LEVEL 1) -->
+                <div class="menu-step active" id="menu-root">
+                    <div class="btn-menu" onclick="showSubMenu('jugar')"><span>🎮</span><span>Jugar</span></div>
+                    <div class="btn-menu" onclick="showSubMenu('estudio')"><span>📚</span><span>Estudiar</span></div>
+                    <div class="btn-menu" onclick="showSubMenu('puzzles')"><span>🧩</span><span>Puzzles</span></div>
+                </div>
+
+                <!-- SUBMENU: JUGAR -->
+                <div class="menu-step" id="menu-jugar">
+                    <button class="btn-back" onclick="showSubMenu('root')">⬅️ Volver</button>
+
+                    <!-- OPCIONES RÁPIDAS -->
+                    <div class="btn-menu" onclick="showSubMenu('online')"><span>🌐</span><span>Juego Online</span></div>
+                    <div class="btn-menu" onclick="startMaestroMode()"><span>👴</span><span>Entrenamiento Maestro</span>
+                    </div>
+                    <div class="btn-menu" onclick="setMode('pass-and-play')"><span>👥</span><span>Juego Local</span>
+                    </div>
+                </div>
+
+                <!-- SUBMENU: ONLINE -->
+                <div class="menu-step" id="menu-online">
+                    <button class="btn-back" onclick="showSubMenu('jugar')">⬅️ Volver</button>
+
+                    <div class="btn-menu" onclick="setMode('local')"><span>🏰</span><span>Sala de Retos</span></div>
+
+                    <div class="btn-menu" onclick="$('#online-setup-container').slideToggle()"><span>➕</span><span>Crear
+                            Nuevo Reto</span></div>
+
+                    <div id="online-setup-container"
+                        style="display:none; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px; margin-bottom:10px;">
+                        <label class="label-tiny">Tiempo por Jugador</label>
+                        <select class="btn-control" id="online-time-sel" style="margin-bottom:10px;">
+                            <option value="1">1 Minuto (Bala)</option>
+                            <option value="3">3 Minutos (Blitz)</option>
+                            <option value="5">5 Minutos (Blitz)</option>
+                            <option value="10" selected>10 Minutos (Rapid)</option>
+                            <option value="30">30 Minutos (Clásico)</option>
+                        </select>
+                        <button class="btn-primary" onclick="createOnlineChallenge()">⚔️ LANZAR RETO</button>
+                        <p style="font-size:0.55rem; color:var(--text-muted); margin-top:5px; text-align:center;">* El
+                            color será asignado aleatoriamente para justicia.</p>
+                    </div>
+
+                    <div class="btn-menu"
+                        onclick="setMode('local'); setTimeout(() => { $('#active-games-list')[0].scrollIntoView({behavior:'smooth'}); }, 300)">
+                        <span>📖</span><span>Mis Partidas Activas</span></div>
+                </div>
+
+                <!-- SUBMENU: ESTUDIO -->
+                <div class="menu-step" id="menu-estudio">
+                    <button class="btn-back" onclick="showSubMenu('root')">⬅️ Volver</button>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <div class="btn-menu" onclick="$('#opening-sel-container').slideToggle()">
+                            <span>📖</span><span>Ver Aperturas</span>
+                        </div>
+
+                        <div id="opening-sel-container"
+                            style="display:none; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;">
+                            <label class="label-tiny">Elegir Apertura</label>
+                            <select class="btn-control" id="opening-sel-main">
+                                <option value="">-- Seleccionar --</option>
+                            </select>
+                        </div>
+
+                        <div class="btn-menu" onclick="setMode('study')"><span>🔍</span><span>Modo Análisis</span></div>
+                        <div class="btn-menu" onclick="game.reset(); board.start(); updateUI();">
+                            <span>🔄</span><span>Resetear Tablero</span>
+                        </div>
+                        <div class="btn-menu" id="btn-pgn-main"><span>📄</span><span>Cargar PGN</span></div>
+                    </div>
+                </div>
+
+                <!-- SUBMENU: PUZZLES -->
+                <div class="menu-step" id="menu-puzzles">
+                    <button class="btn-back" onclick="showSubMenu('root')">⬅️ Volver</button>
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <label class="label-tiny">Categoría</label>
+                        <select class="btn-control" id="puz-cat-sel-main">
+                            <option value="mixed">Mezclados</option>
+                            <option value="mateIn2">Mate en 2</option>
+                            <option value="midgame">Medio Juego</option>
+                            <option value="endgame">Finales</option>
+                        </select>
+                        <div class="btn-menu" onclick="setMode('exercises'); loadRandomPuzzle();">
+                            <span>🚀</span><span>Empezar Puzzles</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <button class="btn-primary" id="btn-flip" style="margin-top:8px;">GIRAR TABLERO</button>
+
+            <div id="game-sidebar-controls" style="display:none; flex-direction:column; gap:10px; margin-top:15px;">
+                <button class="btn-menu" onclick="goBackToMenu()"
+                    style="background:rgba(239, 68, 68, 0.1); border-color:rgba(239, 68, 68, 0.2); color:#ef4444; padding:10px;"><span>🏠</span><span>Volver
+                        al Menú</span></button>
+                <button class="btn-primary" id="btn-flip"
+                    style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-muted); padding:10px;">🔄
+                    GIRAR TABLERO</button>
+            </div>
 
             <!-- MAESTRO IA PANEL REFINADO -->
             <div class="master-panel" id="master-coach-panel" style="margin-top:12px;">
@@ -191,9 +284,19 @@
                 <button class="btn-nav" id="btn-nav-prev" title="Anterior">◀</button>
                 <button class="btn-nav" id="btn-nav-next" title="Siguiente">▶</button>
                 <button class="btn-nav" id="btn-nav-last" title="Fin">⏭</button>
-                <!-- BOTÓN MÁS OPCIONES (SOLO MÓVIL) -->
-                <button class="btn-nav mobile-only" id="btn-more-options" title="Más">⋮</button>
             </div>
+
+            <!-- BARRA DE ACCIONES SECUNDARIA (SOLO MÓVIL) -->
+            <div class="mobile-actions-bar mobile-only">
+                <button class="btn-action" onclick="toggleHints(this)" id="btn-hint-mobile-bar">💡 PISTA</button>
+                <button class="btn-action resign" onclick="resignGame()">🏳️ RENDIRSE</button>
+                <button class="btn-action menu" onclick="goBackToMenu()">🏠 VOLVER</button>
+            </div>
+
+            <!-- BOTÓN PISTAS IA (Para PC, visible en modos entrenamiento) -->
+            <button class="btn-primary desktop-only" id="btn-hint-main"
+                style="width:200px; padding:8px; margin: 10px auto; font-size:0.8rem; display:none; align-items:center; justify-content:center; gap:5px; background:var(--accent-gold); border-color:#d97706; color:#000; font-weight:800; border-radius:12px;">💡
+                PISTA IA INTERACTIVA</button>
 
             <!-- MENÚ DESPLEGABLE DE ACCIONES MÓVIL -->
             <div id="mobile-actions-menu" class="glass-dropdown">
