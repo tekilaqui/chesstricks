@@ -8,92 +8,12 @@ const jwt = require('jsonwebtoken');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const cors = require('cors');
-const { Chess } = require('chess.js');
-const { RateLimiterMemory } = require('rate-limiter-flexible');
-const compression = require('compression');
-const fetch = require('node-fetch');
-const Sentry = require('@sentry/node');
 require('dotenv').config();
 
-const logger = require('./src/server/logger');
-const validator = require('./src/server/validator');
-
-if (process.env.SENTRY_DSN) {
-  Sentry.init({
-    dsn: process.env.SENTRY_DSN,
-    environment: process.env.NODE_ENV || 'development',
-    tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
-    integrations: [
-      ...Sentry.autoDiscoverNodePerformanceMonitoringIntegrations(),
-    ],
-  });
-  logger.info('📊 Sentry monitoring initialized');
-} else {
-  logger.warn('⚠️ Sentry DSN not configured - monitoring disabled');
-}
-
-// 📦 DB MODULE
-const { initDB, users: userDB, games: gameDB, tokens: tokenDB } = require('./src/server/db');
-
 const app = express();
-
-// 🛡️ TAREA 7: Restringir CORS
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
-  'https://chesspro-online.com',
-  'https://chesstricks.onrender.com'
-];
-
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Permitir requests sin origin (como apps móviles o Postman)
-    if (!origin) return callback(null, true);
-
-    // En producción, permitir cualquier subdominio de onrender.com
-    if (process.env.NODE_ENV === 'production' && origin.includes('.onrender.com')) {
-      return callback(null, true);
-    }
-
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.warn(`⚠️ CORS bloqueado para origen: ${origin}`);
-      callback(new Error('Bloqueado por CORS'));
-    }
-  },
-  credentials: true
-};
-
-app.use(cors(corsOptions));
+app.use(cors());
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: allowedOrigins,
-    methods: ["GET", "POST"],
-    credentials: true
-  }
-});
-
-// 🗜️ GZIP COMPRESSION
-app.use(compression({
-  filter: (req, res) => {
-    if (req.headers['x-no-compression']) return false;
-    return compression.filter(req, res);
-  },
-  level: 6,
-  threshold: 1024
-}));
-logger.info('🗜️ GZIP compression enabled');
-
-const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET;
-
-if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
-  logger.error("❌ ERROR: JWT_SECRET no definido en producción.");
-  process.exit(1);
-}
-
+const io = new Server(server);
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -111,75 +31,24 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "blob:", "https:", "http:"],
-      workerSrc: ["'self'", "blob:", "https:", "http:"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:", "http:"],
       styleSrc: ["'self'", "'unsafe-inline'", "https:", "http:"],
       imgSrc: ["'self'", "data:", "https:", "http:"],
-      connectSrc: ["'self'", "wss:", "https://cdnjs.cloudflare.com", "https:", "http:"],
+      connectSrc: ["'self'", "wss:", "https:", "http:"],
       mediaSrc: ["'self'", "https:", "http:"],
       fontSrc: ["'self'", "https:", "http:"],
       objectSrc: ["'none'"],
     },
   },
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-  crossOriginEmbedderPolicy: false,
-  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
-
-// Sentry request handler (must be first)
-if (process.env.SENTRY_DSN) {
-  app.use(Sentry.Handlers.requestHandler());
-  app.use(Sentry.Handlers.tracingHandler());
-}
-
 app.use(express.json({ limit: '10kb' }));
-
-// 🚀 TAREA 16: Configurar caché HTTP
-const oneYear = 31536000000;
-const oneHour = 3600000;
-
-app.use(express.static(path.join(__dirname, 'dist'), {
-  maxAge: oneYear,
-  setHeaders: (res, path) => {
-    if (path.endsWith('.html')) {
-      res.setHeader('Cache-Control', `public, max-age=${oneHour / 1000}`);
-    }
-  }
-}));
-
-app.use(express.static(__dirname, {
-  maxAge: oneHour,
-  setHeaders: (res, path) => {
-    if (path.endsWith('.html')) {
-      res.setHeader('Cache-Control', `public, max-age=${oneHour / 1000}`);
-    }
-  }
-}));
-
+app.use(express.static(__dirname, { dotfiles: 'allow' }));
 app.use('/login', authLimiter);
 app.use('/register', authLimiter);
 
-// 🧩 PUZZLES PROXY (Tarea 14: Lazy Loading)
-app.get('/puzzles', async (req, res) => {
-  const { themes, min_rating, max_rating, limit } = req.query;
-  const url = `https://chess-puzzles-api.vercel.app/puzzles?themes=${themes || 'all'}&min_rating=${min_rating || 600}&max_rating=${max_rating || 3000}&limit=${limit || 1}`;
-
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('API Error');
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    logger.error({ err: err.message, url }, 'Error fetching puzzles from API');
-    res.status(500).json({ error: 'Error cargando puzzles' });
-  }
-});
-
-// ----------------------------------------------------------------------
-// 🗄️ STATE MANAGEMENT
-// Active games are kept in memory for performance, synced to DB on change.
-// Users are strictly fetched from DB.
-// ----------------------------------------------------------------------
+const DB_PATH = path.join(__dirname, 'users.json');
+let users = {};
 
 function sanitize(str) {
   if (typeof str !== 'string') return '';
@@ -192,6 +61,27 @@ function sanitize(str) {
   })[m]);
 }
 
+function loadUsers() {
+  if (fs.existsSync(DB_PATH)) {
+    try {
+      users = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+    } catch (e) {
+      console.error("Error cargando DB:", e);
+      users = {};
+    }
+  }
+}
+
+function saveUsers() {
+  try {
+    fs.writeFileSync(DB_PATH, JSON.stringify(users, null, 2));
+  } catch (e) {
+    console.error("Error guardando DB:", e);
+  }
+}
+
+loadUsers();
+
 function hashPassword(password, salt) {
   return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
 }
@@ -199,65 +89,60 @@ function hashPassword(password, salt) {
 function generateToken(username) {
   return jwt.sign(
     { username, timestamp: Date.now() },
-    JWT_SECRET || 'dev-secret-key',
+    process.env.JWT_SECRET || 'secret-change-this',
     { expiresIn: '7d' }
   );
 }
 
 function verifyToken(token) {
   try {
-    return jwt.verify(token, JWT_SECRET || 'dev-secret-key');
+    return jwt.verify(token, process.env.JWT_SECRET || 'secret-change-this');
   } catch (e) {
     return null;
   }
 }
 
+function validateUsername(username) {
+  return username && typeof username === 'string' && username.length >= 3 && username.length <= 20 && /^[a-zA-Z0-9_-]+$/.test(username);
+}
+
+function validatePassword(password) {
+  return password && typeof password === 'string' && password.length >= 6 && password.length <= 100;
+}
+
+function validateEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return email && typeof email === 'string' && emailRegex.test(email);
+}
 
 const activeChallenges = new Map();
 const connectedUsers = new Map();
-// Reset tokens now managed by DB
 
-// 🛡️ TAREA 6: Rate Limiting
-const rateLimiter = new RateLimiterMemory({
-  points: 50, // 50 eventos/minuto global
-  duration: 60,
-});
-
-const moveLimiter = new RateLimiterMemory({
-  points: 30, // 30 movimientos/minuto por usuario
-  duration: 60,
-});
-
-
+const GAMES_PATH = path.join(__dirname, 'active_games.json');
 let activeGames = {};
 
-async function loadActiveGames() {
-  try {
-    activeGames = await gameDB.getAllActive();
-    logger.info(`🎮 ${Object.keys(activeGames).length} partidas activas cargadas desde DB.`);
-  } catch (e) {
-    logger.error("Error cargando juegos activos:", e);
-    activeGames = {};
+function loadGames() {
+  if (fs.existsSync(GAMES_PATH)) {
+    try {
+      activeGames = JSON.parse(fs.readFileSync(GAMES_PATH, 'utf8'));
+    } catch (e) {
+      console.error("Error cargando juegos:", e);
+      activeGames = {};
+    }
   }
 }
 
-async function saveGame(game) {
-  if (!game) return;
+function saveGames() {
   try {
-    await gameDB.save(game);
+    fs.writeFileSync(GAMES_PATH, JSON.stringify(activeGames, null, 2));
   } catch (e) {
-    logger.error("Error guardando juego:", e);
+    console.error("Error guardando juegos:", e);
   }
 }
 
-// SOCKET.IO MIDDLEWARE
-io.use(async (socket, next) => {
-  try {
-    await rateLimiter.consume(socket.handshake.address, 2);
-  } catch (rejRes) {
-    return next(new Error('Demasiadas conexiones. Intenta más tarde.'));
-  }
+loadGames();
 
+io.use((socket, next) => {
   const token = socket.handshake.auth.token;
   if (token) {
     const decoded = verifyToken(token);
@@ -269,92 +154,66 @@ io.use(async (socket, next) => {
   next();
 });
 
-// SOCKET EVENTS
-io.on('connection', async (socket) => {
-  logger.debug({ socketId: socket.id, ip: socket.handshake.address }, 'Nuevo socket conectado');
+io.on('connection', (socket) => {
+  console.log('Usuario conectado:', socket.id);
 
-  // Auto-login
-  if (socket.authenticated) {
-    try {
-      const u = await userDB.get(socket.username);
-      if (u) {
-        socket.emit('auth_success', {
-          user: socket.username,
-          elo: u.elo || 500,
-          puzElo: u.puzElo || 500,
-          token: socket.handshake.auth.token
-        });
-        connectedUsers.set(socket.id, socket.username);
-        logger.info({ user: socket.username }, 'Auto-login exitoso');
-      }
-    } catch (e) { logger.error({ err: e.message, user: socket.username }, "Auto-login error"); }
+  // Auto-login if token was valid
+  if (socket.authenticated && users[socket.username]) {
+    const u = users[socket.username];
+    socket.emit('auth_success', {
+      user: socket.username,
+      elo: u.elo || 500, // Ensure updated to 500 default
+      puzElo: u.puzElo || 500,
+      token: socket.handshake.auth.token // Echo back
+    });
+    connectedUsers.set(socket.id, socket.username);
   }
 
   socket.emit('lobby_update', Array.from(activeChallenges.values()));
 
-  socket.on('register', async (data) => {
+  socket.on('register', (data) => {
     try {
-      const vU = validator.username(data.user);
-      const vP = validator.password(data.pass);
-      const vE = validator.email(data.email);
-
-      if (!vU.valid) return socket.emit('auth_error', vU.error);
-      if (!vP.valid) return socket.emit('auth_error', vP.error);
-      if (!vE.valid) return socket.emit('auth_error', vE.error);
-
-      const existing = await userDB.get(data.user);
-      if (existing) return socket.emit('auth_error', 'El usuario ya existe');
-
-      const existingEmail = await userDB.getByEmail(data.email);
-      if (existingEmail) return socket.emit('auth_error', 'El email ya está en uso');
+      if (!validateUsername(data.user)) return socket.emit('auth_error', 'Usuario inválido');
+      if (!validatePassword(data.pass)) return socket.emit('auth_error', 'Contraseña inválida');
+      if (!validateEmail(data.email)) return socket.emit('auth_error', 'Email inválido');
+      if (users[data.user]) return socket.emit('auth_error', 'El usuario ya existe');
 
       const salt = crypto.randomBytes(32).toString('hex');
       const hash = hashPassword(data.pass, salt);
 
-      await userDB.create({
-        username: data.user,
-        email: data.email,
-        hash, salt,
-        elo: 500, puzElo: 500
-      });
+      users[data.user] = {
+        hash, salt, email: data.email,
+        elo: 500, puzElo: 500,
+        createdAt: new Date().toISOString(),
+        stats: { wins: 0, losses: 0, draws: 0 }
+      };
 
-      logger.info({ user: data.user }, 'Nuevo usuario registrado');
-
+      saveUsers();
       const token = generateToken(data.user);
       socket.username = data.user;
       socket.authenticated = true;
       connectedUsers.set(socket.id, data.user);
 
-      socket.emit('auth_success', { user: data.user, elo: 500, puzElo: 500, token });
+      socket.emit('auth_success', { user: data.user, elo: 1200, puzElo: 1200, token });
     } catch (error) {
-      logger.error({ err: error.message, user: data.user }, 'Error en registro');
+      console.error('Error en registro:', error);
       socket.emit('auth_error', 'Error en el servidor');
     }
   });
 
-  socket.on('login', async (data) => {
+  socket.on('login', (data) => {
     try {
-      const vU = validator.username(data.user);
-      const vP = validator.password(data.pass);
-      if (!vU.valid || !vP.valid) return socket.emit('auth_error', 'Credenciales inválidas');
-
-      const u = await userDB.get(data.user);
+      if (!validateUsername(data.user) || !validatePassword(data.pass)) return socket.emit('auth_error', 'Credenciales inválidas');
+      const u = users[data.user];
       if (!u) return socket.emit('auth_error', 'Usuario no encontrado');
 
       const inputHash = hashPassword(data.pass, u.salt);
       if (inputHash === u.hash) {
-        logger.info({ user: data.user }, 'Login exitoso');
         const token = generateToken(data.user);
         socket.username = data.user;
         socket.authenticated = true;
         connectedUsers.set(socket.id, data.user);
-        socket.emit('auth_success', {
-          user: data.user,
-          elo: u.elo,
-          puzElo: u.puzElo || u.puzzle_elo, // DB field name might differ if aliased
-          token,
-          stats: u.stats
-        });
+        socket.emit('auth_success', { user: data.user, elo: u.elo, puzElo: u.puzElo, token, stats: u.stats || {} });
       } else {
         socket.emit('auth_error', 'Credenciales incorrectas');
       }
@@ -364,103 +223,26 @@ io.on('connection', async (socket) => {
     }
   });
 
-  socket.on('forgot_password', async (data) => {
-    try {
-      const email = data.email;
-      if (!validateEmail(email)) return socket.emit('forgot_password_error', 'Email inválido');
-
-      const u = await userDB.getByEmail(email);
-
-      if (u) {
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
-        await tokenDB.set(email, code, Date.now() + 15 * 60 * 1000);
-
-        console.log(`\n🔑 [RECUPERACIÓN] Código para ${email} (${u.username}): ${code}\n`);
-        socket.emit('forgot_password_success', 'Código enviado. Revisa la consola del servidor.');
-      } else {
-        socket.emit('forgot_password_error', 'Email no registrado.');
-      }
-    } catch (error) {
-      socket.emit('forgot_password_error', 'Error en el servidor');
+  socket.on('update_elo', (data) => {
+    if (!socket.authenticated || socket.username !== data.user) return;
+    if (users[data.user]) {
+      users[data.user].elo = Math.max(0, Math.min(3000, data.elo));
+      users[data.user].puzElo = Math.max(0, Math.min(3000, data.puzElo));
+      saveUsers();
     }
   });
 
-  socket.on('reset_password', async (data) => {
-    try {
-      const { email, code, newPass } = data;
-      if (!validatePassword(newPass)) return socket.emit('auth_error', 'Contraseña nueva inválida (mín. 6 caracteres)');
-
-      const resetData = await tokenDB.get(email);
-      if (!resetData || resetData.code !== code || Date.now() > resetData.expires) {
-        return socket.emit('auth_error', 'Código inválido o expirado.');
-      }
-
-      const u = await userDB.getByEmail(email);
-      if (!u) return socket.emit('auth_error', 'Error al identificar usuario.');
-
-      const salt = crypto.randomBytes(32).toString('hex');
-      const hash = hashPassword(newPass, salt);
-
-      await userDB.updatePassword(u.username, hash, salt);
-      await tokenDB.delete(email);
-
-      socket.emit('reset_password_success', 'Contraseña actualizada correctamente. Ya puedes iniciar sesión.');
-    } catch (error) {
-      socket.emit('auth_error', 'Error en el servidor al resetear.');
-    }
-  });
-
-
-  const calculateElo = (currentElo, opponentElo, result) => {
-    const k = 32;
-    const expectedScore = 1 / (1 + Math.pow(10, (opponentElo - currentElo) / 400));
-    return Math.round(currentElo + k * (result - expectedScore));
-  };
-
-  socket.on('game_result', async (data) => {
-    if (!socket.authenticated) return;
-    const u = await userDB.get(socket.username);
-    if (!u) return;
-
-    const result = parseFloat(data.result);
-    const oppElo = parseInt(data.opponentElo) || 1200;
-
-    let newElo = u.elo;
-    let newPuzElo = u.puzElo || u.puzzle_elo;
-
-    if (data.isPuzzle) {
-      newPuzElo = Math.max(100, calculateElo(newPuzElo || 1200, oppElo, result));
-    } else {
-      newElo = Math.max(100, calculateElo(newElo || 1200, oppElo, result));
-      await userDB.updateStats(socket.username, result);
-    }
-
-    await userDB.updateElo(socket.username, newElo, newPuzElo);
-
-    // Fetch updated to sync? Or just emit calculated.
-    // Let's emit calculated to be fast.
-    const updatedStats = { ...u.stats };
-    if (!data.isPuzzle) {
-      if (result === 1) updatedStats.wins++;
-      else if (result === 0) updatedStats.losses++;
-      else updatedStats.draws++;
-    }
-
-    socket.emit('elo_updated', { elo: newElo, puzElo: newPuzElo, stats: updatedStats });
-  });
-
-
-  socket.on('create_challenge', async (data) => {
+  socket.on('create_challenge', (data) => {
     if (!socket.authenticated) return socket.emit('error', 'Debes iniciar sesión');
-
-    const u = await userDB.get(socket.username);
-
+    // Use the ID provided by the client to ensure sync
     const challengeId = data.id || crypto.randomBytes(16).toString('hex');
     const challenge = {
       id: challengeId,
-      user: socket.username,
-      elo: u ? u.elo : 1200,
-      time: data.time || 10,
+      user: socket.username, // Changed from creator to user to match client expectation
+      creatorElo: users[socket.username]?.elo || 1200, // Keep this for backend logic if needed
+      elo: users[socket.username]?.elo || 1200, // Add this for client display consistency
+      timeControl: data.timeControl || '10+0',
+      time: data.time || 10, // Ensure 'time' property exists as client expects
       createdAt: Date.now()
     };
     activeChallenges.set(challengeId, challenge);
@@ -468,7 +250,7 @@ io.on('connection', async (socket) => {
     socket.broadcast.emit('new_challenge', challenge);
   });
 
-  socket.on('join_challenge', async (data) => {
+  socket.on('join_challenge', (data) => {
     if (!socket.authenticated) return socket.emit('error', 'Debes iniciar sesión');
     const challenge = activeChallenges.get(data.id);
     if (!challenge) return socket.emit('error', 'Reto no encontrado');
@@ -476,8 +258,6 @@ io.on('connection', async (socket) => {
 
     activeChallenges.delete(data.id);
     socket.join(`game_${data.id}`);
-
-    const u = await userDB.get(socket.username);
 
     const gameTime = (challenge.time || 10) * 60;
     activeGames[data.id] = {
@@ -493,11 +273,11 @@ io.on('connection', async (socket) => {
       lastUpdate: Date.now()
     };
 
-    saveGame(activeGames[data.id]);
+    saveGames();
     io.emit('lobby_update', Array.from(activeChallenges.values()));
     socket.to(`game_${data.id}`).emit('opponent_joined', {
       user: socket.username,
-      elo: u ? u.elo : 1200
+      elo: users[socket.username]?.elo || 1200
     });
   });
 
@@ -509,87 +289,37 @@ io.on('connection', async (socket) => {
     socket.emit('my_games_list', myGames);
   });
 
-  socket.on('move', async (data) => {
+  socket.on('move', (data) => {
     if (!socket.authenticated) return;
-
-    const gameData = activeGames[data.gameId];
-    if (!gameData) return;
-
-    // 🛡️ TAREA 5: Validar turno y jugador
-    const isWhite = gameData.white === socket.username;
-    const isBlack = gameData.black === socket.username;
-
-    if (!isWhite && !isBlack) return socket.emit('error', 'No participas en esta partida.');
-    if ((gameData.turn === 'w' && !isWhite) || (gameData.turn === 'b' && !isBlack)) {
-      return socket.emit('error', 'No es tu turno.');
-    }
-
-    try {
-      await moveLimiter.consume(socket.username, 1);
-    } catch (rejRes) {
-      return socket.emit('error', 'Estás moviendo demasiado rápido. Límite: 30 mov/min.');
-    }
-
-    try {
-      const chess = new Chess(gameData.fen);
-      const vM = validator.move(data.move);
-      if (!vM.valid) return socket.emit('error', vM.error);
-
-      const move = chess.move(data.move);
-
-      if (!move) {
-        logger.warn({ user: socket.username, move: data.move, fen: gameData.fen }, '[CHEAT] Movimiento ilegal detectado');
-        return socket.emit('error', 'Movimiento ilegal rechazado.');
-      }
-
+    const game = activeGames[data.gameId];
+    if (game) {
       const now = Date.now();
-      const elapsed = Math.floor((now - gameData.lastUpdate) / 1000);
+      const elapsed = Math.floor((now - game.lastUpdate) / 1000);
 
-      if (gameData.turn === 'w') {
-        gameData.whiteTime = Math.max(0, gameData.whiteTime - elapsed);
+      // Update time of the player who just moved
+      if (game.turn === 'w') {
+        game.whiteTime = Math.max(0, game.whiteTime - elapsed);
       } else {
-        gameData.blackTime = Math.max(0, gameData.blackTime - elapsed);
+        game.blackTime = Math.max(0, game.blackTime - elapsed);
       }
 
-      gameData.moves.push(move.san);
-      gameData.fen = chess.fen();
-      gameData.turn = chess.turn();
-      gameData.lastUpdate = now;
-
-      saveGame(gameData);
-
-      logger.debug({ user: socket.username, move: move.san, gameId: data.gameId }, 'Movimiento válido procesado');
-
-      io.to(`game_${data.gameId}`).emit('move', {
-        move: move.san,
-        fen: gameData.fen,
-        whiteTime: gameData.whiteTime,
-        blackTime: gameData.blackTime,
-        turn: gameData.turn
-      });
-
-    } catch (e) {
-      logger.error({ err: e.message, user: socket.username }, "Error validando movimiento");
-      return socket.emit('error', 'Error procesando movimiento');
+      game.moves.push(data.move);
+      game.fen = data.fen || game.fen;
+      game.turn = game.turn === 'w' ? 'b' : 'w';
+      game.lastUpdate = now;
+      saveGames();
     }
+    socket.to(`game_${data.gameId}`).emit('move', data);
   });
-
 
   socket.on('chat_message', (data) => {
     if (!socket.authenticated) return;
-
-    const vC = validator.chatMessage(data.message);
-    if (!vC.valid) return; // Silent discard or toast?
-
     const sanitizedMessage = {
       user: socket.username,
-      message: sanitize(data.message),
+      message: sanitize(data.message).substring(0, 500),
       gameId: data.gameId,
       timestamp: Date.now()
     };
-
-    logger.debug({ user: socket.username, gameId: data.gameId }, 'Mensaje de chat');
-
     if (data.gameId) {
       io.to(`game_${data.gameId}`).emit('chat_message', sanitizedMessage);
     } else {
@@ -597,47 +327,46 @@ io.on('connection', async (socket) => {
     }
   });
 
-  socket.on('resign_game', async (data) => {
+  socket.on('resign_game', (data) => {
     if (!socket.authenticated) return;
     const game = activeGames[data.gameId];
     if (game) {
-      // Just update stats in DB loosely?
-      // In a real app we'd verify outcome better.
-      await userDB.updateStats(game.white, game.white === socket.username ? 0 : 1);
-      await userDB.updateStats(game.black, game.black === socket.username ? 0 : 1);
-
-      // We don't delete game yet, maybe mark as finished?
-      // For now, keep behavior: delete
-      await gameDB.delete(data.gameId);
+      if (users[game.white]) users[game.white].stats.wins++;
+      if (users[game.black]) users[game.black].stats.losses++;
+      saveUsers();
       delete activeGames[data.gameId];
+      saveGames();
     }
     socket.to(`game_${data.gameId}`).emit('player_resigned', { user: socket.username });
   });
 
-  socket.on('abort_online_game', async (data) => {
+  socket.on('abort_online_game', (data) => {
     if (!socket.authenticated) return;
 
+    let wasChallenge = false;
     if (activeChallenges.has(data.gameId)) {
       activeChallenges.delete(data.gameId);
       io.emit('lobby_update', Array.from(activeChallenges.values()));
+      wasChallenge = true;
     }
 
     if (activeGames[data.gameId]) {
-      await gameDB.delete(data.gameId);
       delete activeGames[data.gameId];
+      saveGames();
       socket.to(`game_${data.gameId}`).emit('game_aborted', { user: socket.username });
     }
   });
 
-  socket.on('get_leaderboard', async () => {
-    try {
-      const top10 = await userDB.getTop10();
-      socket.emit('leaderboard_data', top10);
-    } catch (e) { console.error(e); }
+  socket.on('get_leaderboard', () => {
+    const top10 = Object.keys(users)
+      .map(u => ({ user: u, elo: users[u].elo, stats: users[u].stats || {} }))
+      .sort((a, b) => b.elo - a.elo)
+      .slice(0, 10);
+    socket.emit('leaderboard_data', top10);
   });
 
   socket.on('disconnect', () => {
-    logger.debug({ socketId: socket.id, user: socket.username }, 'Socket desconectado');
+    console.log('Usuario desconectado:', socket.id);
     connectedUsers.delete(socket.id);
   });
 });
@@ -669,45 +398,11 @@ app.get('/puzzles', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Sentry error handler (must be before other error handlers)
-if (process.env.SENTRY_DSN) {
-  app.use(Sentry.Handlers.errorHandler());
-}
-
-app.use((err, req, res, next) => {
-  const status = err.status || err.statusCode || 500;
-  if (status >= 500) {
-    logger.error({ err: err.message, stack: err.stack }, 'Unhandled error');
-  }
-  res.status(status).json({
-    error: status === 500 ? 'Internal server error' : err.message
-  });
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`🔥 Servidor corriendo en puerto ${PORT}`);
+  console.log(`🔒 Modo: ${process.env.NODE_ENV || 'development'}`);
 });
-
-async function init() {
-  logger.info("💾 Inicializando SQLite...");
-  await initDB();
-  await loadActiveGames();
-
-  server.listen(PORT, () => {
-    logger.info(`🔥 Servidor corriendo en puerto ${PORT}`);
-    logger.info("✅ DB Conectada.");
-  });
-}
-
-const gracefulShutdown = async (signal) => {
-  logger.info(`🛑 Recibido ${signal}. Cerrando servidor...`);
-  process.exit(0);
-};
-
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-if (require.main === module) {
-  init();
-}
-
-module.exports = { app, server, initDB }; // Export for testing
