@@ -1,11 +1,15 @@
 {
   "name": "chess-pro-online",
-  "version": "2.0.0",
-  "description": "Ajedrez Pro con Maestro IA - Versión Segura",
+  "version": "2.1.0",
+  "description": "Ajedrez Pro con Maestro IA - Versión Render",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "build": "echo 'No build step needed'",
     "dev": "nodemon server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "express": "^4.18.2",
