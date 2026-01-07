@@ -183,9 +183,8 @@
                         <button class="btn-menu" data-action="submenu" data-target="online"><span>➕</span><span
                                 style="font-size: 0.65rem;">SALA</span></button>
                     </div>
-                    <div class="btn-menu btn-set-mode" data-mode="ai" style="margin-top: 5px;">
-                        <span>🤖</span><span>CONTRA
-                            LA IA</span>
+                    <div class="btn-menu" data-action="submenu" data-target="ai-setup" style="margin-top: 5px;">
+                        <span>🤖</span><span>CONTRA LA IA</span>
                     </div>
                     <div class="btn-menu btn-set-mode" data-mode="pass-and-play"><span>👥</span><span>JUEGO LOCAL</span>
                     </div>
@@ -216,6 +215,40 @@
                     </div>
                 </div>
 
+                <!-- SUBMENU: AI SETUP -->
+                <div class="menu-step" id="menu-ai-setup">
+                    <div class="btn-back" data-action="submenu" data-target="jugar">⬅️ VOLVER</div>
+
+                    <label class="label-tiny">TIEMPO DE JUEGO</label>
+                    <div class="time-selector-grid" id="ai-time-selector-menu">
+                        <button class="time-btn" data-time="1">1 min</button>
+                        <button class="time-btn" data-time="3">3 min</button>
+                        <button class="time-btn active" data-time="10">10 min</button>
+                        <button class="time-btn" data-time="30">30 min</button>
+                    </div>
+
+                    <label class="label-tiny">COLOR</label>
+                    <select class="btn-control" id="ai-color-sel-menu" style="margin-bottom:10px;">
+                        <option value="w">Blancas</option>
+                        <option value="b">Negras</option>
+                        <option value="random">Aleatorio</option>
+                    </select>
+
+                    <label class="label-tiny">DIFICULTAD DE STOCKFISH</label>
+                    <select class="btn-control" id="diff-sel-menu">
+                        <option value="1">Nivel 1 (Aprendiz)</option>
+                        <option value="3">Nivel 3 (Aficionado)</option>
+                        <option value="5">Nivel 5 (Club)</option>
+                        <option value="8">Nivel 8 (Fuerte)</option>
+                        <option value="10" selected>Nivel 10 (Maestro)</option>
+                        <option value="15">Nivel 15 (Gran Maestro)</option>
+                        <option value="20">Nivel 20 (Superhumano)</option>
+                    </select>
+
+                    <button class="btn-primary" id="btn-start-ai-final"
+                        style="margin-top:15px; padding:15px; font-size:1rem;">⚔️ JUGAR AHORA</button>
+                </div>
+
                 <!-- SUBMENU: ESTUDIO -->
                 <div class="menu-step" id="menu-estudio">
                     <div class="btn-back" data-action="submenu" data-target="root"
@@ -223,13 +256,14 @@
                         <span>⬅️</span> VOLVER AL MENÚ
                     </div>
                     <div style="display:flex; flex-direction:column; gap:10px;">
-                        <div class="btn-menu" id="btn-openings-search-trigger">
-                            <span>📖</span><span>Ver Aperturas</span>
-                        </div>
+                        <label class="label-tiny">APRENDER APERTURAS</label>
+                        <select class="btn-control" id="opening-sel-menu"
+                            style="padding:15px; font-size:0.9rem; margin-bottom:10px;">
+                            <option value="">📂 Elige una apertura para empezar...</option>
+                        </select>
 
-
-                        <div class="btn-menu btn-set-mode" data-mode="study"><span>🔍</span><span>Modo Análisis</span>
-                        </div>
+                        <div class="btn-menu btn-set-mode" data-mode="study"><span>🔍</span><span>Tablero de Análisis
+                                Libre</span></div>
                         <div class="btn-menu" id="btn-reset-board"><span>🔄</span><span>Resetear Tablero</span></div>
                     </div>
                 </div>
@@ -308,15 +342,17 @@
 
             <!-- BARRA DE ACCIONES SECUNDARIA (SOLO MÓVIL) -->
             <div class="mobile-actions-bar mobile-only">
-                <button class="btn-action" id="btn-hint-mobile-bar">💡 PISTA</button>
+                <button class="btn-action" id="btn-hint-mobile-bar">💡 MEJOR JUGADA</button>
                 <button class="btn-action resign" id="btn-resign-mobile-trigger">🏳️ RENDIRSE</button>
                 <button class="btn-action menu" id="btn-back-menu-mobile">🏠 VOLVER</button>
             </div>
 
             <!-- BOTÓN PISTAS IA (Para PC, visible en modos entrenamiento) -->
+            <!-- BOTÓN MEJOR JUGADA UNIFICADO (Para PC, visible en modos entrenamiento) -->
             <button class="btn-primary desktop-only" id="btn-hint-main"
-                style="width:200px; padding:8px; margin: 10px auto; font-size:0.8rem; display:none; align-items:center; justify-content:center; gap:5px; background:var(--accent-gold); border-color:#d97706; color:#000; font-weight:800; border-radius:12px;">💡
-                PISTA IA INTERACTIVA</button>
+                style="width:200px; padding:10px; margin: 10px auto; font-size:0.9rem; display:none; align-items:center; justify-content:center; gap:5px; background:var(--accent); border-color:var(--accent); color:#000; font-weight:800; border-radius:12px; box-shadow:0 4px 15px rgba(56, 189, 248, 0.3);">
+                <span>💡</span> ACTIVAR MEJOR JUGADA
+            </button>
 
             <!-- MENÚ DESPLEGABLE DE ACCIONES MÓVIL -->
             <div id="mobile-actions-menu" class="glass-dropdown">
@@ -439,10 +475,7 @@
                     <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
                         <label class="label-tiny">HERRAMIENTAS DE ANÁLISIS</label>
 
-                        <button class="btn-primary" id="btn-suggest-move"
-                            style="width:100%; margin-bottom:8px; display:flex; justify-content:center; align-items:center; gap:8px;">
-                            <span>💡</span> ACTIVAR MEJOR JUGADA
-                        </button>
+                        <!-- Botón movido bajo el tablero como se solicitó -->
 
                         <div id="master-assessment"
                             style="background:rgba(56, 189, 248, 0.1); border-left:3px solid var(--accent); padding:10px; border-radius:4px; margin-bottom:10px; display:none;">

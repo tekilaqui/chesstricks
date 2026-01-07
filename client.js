@@ -746,10 +746,15 @@ function updateUI(moved = false) {
             window.lastEval = window.currentEval;
         }
 
-        // STOCKFISH ANALYSIS ON EVERY MOVE
-        // Trigger if: AI Mode OR Hints are Active (Study/Local)
         if (stockfish && (currentMode === 'ai' || hintsActive)) {
             stockfish.postMessage('stop');
+
+            // HIDE RESIGN BUTTON IN STUDY MODE
+            if (currentMode === 'study') {
+                $('.btn-action.resign, #btn-resign-mobile-trigger').hide();
+            } else {
+                $('.btn-action.resign, #btn-resign-mobile-trigger').show();
+            }
             stockfish.postMessage('position fen ' + game.fen());
 
             const diff = parseInt($('#diff-sel').val()) || 5;
@@ -1552,24 +1557,25 @@ $('#btn-toggle-sound').off('click').click(function () {
 });
 
 // AI COLOR SELECTION
-$('#btn-start-ai').click(() => {
-    const color = $('#ai-color-sel').val();
+// AI COLOR SELECTION FINAL (FROM SUBMENU)
+$('#btn-start-ai-final').click(() => {
+    const color = $('#ai-color-sel-menu').val();
     myColor = color === 'random' ? (Math.random() > 0.5 ? 'w' : 'b') : color;
+
+    setMode('ai'); // Ensure mode is set
 
     game.reset();
     board.orientation(myColor === 'w' ? 'white' : 'black');
     board.start();
 
     gameStarted = false;
-    $('#opp-name').text('Stockfish ' + $('#diff-sel option:selected').text());
+    $('#opp-name').text('Stockfish ' + $('#diff-sel-menu option:selected').text());
 
-    currentMode = 'ai'; // Forzar modo IA por si acaso
     updateUI();
     resetTimers();
 
     // Trigger analysis if it's AI turn (Black start)
     if (myColor === 'b') {
-        // Initial move for White (AI)
         setTimeout(() => {
             const openings = ['e4', 'd4', 'Nf3', 'c4'];
             const move = openings[Math.floor(Math.random() * openings.length)];
@@ -1578,7 +1584,6 @@ $('#btn-start-ai').click(() => {
             updateUI(true);
         }, 500);
     } else {
-        // Player is white, wait for move
         if (stockfish) {
             stockfish.postMessage('stop');
             stockfish.postMessage('position fen ' + game.fen());
@@ -1610,7 +1615,7 @@ $('#btn-hint-mobile').click(() => { $('#btn-puz-hint, #btn-ai-hint').click(); $(
 $('#btn-editor-mobile').click(() => { $('#btn-editor').click(); $('#mobile-actions-menu').fadeOut(); });
 
 function resetTimers() {
-    const activeSelector = currentMode === 'ai' ? '#ai-time-selector' : '#local-time-selector';
+    const activeSelector = currentMode === 'ai' ? '#ai-time-selector-menu' : '#local-time-selector';
     const mins = parseInt($(activeSelector + ' .time-btn.active').data('time')) || 10;
     whiteTime = mins * 60;
     blackTime = mins * 60;
@@ -1778,17 +1783,17 @@ $('#side-drawer-overlay').off('click');
 
 // Llenar aperturas (Select y Datalist para búsqueda)
 const datalist = $('#openings-datalist');
-const openingSelect = $('#opening-sel');
-
+const openingSelectMenu = $('#opening-sel-menu');
+// Populate Menu Select as well
 OPENINGS_DATA.forEach((group, groupIdx) => {
     let optgroup = `<optgroup label="${group.group}">`;
     group.items.forEach((item, itemIdx) => {
         const val = `${groupIdx}-${itemIdx}`;
         optgroup += `<option value="${val}">${item.name}</option>`;
-        datalist.append(`<option value="${item.name}" data-id="${val}">`);
     });
     optgroup += `</optgroup>`;
     openingSelect.append(optgroup);
+    openingSelectMenu.append(optgroup);
 });
 
 // Sincronización eliminada ya que se quitó el input de búsqueda
@@ -1798,11 +1803,13 @@ OPENINGS_DATA.forEach((group, groupIdx) => {
 var studyMoves = [];
 var studyIndex = 0;
 
-$('#opening-sel').change(function () {
-    const val = $(this).val();
+const loadOpening = (val) => {
     if (!val) return;
     const [gIdx, iIdx] = val.split('-');
     const opening = OPENINGS_DATA[gIdx].items[iIdx];
+
+    // Ensure we switch to Study Mode first
+    setMode('study');
 
     game.reset();
     board.start();
@@ -1813,6 +1820,10 @@ $('#opening-sel').change(function () {
     $('#study-controls').show();
     $('#btn-study-next').text("⏩ Siguiente Jugada (" + studyMoves.length + ")");
     updateUI();
+};
+
+$('#opening-sel, #opening-sel-menu').change(function () {
+    loadOpening($(this).val());
 });
 
 $('#btn-study-next').click(() => {
@@ -1847,13 +1858,13 @@ const toggleHints = (btn) => {
 
     // Specific logic for Study Mode Button Illumination
     if (hintsActive) {
-        $('#btn-suggest-move').css('box-shadow', '0 0 15px var(--accent)');
+        $('#btn-hint-main').css('box-shadow', '0 0 15px var(--accent)');
         $('#master-assessment').slideDown();
         $('#master-coach-unified').show(); // Main board coach
         $('#coach-txt-unified').text("Analizando mejor jugada...");
         updateUI(true); // Force re-analysis
     } else {
-        $('#btn-suggest-move').css('box-shadow', 'none');
+        $('#btn-hint-main').css('box-shadow', 'none');
         $('.square-55d63').removeClass('highlight-hint');
         $('#best-move-unified').hide();
         $('#master-assessment').slideUp();
