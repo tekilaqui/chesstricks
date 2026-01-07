@@ -883,6 +883,16 @@ function onSquareClick(sq) {
             return;
         }
 
+        // DOUBLE CHECK: Prevent moving opponent's pieces in online/AI modes
+        if ((currentMode === 'local' || currentMode === 'ai') && selectedSq) {
+            const selectedPiece = game.get(selectedSq);
+            if (selectedPiece && selectedPiece.color !== myColor) {
+                selectedSq = null;
+                updateUI();
+                return; // Block the move
+            }
+        }
+
         var move = game.move({ from: selectedSq, to: sq, promotion: 'q' });
         if (move) {
             board.position(game.fen());
