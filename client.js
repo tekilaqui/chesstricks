@@ -895,10 +895,12 @@ function onSquareClick(sq) {
                 setTimeout(() => {
                     socket.emit('get_my_games');
                     setTimeout(() => {
-                        const nextTurn = [...$('.active-game-item')].find(el => $(el).find('b').length > 0 && !$(el).attr('onclick').includes(gameId));
-                        if (nextTurn) {
-                            showToast("Tu turno en otra partida", "♟️");
-                            nextTurn.click();
+                        // Find next game where it IS my turn, excluding current game
+                        const nextTurnItem = $('.active-game-item.my-turn').not(`[data-id="${gameId}"]`).first();
+
+                        if (nextTurnItem.length > 0) {
+                            showToast("Saltando a siguiente partida...", "🚀");
+                            nextTurnItem.click();
                         }
                     }, 600);
                 }, 500);
@@ -1413,9 +1415,18 @@ socket.on('game_resume', function (data) {
 });
 
 window.loadGame = function (id) {
-    if (id === gameId) return;
+    if (id === gameId) {
+        // Just switch view if already loaded
+        $('.tab-btn[data-tab="tab-play"]').click();
+        return;
+    }
     if (socket) socket.emit('join_game', { gameId: id });
     showToast("Cambiando de partida...", "🔄");
+
+    // Force switch to game view for mobile
+    $('.tab-btn[data-tab="tab-play"]').click();
+    // Ensure local section is active
+    $('.mode-pill[data-mode="local"]').click();
 };
 
 socket.on('active_games_update', function (games) {
