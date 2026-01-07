@@ -149,7 +149,11 @@ function getQualityMsg(diff, isMate) {
 function setLanguage(l) {
     currentLang = l;
     localStorage.setItem('chess_lang', l);
-    // ... UI updates logic ...
+    const t = LANGS[l] || LANGS.es;
+    $('#overlay-msg').text(t.mate);
+    $('#btn-logout-drawer').text(t.logout);
+    $('#btn-auth-submit').text(t.login);
+    // Add more translations as needed
 }
 
 function formatTime(s) {
@@ -288,11 +292,357 @@ $(document).ready(() => {
     $(document).on('click', '[data-action="submenu"]', function () { showSubMenu($(this).data('target')); });
     $(document).on('click', '.btn-set-mode', function () { setMode($(this).data('mode')); });
 
-    $('#board-theme-sel').change(function () {
-        let theme = $(this).val();
-        localStorage.setItem('chess_board_theme', theme);
-        $('body').attr('class', (i, c) => c.replace(/(^|\s)board-theme-\S+/g, '')).addClass('board-theme-' + theme);
+    // --- MEJORAS DE UI Y BOTONES FALTANTES ---
+
+    // Hamburger & Drawer
+    $('#hamburger-menu').click(() => {
+        $('#side-drawer').addClass('open');
+        $('#side-drawer-overlay').fadeIn();
     });
 
-    $('#btn-flip').click(() => board.flip());
+    $('#side-drawer-overlay').click(() => {
+        $('#side-drawer').removeClass('open');
+        $('#side-drawer-overlay').fadeOut();
+    });
+
+    // Auth Modals
+    $('#btn-auth-trigger, #btn-auth-drawer, #btn-home-auth-trigger').click(() => {
+        openAuth();
+    });
+
+    $('#btn-auth-close').click(() => {
+        $('#auth-modal').hide();
+    });
+
+    $('#auth-switch').click(function () {
+        const isLogin = $('#auth-title').text() === 'INICIAR SESIÓN';
+        if (isLogin) {
+            $('#auth-title').text('REGISTRARSE');
+            $('#reg-group').show();
+            $('#btn-auth-submit').text('CREAR CUENTA');
+            $(this).html('¿Ya tienes cuenta? <span style="color:var(--accent)">Entra</span>');
+        } else {
+            $('#auth-title').text('INICIAR SESIÓN');
+            $('#reg-group').hide();
+            $('#btn-auth-submit').text('ENTRAR');
+            $(this).html('¿No tienes cuenta? <span style="color:var(--accent)">Regístrate</span>');
+        }
+    });
+
+    $('#btn-show-pass').click(function () {
+        const input = $('#auth-pass');
+        const type = input.attr('type') === 'password' ? 'text' : 'password';
+        input.attr('type', type);
+        $(this).text(type === 'password' ? '👁️' : '🙈');
+    });
+
+    $('#btn-auth-submit').click(() => {
+        const user = $('#auth-user').val();
+        const pass = $('#auth-pass').val();
+        const email = $('#auth-email').val();
+        const isLogin = $('#auth-title').text() === 'INICIAR SESIÓN';
+
+        if (!user || !pass) return showToast("Faltan datos", "⚠️");
+
+        if (isLogin) {
+            socket.emit('login', { user, pass });
+        } else {
+            if (!email) return showToast("Email requerido", "⚠️");
+            socket.emit('register', { user, pass, email });
+        }
+    });
+
+    $('#btn-toggle-engine').click(function () {
+        analysisActive = !analysisActive;
+        $(this).text(analysisActive ? "⚙️ MOTOR: ON" : "⚙️ MOTOR: OFF");
+        $(this).toggleClass('active', analysisActive);
+        if (analysisActive) {
+            stockfish.postMessage('position fen ' + game.fen());
+            stockfish.postMessage('go depth 15');
+            $('#master-coach-unified').fadeIn();
+        } else {
+            stockfish.postMessage('stop');
+            $('#master-coach-unified').fadeOut();
+        }
+    });
+
+    $('#btn-hint-main, #btn-hint-mobile-bar, #btn-puz-hint, #btn-ai-hint').click(function () {
+        hintsActive = !hintsActive;
+        $(this).toggleClass('active', hintsActive);
+        showToast(hintsActive ? "Pistas activadas" : "Pistas desactivadas", "💡");
+        if (hintsActive) {
+            stockfish.postMessage('position fen ' + game.fen());
+            stockfish.postMessage('go depth 15');
+        } else {
+            $('.square-55d63').removeClass('highlight-hint');
+        }
+    });
+
+    $('#btn-resign-local, #btn-resign-ai, #btn-resign-mobile-trigger').click(() => {
+        if (confirm(LANGS[currentLang].resign)) {
+            socket.emit('resign_game', { gameId });
+            showToast("Te has rendido", "🏳️");
+            stopClock();
+        }
+    });
+
+    $('#btn-study-reset').click(() => {
+        game.reset();
+        board.position('start');
+        historyPositions = ['start'];
+        currentHistoryIndex = 0;
+        updateUI();
+    });
+
+    $('#btn-copy-fen').click(() => {
+        navigator.clipboard.writeText(game.fen());
+        showToast("FEN copiado", "📋");
+    });
+
+    // Socket Lobby & Games
+    socket.on('lobby_update', (challenges) => {
+        const fastList = $('#challenges-list-fast');
+        const list24h = $('#challenges-list-24h');
+        fastList.empty();
+        list24h.empty();
+
+        if (challenges.length === 0) {
+            fastList.append('<div style="font-size:0.65rem; color:var(--text-muted); text-align:center; padding:10px;">No hay retos disponibles</div>');
+            return;
+        }
+
+        challenges.forEach(c => {
+            const is24h = c.time === 1440;
+            const item = $(`
+                <div class="btn-menu" style="padding:10px; margin-bottom:5px; font-size:0.7rem; justify-content:space-between;">
+                    <span>👤 ${c.user} (${c.elo})</span>
+                    <span>${is24h ? '24h' : c.time + 'm'}</span>
+                    <button class="btn-primary btn-join" data-id="${c.id}" style="width:auto; padding:5px 10px;">RETAR</button>
+                </div>
+            `);
+            if (is24h) list24h.append(item); else fastList.append(item);
+        });
+
+        $('.btn-join').click(function () {
+            socket.emit('join_challenge', { id: $(this).data('id') });
+        });
+    });
+
+    socket.on('game_start', (data) => {
+        gameId = data.gameId;
+        myColor = data.white === userName ? 'w' : 'b';
+        board.orientation(myColor === 'w' ? 'white' : 'black');
+        game.reset();
+        board.position('start');
+        whiteTime = data.time * 60;
+        blackTime = whiteTime;
+        setMode('local');
+        startClock();
+        showToast("¡Partida iniciada!", "⚔️");
+    });
+
+    socket.on('move', (data) => {
+        game.move(data.move);
+        board.position(game.fen());
+        whiteTime = data.whiteTime;
+        blackTime = data.blackTime;
+        updateUI(true);
+    });
+
+    socket.on('active_games_update', (games) => {
+        const list = $('#active-games-list');
+        list.empty();
+        games.forEach(g => {
+            const opp = g.white === userName ? g.black : g.white;
+            const item = $(`
+                <div class="btn-menu" style="padding:10px; margin-bottom:5px; font-size:0.7rem; justify-content:space-between;">
+                    <span>🆚 ${opp}</span>
+                    <button class="btn-primary btn-resume" data-id="${g.id}" style="width:auto; padding:5px 10px;">REANUDAR</button>
+                </div>
+            `);
+            list.append(item);
+        });
+
+        $('.btn-resume').click(function () {
+            socket.emit('join_game', { gameId: $(this).data('id') });
+        });
+    });
+    $('#board-theme-sel').change(function () {
+        const theme = $(this).val();
+        localStorage.setItem('chess_board_theme', theme);
+        $('body').attr('class', (i, c) => c.replace(/(^|\s)board-theme-\S+/g, '')).addClass('board-theme-' + theme);
+        showToast("Tablero: " + theme);
+    });
+
+    $('#piece-theme-sel').change(function () {
+        const theme = $(this).val();
+        localStorage.setItem('chess_piece_theme', theme);
+        board = Chessboard('myBoard', {
+            draggable: true,
+            position: game.fen(),
+            pieceTheme: getPieceTheme,
+            onDrop: onDrop,
+            onSnapEnd: () => board.position(game.fen())
+        });
+        showToast("Piezas: " + theme);
+    });
+
+    $('#bg-theme-sel').change(function () {
+        const theme = $(this).val();
+        localStorage.setItem('chess_bg_theme', theme);
+        showToast("Fondo cambiado");
+    });
+
+    $('#lang-sel').change(function () {
+        setLanguage($(this).val());
+    });
+
+    $('#btn-toggle-sound').click(function () {
+        soundOn = !soundOn;
+        localStorage.setItem('chess_sound', soundOn);
+        $(this).text(soundOn ? "🔊 Sonidos: ON" : "🔇 Sonidos: OFF");
+        showToast(soundOn ? "Sonidos activados" : "Sonidos desactivados");
+    });
+
+    $('.btn-challenge').click(function () {
+        const time = $(this).data('time');
+        socket.emit('create_challenge', { time: parseInt(time) });
+        showToast("Reto creado: " + time + " min", "⚔️");
+    });
+
+    $('#btn-start-24h').click(() => {
+        socket.emit('create_challenge', { time: 1440 });
+        showToast("Reto 24h creado", "📅");
+    });
+
+    $('#btn-back-to-menu, #btn-back-menu-mobile').click(() => {
+        $('body').removeClass('board-active');
+        $('#game-sidebar-controls').hide();
+        $('#main-menu-container').show();
+        showSubMenu('root');
+    });
+
+    $('#btn-flip, #btn-flip-board, #btn-flip-small, #btn-flip-mobile').click(() => {
+        board.flip();
+    });
+
+    $('#btn-start-puzzles').click(() => {
+        setMode('study');
+        loadNextPuzzle();
+    });
+
+    $('#btn-next-puz').click(() => loadNextPuzzle());
+
+    $('#btn-show-sol').click(() => {
+        if (currentPuzzle) {
+            // Very simple solution show: just play the moves one by one or show them
+            showToast("Solución: " + currentPuzzle.Moves, "👀");
+        }
+    });
+
+    $('#btn-toggle-online-setup').click(() => {
+        $('#online-setup-container').slideToggle();
+    });
+
+    $('#btn-launch-challenge').click(() => {
+        const time = $('#local-time-selector .time-btn.active').data('time') || 10;
+        socket.emit('create_challenge', { time: parseInt(time) });
+        $('#online-setup-container').slideUp();
+        showToast("Reto lanzado: " + time + "m", "⚔️");
+    });
+
+    $('#btn-explain-move').click(() => {
+        showToast("Análisis del Maestro Coach...", "🧠");
+        // Here you would normally call an LLM or engine for a text explanation
+    });
+
+    $('#btn-start-ai-final').click(() => {
+        const time = $('#ai-time-selector-menu .time-btn.active').data('time');
+        const color = $('#ai-color-sel-menu').val();
+        const diff = $('#diff-sel-menu').val();
+        $('#ai-time-selector .time-btn').removeClass('active');
+        $(`#ai-time-selector .time-btn[data-time="${time}"]`).addClass('active');
+        $('#ai-color-sel').val(color);
+        $('#diff-sel').val(diff);
+        setMode('ai');
+        startAiGame();
+    });
+
+    $('.time-btn').click(function () {
+        $(this).parent().find('.time-btn').removeClass('active');
+        $(this).addClass('active');
+    });
+
+    const savedBoardTheme = localStorage.getItem('chess_board_theme') || 'classic';
+    if (savedBoardTheme) {
+        $('#board-theme-sel').val(savedBoardTheme);
+        $('body').addClass('board-theme-' + savedBoardTheme);
+    }
+    const savedPieceTheme = localStorage.getItem('chess_piece_theme') || 'wikipedia';
+    if (savedPieceTheme) $('#piece-theme-sel').val(savedPieceTheme);
+    const savedLang = localStorage.getItem('chess_lang') || 'es';
+    if (savedLang) $('#lang-sel').val(savedLang);
 });
+
+// --- FUNCIONES ADICIONALES ---
+
+function startAiGame() {
+    game.reset();
+    board.position('start');
+    myColor = $('#ai-color-sel').val();
+    if (myColor === 'random') myColor = Math.random() > 0.5 ? 'w' : 'b';
+
+    board.orientation(myColor === 'w' ? 'white' : 'black');
+    whiteTime = parseInt($('#ai-time-selector .time-btn.active').data('time')) * 60;
+    blackTime = whiteTime;
+
+    $('#my-timer').text(formatTime(whiteTime));
+    $('#opp-timer').text(formatTime(blackTime));
+
+    if (myColor === 'b') {
+        setTimeout(() => {
+            stockfish.postMessage('position startpos');
+            stockfish.postMessage('go depth ' + $('#diff-sel').val());
+        }, 500);
+    }
+    startClock();
+}
+
+function loadNextPuzzle() {
+    if (typeof LOCAL_PUZZLES_DB === 'undefined' || LOCAL_PUZZLES_DB.length === 0) return;
+    const randomPuz = LOCAL_PUZZLES_DB[Math.floor(Math.random() * LOCAL_PUZZLES_DB.length)];
+    currentPuzzle = randomPuz;
+    game.load(randomPuz.FEN);
+    board.position(randomPuz.FEN);
+    board.orientation(game.turn() === 'w' ? 'white' : 'black');
+    $('#puz-desc').text(randomPuz.Themes || "Resuelve el puzzle");
+    puzzleStep = 0;
+    showToast("Nuevo Puzzle", "🧩");
+}
+
+// Socket responses
+if (socket) {
+    socket.on('auth_success', (data) => {
+        isAuth = true;
+        userName = data.user;
+        userElo = data.elo;
+        userPuzzleElo = data.puzElo;
+        localStorage.setItem('chess_token', data.token);
+        localStorage.setItem('chess_is_auth', 'true');
+        localStorage.setItem('chess_username', data.user);
+
+        $('#drawer-user-name').text(data.user);
+        $('#drawer-user-elo').text("ELO: " + data.elo);
+        $('#header-elo').text(data.elo + " ELO");
+        $('#header-elo-puz').text(data.puzElo + "🧩");
+        $('#btn-auth-trigger').text("👤 " + data.user);
+        $('#btn-auth-drawer').hide();
+        $('#btn-logout-drawer').show();
+        $('#auth-modal').hide();
+        showToast("Bienvenido, " + data.user);
+    });
+
+    socket.on('auth_error', (msg) => {
+        showToast(msg, "❌");
+    });
+}
