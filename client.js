@@ -1791,6 +1791,7 @@ $('#side-drawer-overlay').off('click');
 
 // Llenar aperturas (Select y Datalist para búsqueda)
 const datalist = $('#openings-datalist');
+const openingSelect = $('#opening-sel');
 const openingSelectMenu = $('#opening-sel-menu');
 // Populate Menu Select as well
 OPENINGS_DATA.forEach((group, groupIdx) => {
