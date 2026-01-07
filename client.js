@@ -173,6 +173,39 @@ const LANGS = {
         good: "Good", inaccuracy: "Inaccuracy", mistake: "Mistake", blunder: "BLUNDER",
         privacy: "🔒 Your data is managed securely.",
         logout_auth: "SIGN OUT"
+    },
+    fr: {
+        mate: "ECHEC ET MAT", win: "VOUS AVEZ GAGNÉ!", lose: "VOUS AVEZ PERDU", draw: "NULLE",
+        resign: "Êtes-vous sûr de vouloir abandonner ?", abort: "Annuler la partie ? Pas de perte d'ELO.",
+        guest: "Invité", login: "CONNEXION", logout: "DÉCONNEXION",
+        puz_done: "EXCELLENT !", puz_hint: "Analysez bien la position...",
+        best_move: "Meilleur coup", level: "Niveau", diff: "Difficulté", theme: "Thèmes",
+        brilliant: "BRILLANT !", great: "Superbe !", best: "Meilleur coup",
+        good: "Bon", inaccuracy: "Imprécision", mistake: "Erreur", blunder: "GAFFE",
+        privacy: "🔒 Vos données sont sécurisées.",
+        logout_auth: "SE DÉCONNECTER"
+    },
+    pt: {
+        mate: "XEQUE-MATE", win: "VOCÊ GANHOU!", lose: "VOCÊ PERDEU", draw: "EMPATE",
+        resign: "Tem certeza que deseja desistir?", abort: "Abortar jogo? Sem perda de ELO.",
+        guest: "Convidado", login: "ENTRAR", logout: "SAIR",
+        puz_done: "EXCELENTE!", puz_hint: "Analise bem a posição...",
+        best_move: "Melhor lance", level: "Nível", diff: "Dificuldade", theme: "Temas",
+        brilliant: "BRILHANTE!", great: "Ótimo!", best: "Melhor lance",
+        good: "Bom", inaccuracy: "Imprecisão", mistake: "Erro", blunder: "CAPIVARADA",
+        privacy: "🔒 Seus dados estão seguros.",
+        logout_auth: "SAIR"
+    },
+    de: {
+        mate: "SCHACHMATT", win: "GEWONNEN!", lose: "VERLOREN", draw: "REMIS",
+        resign: "Aufgeben?", abort: "Abbrechen?",
+        guest: "Gast", login: "LOGIN", logout: "LOGOUT",
+        puz_done: "AUSGEZEICHNET!", puz_hint: "Analysiere die Position...",
+        best_move: "Bester Zug", level: "Stufe", diff: "Schwierigkeit", theme: "Themen",
+        brilliant: "BRILLANT!", great: "Super!", best: "Bester Zug",
+        good: "Gut", inaccuracy: "Ungenauigkeit", mistake: "Fehler", blunder: "PATZER",
+        privacy: "🔒 Daten sicher.",
+        logout_auth: "ABMELDEN"
     }
 };
 
@@ -188,21 +221,21 @@ function getQualityMsg(diff, isMate) {
 function setLanguage(l) {
     currentLang = l;
     localStorage.setItem('chess_lang', l);
-    const t = LANGS[l];
+    const t = LANGS[l] || LANGS.en;
     $('#auth-title').text(t.login);
     if (!isAuth) {
         $('#my-name-display').text(t.guest);
         $('#drawer-user-name').text(t.guest);
     }
-    $('#lbl-user').text(l === 'es' ? "👤 USUARIO" : "👤 USER");
-    $('#lbl-appearance').text(l === 'es' ? "🎨 APARIENCIA" : "🎨 APPEARANCE");
-    $('#lbl-board').text(l === 'es' ? "Tablero" : "Board");
-    $('#lbl-pieces').text(l === 'es' ? "Piezas" : "Pieces");
+    $('#lbl-user').text(l === 'es' ? "👤 USUARIO" : (l === 'pt' ? "👤 USUÁRIO" : "👤 USER"));
+    $('#lbl-appearance').text(l === 'es' ? "🎨 APARIENCIA" : (l === 'fr' ? "🎨 APPARENCE" : "🎨 APPEARANCE"));
+    $('#lbl-board').text(l === 'es' ? "Tablero" : (l === 'fr' ? "Échiquier" : "Board"));
+    $('#lbl-pieces').text(l === 'es' ? "Piezas" : (l === 'fr' ? "Pièces" : "Pieces"));
     $('#lbl-lang').text(l === 'es' ? "🌐 IDIOMA" : "🌐 LANGUAGE");
-    $('#btn-flip').text(l === 'es' ? "GIRAR TABLERO" : "FLIP BOARD");
-    $('#btn-abort').text(l === 'es' ? "ABORTAR" : "ABORT");
-    $('#btn-resign-ai, #btn-resign-local').text(l === 'es' ? "RENDIRSE" : "RESIGN");
-    $('#btn-start-ai').text(l === 'es' ? "EMPEZAR PARTIDA" : "START GAME");
+    $('#btn-flip').text(l === 'es' ? "GIRAR TABLERO" : (l === 'fr' ? "TOURNER L'ÉCHIQUIER" : "FLIP BOARD"));
+    $('#btn-abort').text(t.abort.split('?')[0] + "?"); // Simple hack
+    $('#btn-resign-ai, #btn-resign-local').text(l === 'es' ? "RENDIRSE" : (l === 'fr' ? "ABANDONNER" : "RESIGN"));
+    $('#btn-start-ai').text(l === 'es' ? "EMPEZAR PARTIDA" : (l === 'fr' ? "COMMENCER" : "START GAME"));
     $('#auth-privacy').text(t.privacy);
     if (isAuth) $('#btn-logout-drawer').text(t.logout_auth);
 
@@ -751,7 +784,7 @@ function updateUI(moved = false) {
     if (moved) {
         // Sound logic
         if (game.in_check()) playSnd('check');
-        else if (game.history({ verbose: true }).pop().flags.includes('c')) playSnd('capture');
+        else if (game.history({ verbose: true }).length > 0 && game.history({ verbose: true }).pop().flags.includes('c')) playSnd('capture');
         else playSnd('move');
 
         updateHistory();
@@ -763,15 +796,23 @@ function updateUI(moved = false) {
             window.lastEval = window.currentEval;
         }
 
-        if (stockfish && (currentMode === 'ai' || hintsActive)) {
+        if (stockfish && (currentMode === 'ai' || hintsActive || currentMode === 'study')) {
             stockfish.postMessage('stop');
 
-            // HIDE RESIGN BUTTON IN STUDY MODE
+            // HANDLING RESIGN vs RESET IN STUDY MODE
+            const resignBtn = $('.btn-action.resign, #btn-resign-mobile-trigger');
             if (currentMode === 'study') {
-                $('.btn-action.resign, #btn-resign-mobile-trigger').hide();
+                resignBtn.show().html("🔄 RESET").off('click').click(function () {
+                    game.reset(); board.start(); updateUI();
+                    showToast("Tablero reseteado");
+                });
+                // Also styling to make it look like a tool, not danger?
+                resignBtn.css('border-color', 'var(--accent)').css('color', 'var(--accent)');
             } else {
-                $('.btn-action.resign, #btn-resign-mobile-trigger').show();
+                resignBtn.show().html("🏳️ RENDIRSE").off('click').click(resignGame);
+                resignBtn.css('border-color', 'rgba(239, 68, 68, 0.3)').css('color', '#ef4444');
             }
+
             stockfish.postMessage('position fen ' + game.fen());
 
             const diff = parseInt($('#diff-sel').val()) || 5;
@@ -789,14 +830,22 @@ function updateUI(moved = false) {
 
 function getPieceTheme(piece) {
     try {
-        // Check if element exists to avoid errors
         const el = $('#piece-theme-sel');
         const theme = (el.length ? el.val() : null) || localStorage.getItem('chess_piece_theme') || 'wikipedia';
 
-        if (theme === 'alpha' || theme === 'uscf') {
-            return 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/' + theme + '/' + piece + '.svg';
+        const baseUrl = 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/';
+
+        switch (theme) {
+            case 'alpha': return baseUrl + 'alpha/' + piece + '.svg';
+            case 'uscf': return 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/california/' + piece + '.svg'; // Using california as approximation for USCF style in lila if needed, or fallback
+            case 'merida': return baseUrl + 'merida/' + piece + '.svg';
+            case 'cburnett': return baseUrl + 'cburnett/' + piece + '.svg';
+            case 'fantasy': return baseUrl + 'fantasy/' + piece + '.svg';
+            case 'leipzig': return baseUrl + 'leipzig/' + piece + '.svg';
+            case 'wikipedia':
+            default:
+                return 'https://raw.githubusercontent.com/oakmac/chessboardjs/master/website/img/chesspieces/wikipedia/' + piece + '.png';
         }
-        return 'https://raw.githubusercontent.com/oakmac/chessboardjs/master/website/img/chesspieces/wikipedia/' + piece + '.png';
     } catch (e) {
         return 'https://raw.githubusercontent.com/oakmac/chessboardjs/master/website/img/chesspieces/wikipedia/' + piece + '.png';
     }
@@ -2231,3 +2280,198 @@ if ('serviceWorker' in navigator) {
         });
     });
 }
+
+// --- NAVIGATION HISTORY & MENU HANDLING ---
+window.showSubMenu = function (targetId, push = true) {
+    console.log("Navigating to:", targetId);
+    $('.menu-step').removeClass('active');
+
+    // Determine the actual ID
+    let finalId = 'menu-root';
+    if (targetId && targetId !== 'root') {
+        finalId = 'menu-' + targetId;
+    }
+
+    const el = $('#' + finalId);
+    if (el.length) {
+        el.addClass('active');
+        if (push) {
+            history.pushState({ menu: targetId }, "Menu " + targetId, "?menu=" + targetId);
+        }
+    } else {
+        // Fallback
+        $('#menu-root').addClass('active');
+    }
+
+    // Mobile optimization: Scroll to top when changing menu
+    window.scrollTo(0, 0);
+};
+
+window.onpopstate = function (event) {
+    if (event.state && event.state.menu) {
+        showSubMenu(event.state.menu, false); // false = don't push state again
+    } else {
+        showSubMenu('root', false);
+    }
+};
+
+// Hook into the click events
+$(document).ready(function () {
+    $(document).on('click', '[data-action="submenu"]', function () {
+        const target = $(this).data('target');
+        showSubMenu(target);
+    });
+
+    // Also handle board theme changes to apply CSS classes
+    $('#board-theme-sel').change(function () {
+        const theme = $(this).val();
+        localStorage.setItem('chess_board_theme', theme);
+        $('body').removeClass(function (index, className) {
+            return (className.match(/(^|\s)board-theme-\S+/g) || []).join(' ');
+        });
+        $('body').addClass('board-theme-' + theme);
+    });
+
+    // Initialize theme from storage
+    const storedTheme = localStorage.getItem('chess_board_theme');
+    if (storedTheme) {
+        $('#board-theme-sel').val(storedTheme);
+        $('body').addClass('board-theme-' + storedTheme);
+    }
+});
+// --- EDITOR MODE LOGIC ---
+var isEditorMode = false;
+
+function toggleEditorMode() {
+    isEditorMode = !isEditorMode;
+
+    if (isEditorMode) {
+        showToast("Modo Editor Activado", "⛏️");
+        // Re-init board with spare pieces
+        const currentPos = board.position();
+        board = Chessboard('myBoard', {
+            draggable: true,
+            position: currentPos,
+            sparePieces: true,
+            dropOffBoard: 'trash',
+            pieceTheme: getPieceTheme,
+            onDrop: onDropEditor, // Custom handler for editor
+            onSnapEnd: hasSparePieces() ? null : onSnapEnd // Disable snap if spare pieces to avoid conflict? Actually onSnapEnd is fine.
+        });
+        $('#btn-editor').addClass('active');
+        $('#btn-editor-mobile').text("✅ Terminar Edición");
+    } else {
+        showToast("Posición guardada para análisis", "✅");
+        const fen = board.fen() + " w - - 0 1"; // Simplest FEN assumption (White to move)
+        // Try to load into game
+        if (game.load(fen + "")) {
+            console.log("FEN loaded:", fen);
+        } else {
+            // Try to construct a safer FEN or just set position
+            game = new Chess();
+            // This is tricky, user might set invalid board.
+            // We'll just let them play from whatever position validation allows or force it.
+            // Chess.js requires valid FEN.
+            // Let's try to just load the board position.
+            // If invalid, maybe warn?
+            try {
+                var valid = game.load(board.fen() + " w - - 0 1");
+                if (!valid) {
+                    // Try black to move
+                    valid = game.load(board.fen() + " b - - 0 1");
+                }
+            } catch (e) { }
+        }
+
+        // Return to normal board
+        board = Chessboard('myBoard', {
+            draggable: true,
+            position: board.position(),
+            sparePieces: false,
+            pieceTheme: getPieceTheme,
+            onDrop: onDrop,
+            onSnapEnd: onSnapEnd
+        });
+        $('#btn-editor').removeClass('active');
+        $('#btn-editor-mobile').text("⛏️ Editor");
+        updateUI(true);
+    }
+
+    $(window).resize(board.resize);
+}
+
+function onDropEditor(source, target, piece, newPos, oldPos, orientation) {
+    // In editor mode, we don't validate moves with game.js immediately
+    // We just let the board update visually.
+    // When exiting editor, we sync.
+}
+
+function hasSparePieces() {
+    return isEditorMode;
+}
+
+// Update UI to handle Resign -> Reset in Study Mode
+function updateUI(moved = false) {
+    $('.square-55d63').removeClass('highlight-selected highlight-hint');
+    $('.legal-dot').remove();
+
+    updateMaterial();
+
+    if (moved) {
+        if (game.in_check()) playSnd('check');
+        else if (game.history({ verbose: true }).pop().flags.includes('c')) playSnd('capture');
+        else playSnd('move');
+
+        updateHistory();
+        if (!gameStarted && currentMode !== 'exercises' && currentMode !== 'study') startClock();
+        if (currentMode !== 'exercises' && currentMode !== 'study') updateTimerVisuals();
+
+        if (window.currentEval !== undefined) {
+            window.lastEval = window.currentEval;
+        }
+
+        if (stockfish && (currentMode === 'ai' || hintsActive)) {
+            stockfish.postMessage('stop');
+            if (currentMode === 'study') {
+                // In study mode we now SHOW the "Reset" (formerly Resign) button
+                $('.btn-action.resign, #btn-resign-mobile-trigger').show().html("🔄 RESET").off('click').click(function () {
+                    game.reset(); board.start(); updateUI();
+                    showToast("Tablero reseteado");
+                });
+            } else {
+                $('.btn-action.resign, #btn-resign-mobile-trigger').show().html("🏳️ RENDIRSE").off('click').click(resignGame);
+            }
+
+            stockfish.postMessage('position fen ' + game.fen());
+
+            const diff = parseInt($('#diff-sel').val()) || 5;
+            if (currentMode === 'ai' && game.turn() !== myColor) {
+                stockfish.postMessage('go depth ' + diff);
+            } else {
+                stockfish.postMessage('go depth 15');
+            }
+        }
+    }
+
+    // Safety check for UI state on load
+    if (currentMode === 'study') {
+        $('.btn-action.resign, #btn-resign-mobile-trigger').show().html("🔄 RESET").off('click').click(function () {
+            game.reset(); board.start(); updateUI();
+            showToast("Tablero reseteado");
+        });
+        // Also update main button if exists
+    }
+}
+
+// Hook Editor Button
+$('#btn-editor').off('click').click(toggleEditorMode);
+$('#btn-study-reset').click(function () {
+    game.reset(); board.start(); updateUI();
+});
+
+// Fix: Ensure spare pieces doesn't break normal drop
+var oldOnDrop = onDrop;
+onDrop = function (source, target) {
+    if (isEditorMode) return;
+    return oldOnDrop(source, target);
+};
