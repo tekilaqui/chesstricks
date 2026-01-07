@@ -1669,7 +1669,8 @@ $('#puz-cat-sel').change(() => loadRandomPuzzle());
 $('#header-elo-puz, #puz-elo-display').text(userPuzzleElo + "🧩");
 
 // AUTH LOGIC
-$('#btn-auth-trigger, #btn-auth-drawer').click(openAuth);
+// AUTH LOGIC
+$('#btn-auth-trigger, #btn-auth-drawer, #btn-home-auth-trigger').click(openAuth);
 $('#btn-auth-close').click(() => $('#auth-modal').hide());
 $('#auth-switch').click(function () {
     const currentTitle = $('#auth-title').text();
@@ -1693,6 +1694,9 @@ $('#auth-switch').click(function () {
 const updateAuthUI = () => {
     if (localStorage.getItem('chess_is_auth') === 'true') {
         isAuth = true;
+        // Hide Main Login Button
+        $('#btn-home-auth-trigger').hide();
+        isAuth = true;
         userName = localStorage.getItem('chess_username');
         userElo = parseInt(localStorage.getItem('chess_user_elo')) || 500;
         userPuzzleElo = parseInt(localStorage.getItem('chess_puz_elo')) || 500;
@@ -1705,6 +1709,10 @@ const updateAuthUI = () => {
         $('#drawer-user-name').text(userName);
         $('#drawer-user-elo, #header-elo').text(userElo + " ELO");
         $('#header-elo-puz, #puz-elo-display').text(userPuzzleElo + "🧩");
+    } else {
+        // Show Main Login Button if NOT auth
+        $('#btn-home-auth-trigger').css('display', 'flex');
+        $('#btn-auth-trigger').text("👤 INICIAR SESIÓN");
     }
 };
 

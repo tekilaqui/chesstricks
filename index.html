@@ -141,13 +141,18 @@
                         <h2>CHESS TRICKS</h2>
                         <p>Plataforma profesional de ajedrez</p>
                     </div>
-                    <div class="btn-menu" data-action="submenu" data-target="jugar"><span>🎮</span><span>JUGAR
-                            AHORA</span></div>
-                    <div class="btn-menu" data-action="submenu" data-target="estudio"><span>📚</span><span>ESTUDIO Y
-                            ANÁLISIS</span></div>
-                    <div class="btn-menu" data-action="submenu" data-target="puzzles"><span>🧩</span><span>PUZZLES
-                            TÁCTICOS</span>
-                    </div>
+                    <!-- BOTÓN LOGIN PRINCIPAL (VISIBLE SI NO AUTH) -->
+                    <button class="btn-primary" id="btn-home-auth-trigger"
+                        style="margin-bottom:15px; background:var(--accent); border-color:var(--accent); font-weight:800; display:none; width:100%; justify-content:center;">
+                        👤 INICIAR SESIÓN / REGISTRO
+                    </button>
+
+                    <button class="btn-menu" data-action="submenu" data-target="jugar"><span>🎮</span><span>JUGAR
+                            AHORA</span></button>
+                    <button class="btn-menu" data-action="submenu" data-target="estudio"><span>📚</span><span>ESTUDIO Y
+                            ANÁLISIS</span></button>
+                    <button class="btn-menu" data-action="submenu" data-target="puzzles"><span>🧩</span><span>PUZZLES
+                            TÁCTICOS</span></button>
 
                     <div id="home-active-games-container" style="margin-top:20px; display:none;">
                         <label class="label-tiny">MIS PARTIDAS ACTIVAS</label>
