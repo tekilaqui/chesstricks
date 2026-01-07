@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chess-pro-v2-dev-fix';
+const CACHE_NAME = 'chess-pro-v1';
 const ASSETS = [
     '/',
     '/index.html',

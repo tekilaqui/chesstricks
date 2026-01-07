@@ -11,44 +11,38 @@ const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
-app.use(cors({ origin: '*' }));
+app.use(cors());
 const server = http.createServer(app);
 const io = new Server(server);
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
-  message: { error: "Demasiadas peticiones" }
+  max: 100,
+  message: { error: "Demasiadas peticiones desde esta IP, intente de nuevo en 15 minutos" }
 });
 
 const authLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 50,
-  message: { error: "Demasiados intentos de acceso" }
+  max: 10,
+  message: { error: "Demasiados intentos de acceso, intente de nuevo en una hora" }
 });
 
-app.use((req, res, next) => {
-  res.setHeader(
-    "Content-Security-Policy",
-    "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https: http: blob:; " +
-    "script-src-attr 'unsafe-inline'; " +
-    "style-src 'self' 'unsafe-inline' https: http:; " +
-    "img-src 'self' data: https: http: blob: raw.githubusercontent.com; " +
-    "connect-src 'self' wss: ws: https: http:; " +
-    "media-src 'self' https: http: raw.githubusercontent.com; " +
-    "font-src 'self' https: http:; " +
-    "worker-src 'self' blob: http: https:; " +
-    "object-src 'none';"
-  );
-  next();
-});
-
-app.use(helmet({
-  contentSecurityPolicy: false, // Turn off helmet's CSP so our manual one works
+/* app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:", "http:", "blob:"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https:", "http:"],
+      imgSrc: ["'self'", "data:", "https:", "http:"],
+      connectSrc: ["'self'", "wss:", "https:", "http:"],
+      mediaSrc: ["'self'", "https:", "http:"],
+      fontSrc: ["'self'", "https:", "http:"],
+      workerSrc: ["'self'", "blob:"],
+      objectSrc: ["'none'"],
+    },
+  },
   crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
-
+})); */
 app.use(express.json({ limit: '10kb' }));
 app.get('/*', (req, res, next) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -56,23 +50,6 @@ app.get('/*', (req, res, next) => {
   res.setHeader('Expires', '0');
   next();
 });
-
-// Explicitly serve critical static files
-app.get('/style.css', (req, res) => {
-  res.setHeader('Content-Type', 'text/css');
-  res.sendFile(path.join(__dirname, 'style.css'));
-});
-
-app.get('/client.js', (req, res) => {
-  res.setHeader('Content-Type', 'text/javascript');
-  res.sendFile(path.join(__dirname, 'client.js'));
-});
-
-// Serve images explicitly too if needed
-app.get('/logo.jpg', (req, res) => {
-  res.sendFile(path.join(__dirname, 'logo.jpg'));
-});
-
 app.use(express.static(__dirname, { dotfiles: 'allow' }));
 app.use('/login', authLimiter);
 app.use('/register', authLimiter);
@@ -315,16 +292,7 @@ io.on('connection', (socket) => {
     socket.join(`game_${data.id}`);
 
     const isWhite = Math.random() > 0.5;
-    // Special handling for 24h games: 1440 minutes = 24 hours
-    // For 24h games, we want 24 hours per move, not total time
-    let gameTime;
-    if (challenge.time === 1440) {
-      // 24 hour game: 24 hours per move = 86400 seconds
-      gameTime = 24 * 60 * 60; // 86400 seconds
-    } else {
-      // Regular games: time in minutes converted to seconds
-      gameTime = (challenge.time || 10) * 60;
-    }
+    const gameTime = (challenge.time || 10) * 60;
 
     activeGames[data.id] = {
       id: data.id,
@@ -480,7 +448,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🔥 Servidor corriendo en puerto ${PORT}`);
   console.log(`🔒 Modo: ${process.env.NODE_ENV || 'development'}`);
