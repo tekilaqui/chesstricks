@@ -94,6 +94,26 @@
 
         <div class="drawer-section" style="margin-bottom:20px;">
             <label class="label-tiny" id="lbl-appearance">🎨 APARIENCIA</label>
+
+            <!-- Appearance Preview -->
+            <div id="appearance-preview-container"
+                style="margin-bottom:15px; background:rgba(0,0,0,0.3); padding:10px; border-radius:8px; display:flex; justify-content:center; align-items:center; height:120px; border:1px solid rgba(255,255,255,0.1); position:relative; overflow:hidden;">
+                <!-- Mini Board Preview -->
+                <div id="preview-board"
+                    style="width:80px; height:80px; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr;">
+                    <div class="preview-sq light"></div>
+                    <div class="preview-sq dark"></div>
+                    <div class="preview-sq dark"></div>
+                    <div class="preview-sq light"></div>
+                </div>
+                <!-- Preview Piece -->
+                <img id="preview-piece" src=""
+                    style="position:absolute; width:40px; height:40px; top:40px; left:50%; transform:translate(-50%, -50%); z-index:10;">
+                <div
+                    style="position:absolute; bottom:5px; width:100%; text-align:center; font-size:0.6rem; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:1px;">
+                    Vista Previa</div>
+            </div>
+
             <div style="margin-bottom:10px;">
                 <label style="font-size:0.6rem; color:var(--text-muted);" id="lbl-board">Tablero</label>
                 <select class="btn-control" id="board-theme-sel">
@@ -106,7 +126,7 @@
                     <option value="glass">Cristal</option>
                 </select>
             </div>
-            <div>
+            <div style="margin-bottom:10px;">
                 <label style="font-size:0.6rem; color:var(--text-muted);" id="lbl-pieces">Piezas</label>
                 <select class="btn-control" id="piece-theme-sel">
                     <option value="wikipedia">Wikipedia</option>
@@ -116,6 +136,16 @@
                     <option value="cburnett">Cburnett</option>
                     <option value="fantasy">Fantasy</option>
                     <option value="leipzig">Leipzig</option>
+                </select>
+            </div>
+            <div style="margin-bottom:10px;">
+                <label style="font-size:0.6rem; color:var(--text-muted);">Fondo de Pantalla</label>
+                <select class="btn-control" id="bg-theme-sel">
+                    <option value="dark">Negro Minimal</option>
+                    <option value="gradient-blue">Azul Cósmico</option>
+                    <option value="gradient-purple">Nebulosa Púrpura</option>
+                    <option value="wood">Madera Clásica</option>
+                    <option value="image-scifi">Sci-Fi Hub</option>
                 </select>
             </div>
         </div>
