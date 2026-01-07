@@ -176,14 +176,32 @@ const LANGS = {
     }
 };
 
+function detectOpening() {
+    const history = game.history();
+    const movesStr = history.join(' ');
+    let found = "";
+    OPENINGS_DATA.forEach(group => {
+        group.items.forEach(item => {
+            const entryStr = item.m.join(' ');
+            if (movesStr.startsWith(entryStr)) {
+                if (entryStr.length > (found.length || 0)) {
+                    found = item.name;
+                }
+            }
+        });
+    });
+    return found;
+}
+
 function getQualityMsg(diff, isMate) {
     const t = LANGS[currentLang];
-    if (isMate) return { text: t.mate, class: 'quality-excellent' };
-    if (diff < 0.1) return { text: t.best, class: 'quality-excellent' };
-    if (diff < 0.3) return { text: t.good, class: 'quality-excellent' };
-    if (diff < 0.7) return { text: t.inaccuracy, class: 'quality-dubious' };
-    if (diff < 1.5) return { text: t.mistake, class: 'quality-dubious' };
-    return { text: t.blunder, class: 'quality-blunder' };
+    if (isMate) return { text: "!! " + t.mate, class: 'quality-excellent', symbol: '!!' };
+    if (diff < 0.05) return { text: "!! " + (t.brilliant || "Jugada Maestra"), class: 'quality-excellent', symbol: '!!' };
+    if (diff < 0.15) return { text: "! " + t.best, class: 'quality-excellent', symbol: '!' };
+    if (diff < 0.35) return { text: t.good, class: 'quality-excellent', symbol: '' };
+    if (diff < 0.75) return { text: "?! " + t.inaccuracy, class: 'quality-dubious', symbol: '?!' };
+    if (diff < 1.6) return { text: "? " + t.mistake, class: 'quality-dubious', symbol: '?' };
+    return { text: "?? " + t.blunder, class: 'quality-blunder', symbol: '??' };
 }
 
 function setLanguage(l) {
@@ -495,24 +513,34 @@ try {
 
                     let openingName = '';
                     if (isOpening && history.length >= 2) {
-                        const movesStr = game.history().join(' ');
-                        if (movesStr.startsWith('e4 e5 Nf3 Nc6 Bb5')) openingName = '🎯 Apertura Española (Ruy López)';
-                        else if (movesStr.startsWith('e4 e5 Nf3 Nc6 Bc4')) openingName = '🎯 Apertura Italiana';
-                        else if (movesStr.startsWith('e4 c5')) openingName = '🎯 Defensa Siciliana';
-                        else if (movesStr.startsWith('d4 d5 c4')) openingName = '🎯 Gambito de Dama';
+                        const detected = detectOpening();
+                        if (detected) openingName = '🎯 ' + detected;
                     }
 
                     if (lastMove) {
                         if (game.in_check()) tacticalInfo += '⚔️ ¡Jaque! ';
-                        if (lastMove.captured) tacticalInfo += `📍 Captura de ${lastMove.captured}. `;
+                        if (lastMove.captured) tacticalInfo += `📍 Captura de ${lastMove.captured.toUpperCase()}. `;
+                        if (lastMove.flags.includes('p')) tacticalInfo += '👑 ¡Promoción! ';
+                        if (lastMove.flags.includes('k') || lastMove.flags.includes('q')) tacticalInfo += '🏰 Enroque. ';
+                    }
+
+                    // Evaluación numérica para mostrar
+                    let evalDisplay = '';
+                    if (window.currentEval !== undefined) {
+                        const evalNum = window.currentEval;
+                        if (Math.abs(evalNum) > 5) {
+                            evalDisplay = `<div style="font-size:0.65rem; color:${evalNum > 0 ? '#22c55e' : '#ef4444'}; margin-bottom:5px;">Evaluación: ${evalNum > 0 ? '+' : ''}${evalNum.toFixed(1)} (${evalNum > 0 ? 'Ventaja Blancas' : 'Ventaja Negras'})</div>`;
+                        } else {
+                            evalDisplay = `<div style="font-size:0.65rem; color:var(--text-muted); margin-bottom:5px;">Evaluación: ${evalNum > 0 ? '+' : ''}${evalNum.toFixed(1)}</div>`;
+                        }
                     }
 
                     if (diff > 2.0) {
-                        explanation = `<div style="color:#ef4444; font-weight:bold;">💥 ERROR GRAVE:</div> Perdiste mucha ventaja. Perdiste material o permitiste un ataque decisivo.`;
+                        explanation = `<div style="color:#ef4444; font-weight:bold;">💥 ERROR GRAVE:</div> Perdiste mucha ventaja. ${lastMove && lastMove.captured ? 'Entregaste material sin compensación.' : 'Permitiste un ataque decisivo o debilitaste gravemente tu posición.'}`;
                     } else if (diff > 0.8) {
-                        explanation = `<div style="color:#f59e0b; font-weight:bold;">⚠️ IMPRECISIÓN:</div> Hay una jugada mucho mejor. Estás descuidando la posición o la seguridad.`;
+                        explanation = `<div style="color:#f59e0b; font-weight:bold;">⚠️ IMPRECISIÓN:</div> Hay una jugada mucho mejor. ${isOpening ? 'En la apertura, cada movimiento cuenta para el desarrollo.' : 'Estás descuidando la posición o la seguridad de tu rey.'}`;
                     } else if (diff < -0.5) {
-                        explanation = `<div style="color:#22c55e; font-weight:bold;">✨ ¡EXCELENTE!:</div> Has encontrado una jugada muy fuerte que mejora tu posición considerablemente.`;
+                        explanation = `<div style="color:#22c55e; font-weight:bold;">✨ ¡EXCELENTE!:</div> Has encontrado una jugada muy fuerte que mejora tu posición considerablemente. ${lastMove && lastMove.captured ? '¡Captura ganadora!' : '¡Sigue así!'}`;
                     } else {
                         explanation = `<div style="color:var(--text-muted);">${getStrategicAdvice()}</div>`;
                     }
@@ -523,6 +551,7 @@ try {
 
                     $('#coach-txt').html(`
                         ${moveQuality}
+                        ${evalDisplay}
                         ${precisionMsg}
                         ${openingMsg}
                         <div style="font-size:0.75rem; line-height:1.4; color:var(--text-main); margin-top:8px; background:rgba(255,255,255,0.03); padding:8px; border-radius:6px; border-left:3px solid var(--accent); shadow: 0 4px 6px rgba(0,0,0,0.1);">${explanation}</div>
@@ -1735,13 +1764,17 @@ window.setMode = function (mode) {
     if (mode === 'ai' || mode === 'study' || mode === 'exercises') {
         $('#btn-hint-main').css('display', 'flex').fadeIn();
         $('#btn-hint-mobile-bar').show();
+        if (mode === 'study') {
+            hintsActive = true;
+            $('#btn-hint-main, #btn-ai-hint, #btn-suggest-move').addClass('active').text("💡 PISTAS: ON");
+        }
     } else {
         $('#btn-hint-main').hide();
         $('#btn-hint-mobile-bar').hide();
     }
 
     resetTimers();
-    updateUI();
+    updateUI(mode === 'study');
 };
 
 window.startMaestroMode = function () {
