@@ -27,21 +27,25 @@ const authLimiter = rateLimit({
   message: { error: "Demasiados intentos de acceso" }
 });
 
+app.use((req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https: http: blob:; " +
+    "script-src-attr 'unsafe-inline'; " +
+    "style-src 'self' 'unsafe-inline' https: http:; " +
+    "img-src 'self' data: https: http: blob: raw.githubusercontent.com; " +
+    "connect-src 'self' wss: ws: https: http:; " +
+    "media-src 'self' https: http: raw.githubusercontent.com; " +
+    "font-src 'self' https: http:; " +
+    "worker-src 'self' blob: http: https:; " +
+    "object-src 'none';"
+  );
+  next();
+});
+
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:", "http:", "blob:"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https:", "http:"],
-      imgSrc: ["'self'", "data:", "https:", "http:", "blob:"],
-      connectSrc: ["'self'", "wss:", "ws:", "https:", "http:"],
-      mediaSrc: ["'self'", "https:", "http:"],
-      fontSrc: ["'self'", "https:", "http:"],
-      workerSrc: ["'self'", "blob:", "http:", "https:"],
-      objectSrc: ["'none'"],
-      upgradeInsecureRequests: null,
-    },
-  },
+  contentSecurityPolicy: false, // Turn off helmet's CSP so our manual one works
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
@@ -476,7 +480,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`🔥 Servidor corriendo en puerto ${PORT}`);
   console.log(`🔒 Modo: ${process.env.NODE_ENV || 'development'}`);
