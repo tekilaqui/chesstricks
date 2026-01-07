@@ -912,6 +912,12 @@ function onSquareClick(sq) {
         }
     }
     var piece = game.get(sq);
+
+    // RESTRICTION: Only pick up own pieces in Online and AI modes
+    if ((currentMode === 'local' || currentMode === 'ai') && piece && piece.color !== myColor) {
+        return; // Cannot pick up opponent pieces in online/AI modes
+    }
+
     if (piece && piece.color === game.turn()) {
         selectedSq = sq;
         updateUI();
@@ -1409,6 +1415,11 @@ socket.on('game_resume', function (data) {
 
     var oppName = (myColor === 'w') ? data.black : data.white;
     $('#opp-name').text(oppName);
+
+    // Show my color indicator
+    const colorText = (myColor === 'w') ? "(Blancas)" : "(Negras)";
+    $('#my-name-display').html(`${userName} <span style='font-size:0.7rem; color:var(--accent); margin-left:5px;'>${colorText}</span>`);
+
     gameStarted = true;
 
     updateUI();
@@ -1417,16 +1428,42 @@ socket.on('game_resume', function (data) {
 window.loadGame = function (id) {
     if (id === gameId) {
         // Just switch view if already loaded
-        $('.tab-btn[data-tab="tab-play"]').click();
+        showSubMenu('jugar'); // Ensure we are in the 'jugar' submenu (which contains the game board in mobile flow effectively)
+        // Actually, the game board is in 'root' -> 'jugar' -> 'local' mode.
+        // But the layout is different.
+        // IF MOBILE: We need to hide the menu and show the game board.
+        // The current mobile flow seems to be: Menu covers everything.
+        // To show game, we need to hide sidebar/menu layer if it's open.
+
+        // This seems to refer to a tab system that might not be fully active in this single-page app version?
+        // Let's assume switching mode and hiding menu is enough.
+
+        setMode('local');
+        $('#mobile-actions-menu').fadeOut(); // Ensure dropdowns are closed
+
+        // Specially for mobile: If we are in the "menu-root" or similar, we might need to "close" the menu overlay if it exists.
+        // However, looking at CSS, sidebar-left is visible.
+        // Let's force the game view by scrolling to it or ensuring it's main.
+        if (window.innerWidth <= 768) {
+            // In mobile, sidebar and game are stacked? Or toggled?
+            // Based on 'tab-btn' usage in previous context, there might be tabs.
+            // But looking at HTML, it seems single page.
+            // Let's try to scroll to board.
+            $('#myBoard')[0].scrollIntoView({ behavior: 'smooth' });
+        }
         return;
     }
     if (socket) socket.emit('join_game', { gameId: id });
     showToast("Cambiando de partida...", "🔄");
 
-    // Force switch to game view for mobile
-    $('.tab-btn[data-tab="tab-play"]').click();
-    // Ensure local section is active
-    $('.mode-pill[data-mode="local"]').click();
+    // Force switch to game view logic
+    setMode('local');
+    if (window.innerWidth <= 768) {
+        setTimeout(() => {
+            const boardEl = $('#myBoard')[0];
+            if (boardEl) boardEl.scrollIntoView({ behavior: 'smooth' });
+        }, 500);
+    }
 };
 
 socket.on('active_games_update', function (games) {
