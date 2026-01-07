@@ -177,13 +177,12 @@ const LANGS = {
 };
 
 function getQualityMsg(diff, isMate) {
-    const t = LANGS[currentLang];
-    if (isMate) return { text: t.mate, class: 'quality-excellent' };
-    if (diff < 0.1) return { text: t.best, class: 'quality-excellent' };
-    if (diff < 0.3) return { text: t.good, class: 'quality-excellent' };
-    if (diff < 0.7) return { text: t.inaccuracy, class: 'quality-dubious' };
-    if (diff < 1.5) return { text: t.mistake, class: 'quality-dubious' };
-    return { text: t.blunder, class: 'quality-blunder' };
+    if (isMate && diff === 0) return { text: "🏁 MATE", class: "quality-best" };
+    if (diff < 0.2) return { text: "🌟 MUY BIEN", class: "quality-best" };
+    if (diff < 0.5) return { text: "✅ BIEN", class: "quality-good" };
+    if (diff < 1.0) return { text: "⚖️ NORMAL", class: "quality-inaccuracy" };
+    if (diff < 2.0) return { text: "❓ MAL", class: "quality-mistake" };
+    return { text: "❌ MUY MAL", class: "quality-blunder" };
 }
 
 function setLanguage(l) {
@@ -521,14 +520,20 @@ try {
                     let precisionMsg = `<div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:5px;">Precisión: ${acc.toFixed(0)}%</div>`;
                     let openingMsg = openingName ? `<div style="color:#8b5cf6; font-size:0.75rem; margin-bottom:5px; font-weight:bold;">${openingName}</div>` : '';
 
-                    $('#coach-txt').html(`
-                        ${moveQuality}
-                        ${precisionMsg}
-                        ${openingMsg}
-                        <div style="font-size:0.75rem; line-height:1.4; color:var(--text-main); margin-top:8px; background:rgba(255,255,255,0.03); padding:8px; border-radius:6px; border-left:3px solid var(--accent); shadow: 0 4px 6px rgba(0,0,0,0.1);">${explanation}</div>
-                        <div style="font-size:0.7rem; color:#3b82f6; margin-top:8px; font-weight:600;">${tacticalInfo}</div>
-                        ${hintsActive ? `<div style="margin-top:10px; padding:10px; background:rgba(34,197,94,0.1); border-radius:6px; border:1px dashed var(--accent); font-size:0.75rem;">💡 Sugerencia del Maestro: <b style="color:var(--accent); font-size:0.9rem;">${pv[1]}</b></div>` : ''}
+                    $('#master-coach-unified').show();
+                    $('#coach-txt-unified').html(`
+                        <div class="${q.class}" style="font-weight:bold; font-size:1.1rem; margin-bottom:5px;">${q.text}</div>
+                        <div style="font-size:0.8rem; color:var(--text-main); line-height:1.4;">
+                            ${explanation}
+                            <div style="margin-top:8px; font-weight:700; color:var(--accent);">💡 CONSEJO: ${getStrategicAdvice()}</div>
+                        </div>
                     `);
+
+                    if (hintsActive) {
+                        $('#best-move-unified').html(`🎯 Plan sugerido: <b style="color:var(--accent);">${pv[1]}</b>`).show();
+                    } else {
+                        $('#best-move-unified').hide();
+                    }
                     isJ = false;
                 }
             }
@@ -586,16 +591,9 @@ function checkGameOver() {
         stopClock();
         saveToHistory(result);
 
-        if (currentMode === 'ai') {
-            updateElo(getAiElo(), result);
-        } else if (currentMode === 'local') {
-            updateElo(800, result);
-        }
-
-        // Alert with specific message
+        // Show result toast
         const msgText = LANGS[currentLang][reasonKey] || LANGS[currentLang].draw;
-        // Timeout to let the overlay render first
-        setTimeout(() => alert("Fin de la partida: " + msgText), 100);
+        showToast("Fin de la partida: " + msgText, "🏁");
     }
 }
 
@@ -622,8 +620,16 @@ function resignGame() {
             socket.emit('resign_game', { gameId: gameId, user: userName });
             updateElo(800, 0);
         }
-        game.reset(); board.start(); updateUI();
-        alert(LANGS[currentLang].lose);
+
+        $('#overlay-msg').text(LANGS[currentLang].lose);
+        $('#game-overlay').fadeIn();
+        playSnd('end');
+
+        // Final reset after a delay
+        setTimeout(() => {
+            game.reset(); board.start(); updateUI();
+            $('#game-overlay').fadeOut();
+        }, 2500);
     }
 }
 
@@ -643,35 +649,46 @@ function updateHistory() {
 }
 
 function navigateHistory(dir) {
+    // STUDY MODE NAVIGATION
+    if (currentMode === 'study' && studyMoves.length > 0) {
+        if (dir === 'next' && studyIndex < studyMoves.length) {
+            game.move(studyMoves[studyIndex]);
+            studyIndex++;
+            board.position(game.fen());
+            playSnd('move');
+            updateUI();
+            return;
+        } else if (dir === 'prev' && studyIndex > 0) {
+            game.undo();
+            studyIndex--;
+            board.position(game.fen());
+            updateUI();
+            return;
+        } else if (dir === 'first') {
+            game.reset();
+            studyIndex = 0;
+            board.start();
+            updateUI();
+            return;
+        }
+    }
+
     if (dir === 'first') currentHistoryIndex = 0;
     else if (dir === 'last') currentHistoryIndex = historyPositions.length - 1;
     else if (dir === 'prev') currentHistoryIndex = Math.max(0, currentHistoryIndex - 1);
     else if (dir === 'next') currentHistoryIndex = Math.min(historyPositions.length - 1, currentHistoryIndex + 1);
 
     board.position(historyPositions[currentHistoryIndex]);
-
-    // Load position into game for analysis
     game.load(historyPositions[currentHistoryIndex]);
 
-    // Trigger Stockfish analysis for this position
     if (stockfish && currentHistoryIndex > 0) {
-        // Store previous position's eval
-        if (currentHistoryIndex > 1) {
-            const prevGame = new Chess(historyPositions[currentHistoryIndex - 1]);
-            // We'll analyze both positions to compare
-        }
-
-        // Set flag to analyze this move
         isJ = true;
-
-        // Analyze current position
         stockfish.postMessage('stop');
         stockfish.postMessage('position fen ' + game.fen());
         stockfish.postMessage('go depth 15');
-
-        $('#coach-txt').html('<div style="color:var(--accent);">Analizando jugada...</div>');
+        $('#coach-txt-unified').html('<div style="color:var(--accent);">Analizando jugada...</div>');
     } else if (currentHistoryIndex === 0) {
-        $('#coach-txt').html('<div style="font-size:0.7rem; color:var(--text-muted);">Posición inicial. Navega con las flechas para ver el análisis.</div>');
+        $('#coach-txt-unified').html('<div style="font-size:0.7rem; color:var(--text-muted);">Posición inicial.</div>');
     }
 }
 
@@ -996,6 +1013,122 @@ $(document).ready(() => {
     $('#hamburger-menu').off('click').click(() => { $('#side-drawer').addClass('open'); $('#side-drawer-overlay').fadeIn(); });
     $('#side-drawer-overlay').off('click').click(() => { $('#side-drawer').removeClass('open'); $('#side-drawer-overlay').fadeOut(); });
 
+    // --- SYSTEMATIC EVENT LISTENERS ---
+    $(document).on('click', '[data-action="submenu"]', function () {
+        showSubMenu($(this).data('target'));
+    });
+
+    $(document).on('click', '.btn-challenge', function () {
+        createOnlineChallenge($(this).data('time'));
+    });
+
+    $(document).on('click', '#btn-start-24h', function () {
+        start24hGame();
+    });
+
+    $(document).on('click', '.btn-set-mode', function () {
+        setMode($(this).data('mode'));
+    });
+
+    $(document).on('click', '#btn-toggle-online-setup', function () {
+        $('#online-setup-container').slideToggle();
+    });
+
+    $(document).on('click', '#btn-launch-challenge', function () {
+        createOnlineChallenge();
+    });
+
+    $(document).on('click', '#btn-goto-active-games', function () {
+        setMode('local');
+        setTimeout(() => {
+            const el = $('#active-games-list')[0];
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }, 300);
+    });
+
+    $(document).on('click', '#btn-openings-search-trigger', function () {
+        setMode('study');
+        setTimeout(() => $('#opening-search').focus(), 300);
+    });
+
+    $(document).on('click', '#btn-reset-board', function () {
+        game.reset(); board.start(); updateUI();
+    });
+
+    $(document).on('click', '#btn-start-puzzles', function () {
+        setMode('exercises'); loadRandomPuzzle();
+    });
+
+    $(document).on('click', '#btn-back-to-menu', function () {
+        goBackToMenu();
+    });
+
+    $(document).on('click', '#btn-close-overlay', function () {
+        $('#game-overlay').fadeOut();
+    });
+
+    $(document).on('click', '#btn-resign-mobile-trigger', function () {
+        resignGame();
+    });
+
+    $(document).on('click', '#btn-back-menu-mobile', function () {
+        goBackToMenu();
+    });
+
+    $(document).on('click', '#btn-create-challenge-final', function () {
+        createOnlineChallenge(true);
+    });
+
+    $(document).on('click', '#btn-create-toggle', function () {
+        $('#create-challenge-opts').slideToggle();
+    });
+
+    $(document).on('click', '#btn-study-reset', function () {
+        game.reset(); board.start(); updateUI(); $('#study-controls').hide();
+    });
+
+    $(document).on('click', '#btn-copy-fen', function () {
+        const fen = game.fen();
+        navigator.clipboard.writeText(fen).then(() => {
+            showToast("FEN copiado al portapapeles", "📋");
+        }).catch(() => {
+            alert(fen);
+        });
+    });
+
+    $(document).on('click', '.btn-view-history', function () {
+        viewHistoryGame($(this).data('index'));
+    });
+
+    $(document).on('click', '.btn-join-challenge', function () {
+        joinGame($(this).data('id'), $(this).data('user'), $(this).data('time'));
+    });
+
+    $(document).on('click', '.btn-resume-game', function () {
+        const d = $(this).data();
+        resumeGame(d.id, d.opp, d.fen, d.color, d.wtime, d.btime);
+    });
+
+    $(document).on('click', '.btn-resign-bg', function () {
+        resignBackgroundGame($(this).data('id'));
+    });
+
+    $(document).on('click', '.btn-load-game', function () {
+        loadGame($(this).data('id'));
+    });
+
+    $(document).on('click', '#btn-hint-mobile-bar', function () {
+        toggleHints(this);
+    });
+
+    // Fix responsive board
+    $(window).resize(() => {
+        if (board) board.resize();
+    });
+
+    // Auto-resize once more after a small delay to ensure container size is settled
+    setTimeout(() => { if (board) board.resize(); }, 1000);
+
 }); // END READY
 
 
@@ -1012,7 +1145,7 @@ function renderHistory() {
         if (g.res === 0) { resClass = "res-lose"; resTxt = "PERDIDA"; }
 
         const item = $(`
-                        <div class="history-item" onclick="viewHistoryGame(${i})">
+                        <div class="history-item btn-view-history" data-index="${i}">
                             <div class="hist-date">${g.date} • ${g.mode.toUpperCase()}</div>
                             <div class="hist-main">
                                 <div class="hist-players">${g.me} vs ${g.opp}</div>
@@ -1089,7 +1222,7 @@ socket.on('lobby_update', (challenges) => {
         } else {
             othersChallenges.forEach(data => {
                 const html = `
-                                <div class="challenge-item" onclick="joinGame('${data.id}', '${data.user}', '${data.time}')" 
+                                <div class="challenge-item btn-join-challenge" data-id="${data.id}" data-user="${data.user}" data-time="${data.time}" 
                                      style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:rgba(255,255,255,0.05); margin-bottom:5px; border-radius:6px; cursor:pointer; font-size:0.7rem;">
                                     <span>👤 ${data.user} (${data.elo})</span>
                                     <span style="color:var(--accent)">${data.time} min ⚔️</span>
@@ -1110,7 +1243,7 @@ socket.on('new_challenge', (data) => {
     }
 
     const html = `
-                    <div class="challenge-item" onclick="joinGame('${data.id}', '${data.user}', '${data.time}')" 
+                    <div class="challenge-item btn-join-challenge" data-id="${data.id}" data-user="${data.user}" data-time="${data.time}" 
                          style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:rgba(255,255,255,0.05); margin-bottom:5px; border-radius:6px; cursor:pointer; font-size:0.7rem;">
                         <span>👤 ${data.user} (${data.elo})</span>
                         <span style="color:var(--accent)">${data.time} min ⚔️</span>
@@ -1134,7 +1267,7 @@ socket.on('my_games_list', (games) => {
             const html = `
                             <div class="active-game-item" 
                                  style="padding:10px; background:rgba(255,255,255,0.04); border-radius:10px; margin-bottom:8px; font-size:12px; border:1px solid ${isMyTurn ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}; display:flex; justify-content:space-between; align-items:center;">
-                                <div onclick="resumeGame('${g.id}', '${opp}', '${g.fen}', '${g.white === userName ? 'w' : 'b'}', ${g.whiteTime}, ${g.blackTime})" style="flex:1; cursor:pointer;">
+                                <div class="btn-resume-game" data-id="${g.id}" data-opp="${opp}" data-fen="${g.fen}" data-color="${g.white === userName ? 'w' : 'b'}" data-wtime="${g.whiteTime}" data-btime="${g.blackTime}" style="flex:1; cursor:pointer;">
                                     <div style="display:flex; justify-content:space-between; align-items:center;">
                                         <div style="display:flex; flex-direction:column;">
                                             <span style="font-weight:700;">🆚 ${opp}</span>
@@ -1143,7 +1276,7 @@ socket.on('my_games_list', (games) => {
                                         ${turnLabel}
                                     </div>
                                 </div>
-                                <button onclick="window.resignBackgroundGame('${g.id}')" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:1.2rem; padding:0 0 0 10px;" title="Abandonar Partida">🗑️</button>
+                                <button class="btn-resign-bg" data-id="${g.id}" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:1.2rem; padding:0 0 0 10px;" title="Abandonar Partida">🗑️</button>
                             </div>
                         `;
             list.append(html);
@@ -1271,20 +1404,55 @@ window.loadGame = function (id) {
 };
 
 socket.on('active_games_update', function (games) {
-    const list = $('#active-games-list');
-    list.empty();
-    if (games.length === 0) return list.append('<div style="font-size:0.65rem; color:var(--text-muted); text-align:center; padding:10px;">No hay partidas activas.</div>');
+    const listSidebar = $('#active-games-list');
+    const listHome = $('#home-active-games');
+    const homeContainer = $('#home-active-games-container');
 
-    games.forEach(g => {
+    listSidebar.empty();
+    listHome.empty();
+
+    if (games.length === 0) {
+        listSidebar.append('<div style="font-size:0.65rem; color:var(--text-muted); text-align:center; padding:10px;">No hay partidas activas.</div>');
+        homeContainer.hide();
+        return;
+    }
+
+    homeContainer.show();
+
+    // Enhancing game objects with calculated remaining time for sorting
+    const now = Date.now();
+    const processedGames = games.map(g => {
+        const elapsed = Math.floor((now - g.lastUpdate) / 1000);
+        let wTime = g.whiteTime;
+        let bTime = g.blackTime;
+        if (g.turn === 'w') wTime = Math.max(0, wTime - elapsed);
+        else bTime = Math.max(0, bTime - elapsed);
+
         const isMyTurn = (g.turn === 'w' && g.white === userName) || (g.turn === 'b' && g.black === userName);
+        const timeLeft = (g.turn === 'w') ? wTime : bTime;
+
+        return { ...g, isMyTurn, timeLeft, wTime, bTime };
+    });
+
+    // Sort by timeLeft (less time first)
+    processedGames.sort((a, b) => a.timeLeft - b.timeLeft);
+
+    processedGames.forEach(g => {
         const opp = (g.white === userName) ? g.black : g.white;
-        const item = $(`
-            <div class="active-game-item ${isMyTurn ? 'my-turn' : ''}" onclick="loadGame('${g.id}')">
+        const timeStr = formatTime(g.timeLeft);
+
+        const itemHtml = `
+            <div class="active-game-item btn-load-game ${g.isMyTurn ? 'my-turn' : 'opp-turn'}" data-id="${g.id}">
                 <div style="flex:1"><b>vs ${opp}</b></div>
-                <div style="font-size:0.6rem; opacity:0.8">${isMyTurn ? 'TU TURNO ⚡' : 'Esperando...'}</div>
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px;">
+                    <div style="font-size:0.75rem; font-weight:800; color:${g.isMyTurn ? 'var(--accent)' : '#aaa'}">${timeStr}</div>
+                    <div style="font-size:0.55rem; opacity:0.7">${g.isMyTurn ? 'TU TURNO' : 'ESPERANDO...'}</div>
+                </div>
             </div>
-        `);
-        list.append(item);
+        `;
+
+        listSidebar.append($(itemHtml));
+        listHome.append($(itemHtml));
     });
 });
 
@@ -1294,14 +1462,15 @@ socket.on('opponent_joined', (data) => {
 
 socket.on('player_resigned', (data) => {
     stopClock();
-    const winner = data.user === userName ? 'Oponente' : 'Tú';
-    alert("Tu oponente se ha rendido. ¡Has ganado!");
-    updateElo(800, 1);
+    $('#overlay-msg').text(LANGS[currentLang].win);
+    $('#game-overlay').fadeIn();
+    playSnd('end');
+    showToast("Tu oponente se ha rendido. ¡Has ganado!", "🏆");
     game.reset(); board.start(); updateUI();
 });
 
 socket.on('game_aborted', () => {
-    alert("La partida ha sido abortada.");
+    showToast("La partida ha sido abortada.", "⚠️");
     stopClock();
     game.reset(); board.start(); updateUI();
 });
@@ -1597,14 +1766,28 @@ updateAuthUI();
 $('#hamburger-menu').off('click'); // remove old if any
 $('#side-drawer-overlay').off('click');
 
-// Llenar aperturas
+// Llenar aperturas (Select y Datalist para búsqueda)
+const datalist = $('#openings-datalist');
+const openingSelect = $('#opening-sel');
+
 OPENINGS_DATA.forEach((group, groupIdx) => {
     let optgroup = `<optgroup label="${group.group}">`;
     group.items.forEach((item, itemIdx) => {
-        optgroup += `<option value="${groupIdx}-${itemIdx}">${item.name}</option>`;
+        const val = `${groupIdx}-${itemIdx}`;
+        optgroup += `<option value="${val}">${item.name}</option>`;
+        datalist.append(`<option value="${item.name}" data-id="${val}">`);
     });
     optgroup += `</optgroup>`;
-    $('#opening-sel').append(optgroup);
+    openingSelect.append(optgroup);
+});
+
+// Sincronizar búsqueda con selección
+$('#opening-search').on('input', function () {
+    const searchVal = $(this).val();
+    const match = datalist.find(`option[value="${searchVal}"]`);
+    if (match.length > 0) {
+        openingSelect.val(match.data('id')).change();
+    }
 });
 
 var studyMoves = [];
@@ -1651,21 +1834,19 @@ $('#btn-study-prev').click(() => {
     }
 });
 
-// NEW UNIFIED HINT TOGGLE (Study & AI)
 const toggleHints = (btn) => {
     hintsActive = !hintsActive;
-    const txt = hintsActive ? "💡 PISTAS: ON" : "💡 ACTIVAR PISTAS";
-    $('#btn-ai-hint, #btn-suggest-move').text(txt).toggleClass('active', hintsActive);
+
+    // UI Update for all hint buttons
+    $('.btn-action#btn-hint-mobile-bar, #btn-ai-hint, #btn-hint-main, #btn-hint-mobile').toggleClass('active', hintsActive);
 
     if (hintsActive) {
-        $('#coach-txt').text("Analizando posición...");
-        if (stockfish) {
-            updateUI(true); // Force re-analysis
-        }
+        $('#master-coach-unified').show();
+        $('#coach-txt-unified').text("Analizando mejor jugada...");
+        updateUI(true); // Force re-analysis
     } else {
         $('.square-55d63').removeClass('highlight-hint');
-        $('#best-move-display').hide();
-        if (!analysisActive) $('#coach-txt').text("Bienvenido. Juega una partida o analiza una posición para recibir mis consejos.");
+        $('#best-move-unified').hide();
     }
 };
 
@@ -1735,24 +1916,33 @@ window.setMode = function (mode) {
     if (mode === 'ai' || mode === 'study' || mode === 'exercises') {
         $('#btn-hint-main').css('display', 'flex').fadeIn();
         $('#btn-hint-mobile-bar').show();
+        $('#master-coach-unified').fadeIn();
     } else {
         $('#btn-hint-main').hide();
         $('#btn-hint-mobile-bar').hide();
+        if (!hintsActive) $('#master-coach-unified').hide();
+    }
+
+    if (mode === 'study') {
+        setTimeout(() => $('#opening-search').focus(), 500);
     }
 
     resetTimers();
     updateUI();
 };
 
-window.startMaestroMode = function () {
-    hintsActive = true;
-    setMode('ai');
-    showToast("Modo Entrenamiento Activado", "👴");
+window.start24hGame = function () {
+    if (!isAuth) {
+        showToast("Inicia sesión para jugar", "⚠️");
+        return openAuth();
+    }
+    createOnlineChallenge(1440);
+    showToast("Reto de 24 horas creado", "🕒");
 };
 
-window.createOnlineChallenge = function (fromSidebar) {
+window.createOnlineChallenge = function (arg) {
     if (!isAuth) { alert("Inicia sesión para jugar online."); return openAuth(); }
-    var time = fromSidebar ? $('#local-time-selector .time-btn.active').data('time') : $('#online-time-sel').val();
+    var time = (typeof arg === 'number') ? arg : (arg === true ? $('#local-time-selector .time-btn.active').data('time') : $('#online-time-sel').val());
     var id = Math.random().toString(36).substr(2, 9);
     var info = {
         id: id,
@@ -1763,6 +1953,7 @@ window.createOnlineChallenge = function (fromSidebar) {
     if (socket) socket.emit('create_challenge', info);
     showToast("Reto lanzado a la sala", "⚔️");
     $('#online-setup-container').slideUp();
+    $('#create-challenge-opts').slideUp();
     setMode('local');
 };
 
@@ -1872,6 +2063,7 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').then(reg => {
             console.log('SW registrado con éxito');
+            reg.update(); // Check for updates immediately
         }).catch(err => {
             console.log('Error al registrar SW', err);
         });

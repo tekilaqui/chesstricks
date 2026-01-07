@@ -11,38 +11,40 @@ const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: '*' }));
 const server = http.createServer(app);
 const io = new Server(server);
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: { error: "Demasiadas peticiones desde esta IP, intente de nuevo en 15 minutos" }
+  max: 300,
+  message: { error: "Demasiadas peticiones" }
 });
 
 const authLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 10,
-  message: { error: "Demasiados intentos de acceso, intente de nuevo en una hora" }
+  max: 50,
+  message: { error: "Demasiados intentos de acceso" }
 });
 
-/* app.use(helmet({
+app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:", "http:", "blob:"],
       styleSrc: ["'self'", "'unsafe-inline'", "https:", "http:"],
-      imgSrc: ["'self'", "data:", "https:", "http:"],
-      connectSrc: ["'self'", "wss:", "https:", "http:"],
+      imgSrc: ["'self'", "data:", "https:", "http:", "blob:"],
+      connectSrc: ["'self'", "wss:", "ws:", "https:", "http:"],
       mediaSrc: ["'self'", "https:", "http:"],
       fontSrc: ["'self'", "https:", "http:"],
-      workerSrc: ["'self'", "blob:"],
+      workerSrc: ["'self'", "blob:", "http:", "https:"],
       objectSrc: ["'none'"],
+      upgradeInsecureRequests: null,
     },
   },
   crossOriginResourcePolicy: { policy: "cross-origin" }
-})); */
+}));
+
 app.use(express.json({ limit: '10kb' }));
 app.get('/*', (req, res, next) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -50,6 +52,23 @@ app.get('/*', (req, res, next) => {
   res.setHeader('Expires', '0');
   next();
 });
+
+// Explicitly serve critical static files
+app.get('/style.css', (req, res) => {
+  res.setHeader('Content-Type', 'text/css');
+  res.sendFile(path.join(__dirname, 'style.css'));
+});
+
+app.get('/client.js', (req, res) => {
+  res.setHeader('Content-Type', 'text/javascript');
+  res.sendFile(path.join(__dirname, 'client.js'));
+});
+
+// Serve images explicitly too if needed
+app.get('/logo.jpg', (req, res) => {
+  res.sendFile(path.join(__dirname, 'logo.jpg'));
+});
+
 app.use(express.static(__dirname, { dotfiles: 'allow' }));
 app.use('/login', authLimiter);
 app.use('/register', authLimiter);
