@@ -629,6 +629,15 @@ function resignGame() {
         if (currentMode === 'local' && gameId) {
             socket.emit('resign_game', { gameId: gameId, user: userName });
             updateElo(800, 0);
+
+            // Clear game state and refresh list
+            const oldGameId = gameId;
+            gameId = null;
+
+            // Request updated games list after a short delay
+            setTimeout(() => {
+                socket.emit('get_my_games');
+            }, 500);
         }
 
         $('#overlay-msg').text(LANGS[currentLang].lose);
@@ -648,6 +657,14 @@ function abortGame() {
         stopClock();
         if (currentMode === 'local' && gameId) {
             socket.emit('abort_online_game', { gameId: gameId });
+
+            // Clear game state and refresh list
+            gameId = null;
+
+            // Request updated games list after a short delay
+            setTimeout(() => {
+                socket.emit('get_my_games');
+            }, 500);
         }
         game.reset(); board.start(); updateUI();
     }
@@ -1174,6 +1191,12 @@ $(document).ready(() => {
             challengesEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
         showToast("Sala de retos", "🏰");
+    });
+
+    // Flip board button
+    $(document).on('click', '#btn-flip-board', function () {
+        board.flip();
+        showToast("Tablero girado", "🔄");
     });
 
     // Fix responsive board

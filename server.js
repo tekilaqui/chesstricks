@@ -311,7 +311,16 @@ io.on('connection', (socket) => {
     socket.join(`game_${data.id}`);
 
     const isWhite = Math.random() > 0.5;
-    const gameTime = (challenge.time || 10) * 60;
+    // Special handling for 24h games: 1440 minutes = 24 hours
+    // For 24h games, we want 24 hours per move, not total time
+    let gameTime;
+    if (challenge.time === 1440) {
+      // 24 hour game: 24 hours per move = 86400 seconds
+      gameTime = 24 * 60 * 60; // 86400 seconds
+    } else {
+      // Regular games: time in minutes converted to seconds
+      gameTime = (challenge.time || 10) * 60;
+    }
 
     activeGames[data.id] = {
       id: data.id,
