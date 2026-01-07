@@ -1185,11 +1185,13 @@ $(document).ready(() => {
     });
 
     $(document).on('click', '#btn-back-to-lobby', function () {
-        // Scroll to challenges section
-        const challengesEl = $('#challenges-list')[0];
-        if (challengesEl) {
-            challengesEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        // Scroll to fast challenges section
+        const fastChallengesEl = $('#challenges-list-fast')[0];
+        if (fastChallengesEl) {
+            fastChallengesEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
+        // Also refresh the active games list to show current state
+        socket.emit('get_my_games');
         showToast("Sala de retos", "🏰");
     });
 
@@ -1288,25 +1290,52 @@ socket.on('leaderboard_data', (data) => {
 
 
 socket.on('lobby_update', (challenges) => {
-    $('#challenges-list').empty();
+    const fastList = $('#challenges-list-fast');
+    const slowList = $('#challenges-list-24h');
+
+    fastList.empty();
+    slowList.empty();
+
     if (challenges.length === 0) {
-        $('#challenges-list').html('<div style="font-size:0.65rem; color:var(--text-muted); text-align:center; padding:10px;">Buscando retos...</div>');
+        fastList.html('<div style="font-size:0.65rem; color:var(--text-muted); text-align:center; padding:10px;">No hay retos rápidos.</div>');
+        slowList.html('<div style="font-size:0.65rem; color:var(--text-muted); text-align:center; padding:10px;">No hay retos de 24h.</div>');
     } else {
         const currentU = localStorage.getItem('chess_username') || userName;
         const othersChallenges = challenges.filter(c => c.user !== currentU);
 
-        if (othersChallenges.length === 0) {
-            $('#challenges-list').html('<div style="font-size:0.65rem; color:var(--text-muted); text-align:center; padding:10px;">No hay otros retos activos.</div>');
+        const fastChallenges = othersChallenges.filter(c => c.time < 1440);
+        const slowChallenges = othersChallenges.filter(c => c.time === 1440);
+
+        // Populate fast challenges
+        if (fastChallenges.length === 0) {
+            fastList.html('<div style="font-size:0.65rem; color:var(--text-muted); text-align:center; padding:10px;">No hay retos rápidos activos.</div>');
         } else {
-            othersChallenges.forEach(data => {
+            fastChallenges.forEach(data => {
+                const timeLabel = data.time === 1 ? '1 min' : data.time === 3 ? '3 min' : data.time === 10 ? '10 min' : data.time === 30 ? '30 min' : data.time + ' min';
                 const html = `
-                                <div class="challenge-item btn-join-challenge" data-id="${data.id}" data-user="${data.user}" data-time="${data.time}" 
-                                     style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:rgba(255,255,255,0.05); margin-bottom:5px; border-radius:6px; cursor:pointer; font-size:0.7rem;">
-                                    <span>👤 ${data.user} (${data.elo})</span>
-                                    <span style="color:var(--accent)">${data.time} min ⚔️</span>
-                                </div>
-                            `;
-                $('#challenges-list').append(html);
+                    <div class="challenge-item btn-join-challenge" data-id="${data.id}" data-user="${data.user}" data-time="${data.time}" 
+                         style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:rgba(56, 189, 248, 0.1); margin-bottom:5px; border-radius:6px; cursor:pointer; font-size:0.7rem; border:1px solid var(--accent);">
+                        <span>👤 ${data.user} (${data.elo})</span>
+                        <span style="color:var(--accent); font-weight:700;">⚡ ${timeLabel}</span>
+                    </div>
+                `;
+                fastList.append(html);
+            });
+        }
+
+        // Populate 24h challenges
+        if (slowChallenges.length === 0) {
+            slowList.html('<div style="font-size:0.65rem; color:var(--text-muted); text-align:center; padding:10px;">No hay retos de 24h activos.</div>');
+        } else {
+            slowChallenges.forEach(data => {
+                const html = `
+                    <div class="challenge-item btn-join-challenge" data-id="${data.id}" data-user="${data.user}" data-time="${data.time}" 
+                         style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:rgba(255,255,255,0.05); margin-bottom:5px; border-radius:6px; cursor:pointer; font-size:0.7rem;">
+                        <span>👤 ${data.user} (${data.elo})</span>
+                        <span style="color:#aaa;">📅 24h</span>
+                    </div>
+                `;
+                slowList.append(html);
             });
         }
     }
