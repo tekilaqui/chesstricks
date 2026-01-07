@@ -803,6 +803,22 @@ function onSnapEnd() {
 }
 
 function onDrop(source, target) {
+    // Validar que solo puedas mover tus propias piezas en modos competitivos
+    if (currentMode === 'local' || currentMode === 'ai') {
+        const piece = game.get(source);
+        if (!piece) return 'snapback';
+
+        // En modo online, solo puedes mover tus piezas
+        if (currentMode === 'local' && piece.color !== myColor) {
+            return 'snapback';
+        }
+
+        // En modo AI, solo puedes mover cuando es tu turno
+        if (currentMode === 'ai' && game.turn() !== myColor) {
+            return 'snapback';
+        }
+    }
+
     var move = game.move({
         from: source,
         to: target,
@@ -1043,6 +1059,15 @@ $(document).ready(() => {
             board.flip();
             showToast("Tablero girado", "🔄");
         }
+    });
+
+    // Resign and Abort Handlers
+    $('#btn-resign-game').off('click').on('click', function () {
+        resignGame();
+    });
+
+    $('#btn-abort-game').off('click').on('click', function () {
+        abortGame();
     });
 
     // Side Drawer
@@ -1810,9 +1835,11 @@ window.setMode = function (mode) {
     $('.tab-content').removeClass('active');
     $('#tab-play').addClass('active');
 
-    // Activar controles laterales (PC)
-    $('#game-sidebar-controls').fadeIn().css('display', 'flex');
+    // Ocultar COMPLETAMENTE el menú principal cuando estás en partida
     $('#main-menu-container').hide();
+
+    // Activar controles laterales (PC) - SOLO botones de control
+    $('#game-sidebar-controls').fadeIn().css('display', 'flex');
 
     // Mobile transition: Show board
     if (window.innerWidth <= 900) {
