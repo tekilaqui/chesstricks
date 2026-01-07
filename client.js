@@ -179,18 +179,22 @@ const LANGS = {
 function detectOpening() {
     const history = game.history();
     const movesStr = history.join(' ');
-    let found = "";
+    let foundName = "";
+    let foundMoveCount = 0;
+
     OPENINGS_DATA.forEach(group => {
         group.items.forEach(item => {
             const entryStr = item.m.join(' ');
             if (movesStr.startsWith(entryStr)) {
-                if (entryStr.length > (found.length || 0)) {
-                    found = item.name;
+                if (item.m.length > foundMoveCount) {
+                    foundName = item.name;
+                    foundMoveCount = item.m.length;
                 }
             }
         });
     });
-    return found;
+
+    return { name: foundName, moveCount: foundMoveCount };
 }
 
 function getQualityMsg(diff, isMate) {
@@ -512,9 +516,16 @@ try {
                     }
 
                     let openingName = '';
+                    let inKnownOpening = false;
                     if (isOpening && history.length >= 2) {
                         const detected = detectOpening();
-                        if (detected) openingName = '🎯 ' + detected;
+                        if (detected.name) {
+                            openingName = '🎯 ' + detected.name;
+                            // Si estamos dentro de los movimientos conocidos de la apertura, ser más tolerante
+                            if (history.length <= detected.moveCount + 2) {
+                                inKnownOpening = true;
+                            }
+                        }
                     }
 
                     if (lastMove) {
@@ -535,12 +546,17 @@ try {
                         }
                     }
 
-                    if (diff > 2.0) {
+                    // Ser más tolerante en aperturas conocidas
+                    const adjustedDiff = inKnownOpening && diff < 1.0 ? diff * 0.5 : diff;
+
+                    if (adjustedDiff > 2.0) {
                         explanation = `<div style="color:#ef4444; font-weight:bold;">💥 ERROR GRAVE:</div> Perdiste mucha ventaja. ${lastMove && lastMove.captured ? 'Entregaste material sin compensación.' : 'Permitiste un ataque decisivo o debilitaste gravemente tu posición.'}`;
-                    } else if (diff > 0.8) {
+                    } else if (adjustedDiff > 0.8) {
                         explanation = `<div style="color:#f59e0b; font-weight:bold;">⚠️ IMPRECISIÓN:</div> Hay una jugada mucho mejor. ${isOpening ? 'En la apertura, cada movimiento cuenta para el desarrollo.' : 'Estás descuidando la posición o la seguridad de tu rey.'}`;
-                    } else if (diff < -0.5) {
+                    } else if (adjustedDiff < -0.5) {
                         explanation = `<div style="color:#22c55e; font-weight:bold;">✨ ¡EXCELENTE!:</div> Has encontrado una jugada muy fuerte que mejora tu posición considerablemente. ${lastMove && lastMove.captured ? '¡Captura ganadora!' : '¡Sigue así!'}`;
+                    } else if (inKnownOpening && adjustedDiff < 0.5) {
+                        explanation = `<div style="color:var(--text-muted);">Siguiendo la teoría de apertura. ${getStrategicAdvice()}</div>`;
                     } else {
                         explanation = `<div style="color:var(--text-muted);">${getStrategicAdvice()}</div>`;
                     }
@@ -1019,6 +1035,14 @@ $(document).ready(() => {
     // Online / Local Logic
     $('#btn-create').click(function () {
         window.createOnlineChallenge(true); // true means from sidebar
+    });
+
+    // Flip Board Handler
+    $('#btn-flip, #btn-flip-mobile, #btn-flip-board, #btn-flip-small').off('click').on('click', function () {
+        if (typeof board !== 'undefined' && board.flip) {
+            board.flip();
+            showToast("Tablero girado", "🔄");
+        }
     });
 
     // Side Drawer
@@ -1621,6 +1645,64 @@ socket.on('auth_error', (msg) => {
     alert("Error: " + msg);
 });
 
+// Socket handlers for online games
+socket.on('game_start', (data) => {
+    console.log("🎮 Game started:", data);
+    gameId = data.gameId;
+    myColor = data.white === userName ? 'w' : 'b';
+
+    game.reset();
+    board.position('start');
+    board.orientation(myColor === 'w' ? 'white' : 'black');
+
+    whiteTime = data.time * 60;
+    blackTime = whiteTime;
+
+    $('#my-timer').text(formatTime(myColor === 'w' ? whiteTime : blackTime));
+    $('#opp-timer').text(formatTime(myColor === 'w' ? blackTime : whiteTime));
+
+    setMode('local');
+    startClock();
+    showToast("¡Partida iniciada!", "⚔️");
+});
+
+socket.on('opponent_joined', (data) => {
+    console.log("👥 Opponent joined:", data);
+    gameId = data.gameId;
+    myColor = data.white === userName ? 'w' : 'b';
+
+    board.orientation(myColor === 'w' ? 'white' : 'black');
+
+    whiteTime = data.time * 60;
+    blackTime = whiteTime;
+
+    $('#my-timer').text(formatTime(myColor === 'w' ? whiteTime : blackTime));
+    $('#opp-timer').text(formatTime(myColor === 'w' ? blackTime : whiteTime));
+
+    if (data.fen && data.fen !== 'start') {
+        game.load(data.fen);
+        board.position(data.fen);
+    }
+
+    startClock();
+    showToast("Oponente conectado", "👥");
+});
+
+socket.on('move', (data) => {
+    console.log("♟️ Move received:", data);
+    game.move(data.move);
+    board.position(game.fen());
+
+    whiteTime = data.whiteTime;
+    blackTime = data.blackTime;
+
+    $('#my-timer').text(formatTime(myColor === 'w' ? whiteTime : blackTime));
+    $('#opp-timer').text(formatTime(myColor === 'w' ? blackTime : whiteTime));
+
+    updateUI(true);
+    checkGameOver();
+});
+
 updateAuthUI();
 
 $('#hamburger-menu').off('click'); // remove old if any
@@ -1753,6 +1835,8 @@ window.setMode = function (mode) {
         $('#opp-name').text(isMaestro ? 'Maestro IA' : 'Stockfish');
     } else if (mode === 'local') {
         $('#opp-name').text('Oponente Online');
+        // Ocultar el contenedor de crear reto cuando ya estamos en partida
+        $('#online-setup-container').slideUp();
     } else if (mode === 'exercises') {
         loadRandomPuzzle();
     } else if (mode === 'pass-and-play') {
