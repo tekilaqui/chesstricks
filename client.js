@@ -790,6 +790,14 @@ function onSnapEnd() {
 }
 
 function onDrop(source, target) {
+    // RESTRICTION: Prevent dragging opponent's pieces in online/AI modes
+    if (currentMode === 'local' || currentMode === 'ai') {
+        const piece = game.get(source);
+        if (piece && piece.color !== myColor) {
+            return 'snapback'; // Return piece to original position
+        }
+    }
+
     var move = game.move({
         from: source,
         to: target,
