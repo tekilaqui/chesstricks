@@ -18,21 +18,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <script>
-        // EMERGENCY: Unregister all service workers to clear cache
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function (registrations) {
-                for (let registration of registrations) {
-                    registration.unregister();
-                    console.log("SW Unregistered");
-                }
-            });
-            // Clear caches
-            caches.keys().then(function (names) {
-                for (let name of names) caches.delete(name);
-            });
-        }
-    </script>
+
     <link rel="stylesheet" href="style.css?v=2.3" type="text/css">
 </head>
 
@@ -171,7 +157,10 @@
 
                 <!-- SUBMENU: JUGAR -->
                 <div class="menu-step" id="menu-jugar">
-                    <button class="btn-back" data-action="submenu" data-target="root">⬅️ Volver</button>
+                    <div class="btn-back" data-action="submenu" data-target="root"
+                        style="cursor:pointer; display:flex; align-items:center; gap:5px; color:var(--accent); font-weight:bold; margin-bottom:15px;">
+                        <span>⬅️</span> VOLVER AL MENÚ
+                    </div>
 
                     <label class="label-tiny" style="margin-top:10px;">RITMOS DE JUEGO ONLINE</label>
                     <div class="time-selector-grid"
@@ -204,7 +193,10 @@
 
                 <!-- SUBMENU: ONLINE -->
                 <div class="menu-step" id="menu-online">
-                    <button class="btn-back" data-action="submenu" data-target="jugar">⬅️ Volver</button>
+                    <div class="btn-back" data-action="submenu" data-target="jugar"
+                        style="cursor:pointer; display:flex; align-items:center; gap:5px; color:var(--accent); font-weight:bold; margin-bottom:15px;">
+                        <span>⬅️</span> VOLVER
+                    </div>
 
                     <div class="btn-menu btn-set-mode" data-mode="local"><span>🏰</span><span>Sala de Retos</span></div>
 
@@ -226,7 +218,10 @@
 
                 <!-- SUBMENU: ESTUDIO -->
                 <div class="menu-step" id="menu-estudio">
-                    <button class="btn-back" data-action="submenu" data-target="root">⬅️ Volver</button>
+                    <div class="btn-back" data-action="submenu" data-target="root"
+                        style="cursor:pointer; display:flex; align-items:center; gap:5px; color:var(--accent); font-weight:bold; margin-bottom:15px;">
+                        <span>⬅️</span> VOLVER AL MENÚ
+                    </div>
                     <div style="display:flex; flex-direction:column; gap:10px;">
                         <div class="btn-menu" id="btn-openings-search-trigger">
                             <span>📖</span><span>Ver Aperturas</span>
@@ -235,16 +230,16 @@
 
                         <div class="btn-menu btn-set-mode" data-mode="study"><span>🔍</span><span>Modo Análisis</span>
                         </div>
-                        <div class="btn-menu" id="btn-reset-board">
-                            <span>🔄</span><span>Resetear Tablero</span>
-                        </div>
-                        <div class="btn-menu" id="btn-pgn-main"><span>📄</span><span>Cargar PGN</span></div>
+                        <div class="btn-menu" id="btn-reset-board"><span>🔄</span><span>Resetear Tablero</span></div>
                     </div>
                 </div>
 
                 <!-- SUBMENU: PUZZLES -->
                 <div class="menu-step" id="menu-puzzles">
-                    <button class="btn-back" data-action="submenu" data-target="root">⬅️ Volver</button>
+                    <div class="btn-back" data-action="submenu" data-target="root"
+                        style="cursor:pointer; display:flex; align-items:center; gap:5px; color:var(--accent); font-weight:bold; margin-bottom:15px;">
+                        <span>⬅️</span> VOLVER AL MENÚ
+                    </div>
                     <div style="display:flex; flex-direction:column; gap:8px;">
                         <label class="label-tiny">Categoría</label>
                         <select class="btn-control" id="puz-cat-sel-main">
@@ -436,31 +431,30 @@
 
                 <!-- MODO ESTUDIO -->
                 <div class="mode-section" id="sec-study">
-                    <label class="label-tiny">BUSCAR APERTURA</label>
-                    <div style="position:relative; margin-bottom:15px;">
-                        <input type="text" id="opening-search" class="btn-control"
-                            placeholder="Escribe para buscar (ej: Siciliana)..." autocomplete="off"
-                            list="openings-datalist">
-                        <datalist id="openings-datalist"></datalist>
-                    </div>
-
                     <label class="label-tiny">MUNDO DE APERTURAS</label>
-                    <select class="btn-control" id="opening-sel">
-                        <option value="">-- O elige de la lista --</option>
+                    <select class="btn-control" id="opening-sel" style="margin-bottom:15px;">
+                        <option value="">-- Elige una apertura --</option>
                     </select>
 
+                    <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
+                        <label class="label-tiny">HERRAMIENTAS DE ANÁLISIS</label>
 
+                        <button class="btn-primary" id="btn-suggest-move"
+                            style="width:100%; margin-bottom:8px; display:flex; justify-content:center; align-items:center; gap:8px;">
+                            <span>💡</span> ACTIVAR MEJOR JUGADA
+                        </button>
 
-                    <div style="margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
-                        <label class="label-tiny">HERRAMIENTAS</label>
-                        <button class="btn-tool" id="btn-suggest-move"
-                            style="width:100%; margin-bottom:5px; color:var(--accent);">💡 Sugerir Mejor Jugada</button>
-                        <div id="suggest-msg"
-                            style="font-size:0.75rem; text-align:center; min-height:15px; margin-bottom:10px;"></div>
+                        <div id="master-assessment"
+                            style="background:rgba(56, 189, 248, 0.1); border-left:3px solid var(--accent); padding:10px; border-radius:4px; margin-bottom:10px; display:none;">
+                            <div
+                                style="font-size:0.6rem; color:var(--accent); font-weight:bold; text-transform:uppercase; margin-bottom:4px;">
+                                COMENTARIO DEL MAESTRO</div>
+                            <div id="master-comment-text" style="font-size:0.75rem; color:#fff; font-style:italic;">
+                                Esperando jugada...</div>
+                        </div>
 
                         <div class="tool-grid">
-                            <button class="btn-tool" id="btn-study-reset">🔄
-                                RESET</button>
+                            <button class="btn-tool" id="btn-study-reset">🔄 RESET</button>
                             <button class="btn-tool" id="btn-pgn">📂 PGN</button>
                             <button class="btn-tool" id="btn-editor">⛏️ EDITOR</button>
                             <button class="btn-tool" id="btn-copy-fen">📋 FEN</button>

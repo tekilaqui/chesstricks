@@ -516,17 +516,27 @@
         }
 
         .btn-back {
-            background: none;
-            border: none;
-            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: var(--accent);
             cursor: pointer;
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             display: flex;
             align-items: center;
-            gap: 5px;
-            margin-bottom: 10px;
+            gap: 8px;
+            padding: 10px 15px;
+            margin-bottom: 20px;
             text-transform: uppercase;
             font-weight: 800;
+            width: fit-content;
+            transition: 0.2s;
+        }
+
+        .btn-back:hover {
+            background: rgba(56, 189, 248, 0.1);
+            border-color: var(--accent);
+            transform: translateX(-2px);
         }
 
         /* MOBILE ACTIONS BAR */

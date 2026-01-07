@@ -520,14 +520,24 @@ try {
                     let precisionMsg = `<div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:5px;">Precisión: ${acc.toFixed(0)}%</div>`;
                     let openingMsg = openingName ? `<div style="color:#8b5cf6; font-size:0.75rem; margin-bottom:5px; font-weight:bold;">${openingName}</div>` : '';
 
-                    $('#master-coach-unified').show();
-                    $('#coach-txt-unified').html(`
-                        <div class="${q.class}" style="font-weight:bold; font-size:1.1rem; margin-bottom:5px;">${q.text}</div>
-                        <div style="font-size:0.8rem; color:var(--text-main); line-height:1.4;">
-                            ${explanation}
-                            <div style="margin-top:8px; font-weight:700; color:var(--accent);">💡 CONSEJO: ${getStrategicAdvice()}</div>
-                        </div>
-                    `);
+                    if (currentMode === 'study') {
+                        // Update the simplified master assessment box in study mode
+                        $('#master-comment-text').html(`
+                           <div style="font-weight:bold; color:var(--accent); margin-bottom:4px;">${q.text}</div>
+                           ${explanation}
+                           <div style="margin-top:6px; color:#fff; font-size:0.7rem;">${getStrategicAdvice()}</div>
+                       `);
+                    } else {
+                        // Update the unified coach panel for other modes
+                        $('#master-coach-unified').show();
+                        $('#coach-txt-unified').html(`
+                            <div class="${q.class}" style="font-weight:bold; font-size:1.1rem; margin-bottom:5px;">${q.text}</div>
+                            <div style="font-size:0.8rem; color:var(--text-main); line-height:1.4;">
+                                ${explanation}
+                                <div style="margin-top:8px; font-weight:700; color:var(--accent);">💡 CONSEJO: ${getStrategicAdvice()}</div>
+                            </div>
+                        `);
+                    }
 
                     if (hintsActive) {
                         $('#best-move-unified').html(`🎯 Plan sugerido: <b style="color:var(--accent);">${pv[1]}</b>`).show();
@@ -1781,14 +1791,9 @@ OPENINGS_DATA.forEach((group, groupIdx) => {
     openingSelect.append(optgroup);
 });
 
-// Sincronizar búsqueda con selección
-$('#opening-search').on('input', function () {
-    const searchVal = $(this).val();
-    const match = datalist.find(`option[value="${searchVal}"]`);
-    if (match.length > 0) {
-        openingSelect.val(match.data('id')).change();
-    }
-});
+// Sincronización eliminada ya que se quitó el input de búsqueda
+// Se mantiene la lógica de selección directa
+
 
 var studyMoves = [];
 var studyIndex = 0;
@@ -1838,15 +1843,20 @@ const toggleHints = (btn) => {
     hintsActive = !hintsActive;
 
     // UI Update for all hint buttons
-    $('.btn-action#btn-hint-mobile-bar, #btn-ai-hint, #btn-hint-main, #btn-hint-mobile').toggleClass('active', hintsActive);
+    $('.btn-action#btn-hint-mobile-bar, #btn-ai-hint, #btn-hint-main, #btn-hint-mobile, #btn-suggest-move').toggleClass('active', hintsActive);
 
+    // Specific logic for Study Mode Button Illumination
     if (hintsActive) {
-        $('#master-coach-unified').show();
+        $('#btn-suggest-move').css('box-shadow', '0 0 15px var(--accent)');
+        $('#master-assessment').slideDown();
+        $('#master-coach-unified').show(); // Main board coach
         $('#coach-txt-unified').text("Analizando mejor jugada...");
         updateUI(true); // Force re-analysis
     } else {
+        $('#btn-suggest-move').css('box-shadow', 'none');
         $('.square-55d63').removeClass('highlight-hint');
         $('#best-move-unified').hide();
+        $('#master-assessment').slideUp();
     }
 };
 
