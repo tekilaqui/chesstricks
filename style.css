@@ -1394,74 +1394,196 @@
         #active-games-list {
             padding: 5px 0;
         }
-/* MY TURN ILLUMINATION */
-.active-game-item {
-    transition: all 0.3s ease;
-}
 
-.active-game-item.my-turn {
-    background: rgba(34, 197, 94, 0.15) !important;
-    border: 1px solid var(--accent) !important;
-    box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
-    animation: turnPulse 2s infinite;
-}
+        /* MY TURN ILLUMINATION */
+        .active-game-item {
+            transition: all 0.3s ease;
+        }
 
-@keyframes turnPulse {
-    0% {
-        box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
-    }
+        .active-game-item.my-turn {
+            background: rgba(34, 197, 94, 0.15) !important;
+            border: 1px solid var(--accent) !important;
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
+            animation: turnPulse 2s infinite;
+        }
 
-    50% {
-        box-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
-    }
+        @keyframes turnPulse {
+            0% {
+                box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+            }
 
-    100% {
-        box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
-    }
-}
+            50% {
+                box-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
+            }
 
-/* NEW BOARD THEMES */
-.board-theme-neon .board-3d-effect {
-    filter: hue-rotate(180deg) contrast(1.2);
-}
+            100% {
+                box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+            }
+        }
 
-.board-theme-dark .board-3d-effect {
-    filter: brightness(0.7) contrast(1.1);
-}
+        /* NEW BOARD THEMES */
+        .board-theme-neon .board-3d-effect {
+            filter: hue-rotate(180deg) contrast(1.2);
+        }
 
-.board-theme-purple .board-3d-effect {
-    filter: hue-rotate(270deg) saturate(1.5);
-}
+        .board-theme-dark .board-3d-effect {
+            filter: brightness(0.7) contrast(1.1);
+        }
 
-.board-theme-glass .board-3d-effect {
-    opacity: 0.9;
-    box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
-}
+        .board-theme-purple .board-3d-effect {
+            filter: hue-rotate(270deg) saturate(1.5);
+        }
 
-/* SIMPLE & PRACTICAL MENU LISTS */
-#challenges-list-fast,
-#challenges-list-24h,
-#active-games-list {
-    scrollbar-width: thin;
-    scrollbar-color: var(--accent) transparent;
-}
+        .board-theme-glass .board-3d-effect {
+            opacity: 0.9;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+        }
 
-.challenge-item {
-    transition: transform 0.2s;
-}
+        /* SIMPLE & PRACTICAL MENU LISTS */
+        #challenges-list-fast,
+        #challenges-list-24h,
+        #active-games-list {
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent) transparent;
+        }
 
-.challenge-item:hover {
-    transform: translateX(3px);
-    background: rgba(255, 255, 255, 0.1) !important;
-}
+        .challenge-item {
+            transition: transform 0.2s;
+        }
 
-/* NAVIGATION BUTTONS */
-.btn-nav-history {
-    background: none;
-    border: none;
-    color: var(--accent);
-    font-size: 1.5rem;
-    cursor: pointer;
-    padding: 10px;
-}
+        .challenge-item:hover {
+            transform: translateX(3px);
+            background: rgba(255, 255, 255, 0.1) !important;
+        }
 
+        /* NAVIGATION BUTTONS */
+        .btn-nav-history {
+            background: none;
+            border: none;
+            color: var(--accent);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 10px;
+        }
+
+
+        /* STUDY MODE TIMERS HIDDEN */
+        .mode-study .timer-box {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* HAMBURGER ALWAYS VISIBLE */
+        #hamburger-menu {
+            display: block !important;
+        }
+
+        #btn-mobile-menu-back {
+            display: none !important;
+            /* Prefer hamburger always for uniformity */
+        }
+
+        /* FLIP BTN SMALL */
+        #btn-flip-small {
+            color: var(--accent);
+        }
+
+        /* ELO TAGS */
+        .elo-tag-1,
+        .elo-tag-3 {
+            color: #f43f5e;
+            border-color: rgba(244, 63, 94, 0.3);
+        }
+
+        /* Bullet/Blitz */
+        .elo-tag-10,
+        .elo-tag-30 {
+            color: #facc15;
+            border-color: rgba(250, 204, 21, 0.3);
+        }
+
+        /* Rapid */
+        .elo-tag-1440 {
+            color: #a855f7;
+            border-color: rgba(168, 85, 247, 0.3);
+        }
+
+        /* Daily */
+
+        /* Board Overlay for Arrows */
+        #board-arrow-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        #myBoard {
+            position: relative;
+            /* Ensure it's a container */
+        }
+
+        .arrow-line {
+            stroke: rgba(255, 170, 0, 0.8);
+            stroke-width: 10;
+            stroke-linecap: round;
+            marker-end: url(#arrowhead);
+            filter: drop-shadow(0 0 5px rgba(255, 165, 0, 0.6));
+            opacity: 0.8;
+        }
+
+        .arrow-head {
+            fill: rgba(255, 170, 0, 0.8);
+        }
+
+        color: #f43f5e;
+        border-color: rgba(244, 63, 94, 0.3);
+        }
+
+        /* Bullet/Blitz */
+        .elo-tag-10,
+        .elo-tag-30 {
+            color: #facc15;
+            border-color: rgba(250, 204, 21, 0.3);
+        }
+
+        /* Rapid */
+        .elo-tag-1440 {
+            color: #a855f7;
+            border-color: rgba(168, 85, 247, 0.3);
+        }
+
+        /* Daily */
+
+
+        /* Board Overlay for Arrows */
+        #board-arrow-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        #myBoard {
+            position: relative;
+            /* Ensure it's a container */
+        }
+
+        .arrow-line {
+            stroke: rgba(255, 170, 0, 0.8);
+            stroke-width: 10;
+            stroke-linecap: round;
+            marker-end: url(#arrowhead);
+            filter: drop-shadow(0 0 5px rgba(255, 165, 0, 0.6));
+            opacity: 0.8;
+        }
+
+        .arrow-head {
+            fill: rgba(255, 170, 0, 0.8);
+        }

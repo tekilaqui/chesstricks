@@ -271,15 +271,43 @@
                         <span>⬅️</span> VOLVER AL MENÚ
                     </div>
                     <div style="display:flex; flex-direction:column; gap:10px;">
-                        <label class="label-tiny">APRENDER APERTURAS</label>
-                        <select class="btn-control" id="opening-sel-menu"
-                            style="padding:15px; font-size:0.9rem; margin-bottom:10px;">
-                            <option value="">📂 Elige una apertura para empezar...</option>
-                        </select>
+                        <div class="btn-menu" data-action="submenu" data-target="study-openings">
+                            <span>📖</span><span>Estudio de Aperturas</span>
+                        </div>
+                        <div class="btn-menu" data-action="submenu" data-target="study-analysis">
+                            <span>⚖️</span><span>Tablero de Análisis Pro</span>
+                        </div>
+                    </div>
+                </div>
 
-                        <div class="btn-menu btn-set-mode" data-mode="study"><span>🔍</span><span>Tablero de Análisis
-                                Libre</span></div>
-                        <div class="btn-menu" id="btn-reset-board"><span>🔄</span><span>Resetear Tablero</span></div>
+                <!-- SUB-SUBMENU: OPENINGS -->
+                <div class="menu-step" id="menu-study-openings">
+                    <div class="btn-back" data-action="submenu" data-target="estudio"
+                        style="cursor:pointer; display:flex; align-items:center; gap:5px; color:var(--accent); font-weight:bold; margin-bottom:15px;">
+                        <span>⬅️</span> VOLVER
+                    </div>
+                    <label class="label-tiny">ELIGE UNA APERTURA</label>
+                    <select class="btn-control" id="opening-sel-menu"
+                        style="padding:15px; font-size:0.9rem; margin-bottom:10px;">
+                        <option value="">📂 Selecciona para estudiar...</option>
+                    </select>
+                </div>
+
+                <!-- SUB-SUBMENU: ANALYSIS -->
+                <div class="menu-step" id="menu-study-analysis">
+                    <div class="btn-back" data-action="submenu" data-target="estudio"
+                        style="cursor:pointer; display:flex; align-items:center; gap:5px; color:var(--accent); font-weight:bold; margin-bottom:15px;">
+                        <span>⬅️</span> VOLVER
+                    </div>
+                    <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:8px; text-align:center;">
+                        <span style="font-size:2rem; display:block; margin-bottom:10px;">🕵️‍♂️</span>
+                        <h3 style="margin:0 0 10px 0; color:var(--text-main);">Análisis Profundo</h3>
+                        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px;">
+                            Motor Stockfish activado. Identificación de aperturas y evaluación jugada a jugada.
+                        </p>
+                        <button class="btn-primary btn-set-mode" data-mode="study" id="btn-start-analysis-pro">
+                            🚀 INICIAR ANÁLISIS
+                        </button>
                     </div>
                 </div>
 
@@ -351,6 +379,7 @@
             <div class="nav-toolbar">
                 <button class="btn-nav" id="btn-nav-first" title="Inicio">⏮</button>
                 <button class="btn-nav" id="btn-nav-prev" title="Anterior">◀</button>
+                <button class="btn-nav" id="btn-flip-small" title="Girar Tablero" style="font-size:0.9rem;">🔄</button>
                 <button class="btn-nav" id="btn-nav-next" title="Siguiente">▶</button>
                 <button class="btn-nav" id="btn-nav-last" title="Fin">⏭</button>
             </div>
@@ -505,15 +534,25 @@
 
                 <!-- MODO ESTUDIO -->
                 <div class="mode-section" id="sec-study">
-                    <label class="label-tiny">MUNDO DE APERTURAS</label>
-                    <select class="btn-control" id="opening-sel" style="margin-bottom:15px;">
-                        <option value="">-- Elige una apertura --</option>
-                    </select>
+                    <!-- If Openings Mode -->
+                    <div id="study-panel-openings" style="display:none;">
+                        <label class="label-tiny">MUNDO DE APERTURAS</label>
+                        <select class="btn-control" id="opening-sel" style="margin-bottom:15px;">
+                            <option value="">-- Elige una apertura --</option>
+                        </select>
+                    </div>
 
-                    <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
-                        <label class="label-tiny">HERRAMIENTAS DE ANÁLISIS</label>
-
-                        <!-- Botón movido bajo el tablero como se solicitó -->
+                    <!-- If Analysis Mode -->
+                    <div id="study-panel-analysis" style="display:block;">
+                        <div
+                            style="background:rgba(0,0,0,0.3); padding:8px; border-radius:6px; margin-bottom:10px; border-left:3px solid var(--accent); display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div id="analysis-opening-name" style="font-weight:bold; color:#fff; font-size:0.8rem;">
+                                    Apertura Inicial</div>
+                                <div id="analysis-eco-code" style="font-size:0.6rem; color:var(--text-muted);">A00</div>
+                            </div>
+                            <div id="analysis-last-move-quality" style="font-size:1.5rem;"></div>
+                        </div>
 
                         <div id="master-assessment"
                             style="background:rgba(56, 189, 248, 0.1); border-left:3px solid var(--accent); padding:10px; border-radius:4px; margin-bottom:10px; display:none;">
@@ -522,11 +561,18 @@
                                 COMENTARIO DEL MAESTRO</div>
                             <div id="master-comment-text" style="font-size:0.75rem; color:#fff; font-style:italic;">
                                 Esperando jugada...</div>
+                            <button id="btn-explain-move"
+                                style="background:transparent; border:1px solid rgba(255,255,255,0.2); color:#fff; padding:4px 8px; font-size:0.7rem; border-radius:4px; margin-top:5px; cursor:pointer; width:100%; display:none;">
+                                🧠 EXPLICAR JUGADA
+                            </button>
                         </div>
+                    </div>
 
+                    <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
+                        <label class="label-tiny">HERRAMIENTAS</label>
                         <div class="tool-grid">
                             <button class="btn-tool" id="btn-study-reset">🔄 RESET</button>
-                            <button class="btn-tool" id="btn-pgn">📂 PGN</button>
+                            <button class="btn-tool" id="btn-toggle-engine">⚙️ MOTOR: OFF</button>
                             <button class="btn-tool" id="btn-editor">⛏️ EDITOR</button>
                             <button class="btn-tool" id="btn-copy-fen">📋 FEN</button>
                         </div>
