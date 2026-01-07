@@ -1162,6 +1162,20 @@ $(document).ready(() => {
         toggleHints(this);
     });
 
+    // Quick navigation for active games
+    $(document).on('click', '#btn-toggle-games-list', function () {
+        $('#active-games-list').slideToggle(200);
+    });
+
+    $(document).on('click', '#btn-back-to-lobby', function () {
+        // Scroll to challenges section
+        const challengesEl = $('#challenges-list')[0];
+        if (challengesEl) {
+            challengesEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        showToast("Sala de retos", "🏰");
+    });
+
     // Fix responsive board
     $(window).resize(() => {
         if (board) board.resize();
