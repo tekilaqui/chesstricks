@@ -57,6 +57,13 @@ const OPENINGS_DATA = [
     }
 ];
 
+// Use enhanced openings if available, otherwise fall back to basic
+const ACTIVE_OPENINGS = (typeof OPENINGS_ENHANCED !== 'undefined') ? OPENINGS_ENHANCED : OPENINGS_DATA;
+
+// Store current opening info for expert comments
+var currentOpeningName = null;
+var currentOpeningComments = [];
+
 const OPENING_TAG_MAP = {
     'Apertura Española (Ruy Lopez)': 'Ruy_Lopez',
     'Apertura Italiana': 'Italian_Game',
@@ -705,10 +712,22 @@ function makeAIMove() {
             if (m) {
                 board.position(game.fen());
                 aiPracticeIndex++;
-                updateUI(true); // This might trigger makeAIMove again, but lock prevents it
+                updateUI(true);
                 checkGameOver();
                 $('#book-move-indicator').fadeIn();
-                $('#coach-txt').html(`<div class="quality-book" style="color:var(--accent); font-weight:800;">📖 MAESTRO IA</div><div style="font-size:0.75rem;">Jugada teórica: <b>${m.san}</b>. Esperando tu respuesta...</div>`);
+
+                // Get expert comment for this move
+                let expertComment = "Jugada teórica.";
+                if (currentOpeningComments && currentOpeningComments[aiPracticeIndex - 1]) {
+                    expertComment = currentOpeningComments[aiPracticeIndex - 1];
+                }
+
+                $('#coach-txt').html(`
+                    <div class="quality-book" style="color:var(--accent); font-weight:800;">📖 MAESTRO IA - ${currentOpeningName || 'Teoría'}</div>
+                    <div style="font-size:0.75rem; margin-top:5px;">
+                        <b style="color:var(--accent);">${m.san}</b>: ${expertComment}
+                    </div>
+                `);
                 aiThinking = false;
             } else {
                 console.warn(`❌ [MAESTRO] Jugada teórica ilegal o fallida: ${moveToPlay}. Recurriendo al motor.`);
@@ -1141,9 +1160,9 @@ $(document).ready(() => {
 
     // Populate Maestro Openings
     const maestroOpSel = $('#maestro-opening-sel');
-    if (typeof OPENINGS_DATA !== 'undefined' && maestroOpSel.length > 0) {
-        OPENINGS_DATA.forEach((group, gIdx) => {
-            const optgroup = $('<optgroup>').attr('label', group.category);
+    if (typeof ACTIVE_OPENINGS !== 'undefined' && maestroOpSel.length > 0) {
+        ACTIVE_OPENINGS.forEach((group, gIdx) => {
+            const optgroup = $('<optgroup>').attr('label', group.group);
             group.items.forEach((item, iIdx) => {
                 optgroup.append($('<option>').val(`${gIdx}-${iIdx}`).text(item.name));
             });
@@ -1215,6 +1234,9 @@ $(document).ready(() => {
             navigateHistory('last');
         }
     });
+
+    // Resign buttons (mobile and PC)
+    $('#btn-resign-local, #btn-resign-local-pc, #btn-resign-ai').click(resignGame);
 
     // Theme Handlers
     $('#board-theme-sel').change(function () {
@@ -1490,14 +1512,17 @@ socket.on('my_games_list', (games) => {
             const opp = g.white === userName ? g.black : g.white;
             const isMyTurn = (g.turn === 'w' && g.white === userName) || (g.turn === 'b' && g.black === userName);
             const turnLabel = isMyTurn ? '<b style="color:var(--accent)">TU TURNO</b>' : '<span style="opacity:0.6">Oponente</span>';
+            const isCurrentGame = (g.id === gameId);
+            const borderColor = isCurrentGame ? '#3b82f6' : (isMyTurn ? 'var(--accent)' : 'rgba(255,255,255,0.1)');
+            const bgColor = isCurrentGame ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255,255,255,0.04)';
 
             const html = `
                             <div class="active-game-item" 
-                                 style="padding:10px; background:rgba(255,255,255,0.04); border-radius:10px; margin-bottom:8px; font-size:12px; border:1px solid ${isMyTurn ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}; display:flex; justify-content:space-between; align-items:center;">
+                                 style="padding:10px; background:${bgColor}; border-radius:10px; margin-bottom:8px; font-size:12px; border:1px solid ${borderColor}; display:flex; justify-content:space-between; align-items:center;">
                                 <div onclick="resumeGame('${g.id}', '${opp}', '${g.fen}', '${g.white === userName ? 'w' : 'b'}', ${g.whiteTime}, ${g.blackTime})" style="flex:1; cursor:pointer;">
                                     <div style="display:flex; justify-content:space-between; align-items:center;">
                                         <div style="display:flex; flex-direction:column;">
-                                            <span style="font-weight:700;">🆚 ${opp}</span>
+                                            <span style="font-weight:700;">${isCurrentGame ? '🎮 ' : ''}🆚 ${opp}</span>
                                             <span style="font-size:10px; opacity:0.6;">⏳ Yo: ${Math.floor((g.white === userName ? g.whiteTime : g.blackTime) / 60)}m</span>
                                         </div>
                                         ${turnLabel}
@@ -2590,6 +2615,16 @@ window.setMode = function (mode, addToHistory = true) {
         $('#opp-name').text('Oponente Online');
         // Ocultar el contenedor de crear reto cuando ya estamos en partida
         $('#online-setup-container').slideUp();
+
+        // En PC, asegurar que la sidebar derecha esté visible y actualizada
+        if (window.innerWidth > 900) {
+            $('.sidebar-right').show();
+            // Refrescar listas de partidas y retos
+            if (socket && isAuth) {
+                socket.emit('get_my_games');
+                socket.emit('get_lobby');
+            }
+        }
     } else if (mode === 'exercises') {
         loadRandomPuzzle();
     } else if (mode === 'pass-and-play') {

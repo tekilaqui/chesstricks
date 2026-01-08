@@ -107,6 +107,15 @@
             overflow-y: auto;
         }
 
+        /* Desktop/Mobile visibility helpers */
+        .desktop-only {
+            display: block;
+        }
+
+        .mobile-only {
+            display: none !important;
+        }
+
         @media (max-width: 900px) {
             .app-container {
                 padding: 0;
