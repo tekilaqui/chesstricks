@@ -1475,8 +1475,9 @@ socket.on('my_games_list', (games) => {
     const myTurns = games.filter(g => (g.turn === 'w' && g.white === userName) || (g.turn === 'b' && g.black === userName));
     if (myTurns.length > 0) {
         $('#header-elo3').css('border-color', '#ef4444').css('background', 'rgba(239, 68, 68, 0.2)').attr('title', 'Es tu turno!');
+        if ($('#header-elo3').find('.notify-dot').length === 0) $('#header-elo3').append('<span class="notify-dot" style="display:inline-block; width:6px; height:6px; background:#ef4444; border-radius:50%; margin-left:4px;"></span>');
     } else {
-        $('#header-elo3').css('border-color', '').css('background', '');
+        $('#header-elo3').css('border-color', '').css('background', '').find('.notify-dot').remove();
     }
 
     if (games.length === 0) {
@@ -1684,22 +1685,23 @@ socket.on('lobby_update', (challenges) => {
     // NOTIFICATION LOGIC
     if (challenges.length > 0) {
         $('#header-elo10').css('border-color', '#ef4444').attr('title', 'Hay retos pendientes!');
+        // Add visual dot if not present
+        if ($('#header-elo10').find('.notify-dot').length === 0) $('#header-elo10').append('<span class="notify-dot" style="display:inline-block; width:6px; height:6px; background:#ef4444; border-radius:50%; margin-left:4px;"></span>');
     } else {
-        $('#header-elo10').css('border-color', '');
+        $('#header-elo10').css('border-color', '').find('.notify-dot').remove();
     }
 
     if (challenges.length === 0) return list.append('<div style="font-size:0.65rem; color:var(--text-muted); text-align:center; padding:10px;">No hay retos disponibles.</div>');
 
-    games.forEach(g => {
-        const isMyTurn = (g.turn === 'w' && g.white === userName) || (g.turn === 'b' && g.black === userName);
-        const opp = (g.white === userName) ? g.black : g.white;
-        const item = $(`
-            <div class="active-game-item ${isMyTurn ? 'my-turn' : ''}" onclick="loadGame('${g.id}')">
-                <div style="flex:1"><b>vs ${opp}</b></div>
-                <div style="font-size:0.6rem; opacity:0.8">${isMyTurn ? 'TU TURNO ⚡' : 'Esperando...'}</div>
-            </div>
-        `);
-        list.append(item);
+    challenges.forEach(data => {
+        const html = `
+                    <div class="challenge-item" onclick="joinGame('${data.id}', '${data.user}', '${data.time}')" 
+                         style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:rgba(255,255,255,0.05); margin-bottom:5px; border-radius:6px; cursor:pointer; font-size:0.7rem;">
+                        <span>👤 ${data.user} (${data.elo})</span>
+                        <span style="color:var(--accent)">${data.time} min ⚔️</span>
+                    </div>
+                `;
+        list.append(html);
     });
 });
 

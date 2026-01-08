@@ -666,6 +666,15 @@
         </div>
 
         <aside class="sidebar-right">
+            <!-- CONTROLES SUPERIORES (PC) - Visible solo en modos de juego -->
+            <div id="game-sidebar-controls"
+                style="display:none; gap:5px; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.05);">
+                <button class="btn-tool" onclick="goBackToMenu()" style="flex:1; background:rgba(255,255,255,0.05);">🏠
+                    Menú</button>
+                <button class="btn-tool" onclick="board.flip()" style="flex:1; background:rgba(255,255,255,0.05);">🔄
+                    Girar</button>
+            </div>
+
             <div class="sidebar-tabs">
                 <button class="tab-btn active" data-tab="tab-play">⚙️ JUEGO</button>
                 <button class="tab-btn" data-tab="tab-chat">💬 CHAT</button>
