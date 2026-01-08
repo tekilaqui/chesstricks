@@ -191,22 +191,44 @@
                         </div>
 
                         <div id="opening-sel-container"
-                            style="display:none; background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; border: 1px solid rgba(255,255,255,0.1); margin-top:10px;">
-                            <label class="label-tiny">ELEGIR LÍNEA TEÓRICA</label>
-                            <select class="btn-control" id="opening-sel-main" style="margin-bottom:12px;">
-                                <option value="">-- Seleccionar --</option>
-                            </select>
+                            style="display:none; background:rgba(0,0,0,0.25); padding:18px; border-radius:15px; border: 1px solid rgba(255,255,255,0.08); margin-top:15px; box-shadow: inset 0 0 20px rgba(0,0,0,0.2);">
 
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                                <button class="btn-tool" onclick="setMode('study')"
-                                    style="background:rgba(56, 189, 248, 0.1); color:#38bdf8; border-color:rgba(56, 189, 248, 0.3);">
-                                    <span>👀</span> Ver Teoría
+                            <div style="margin-bottom:15px;">
+                                <label class="label-tiny"
+                                    style="color:var(--accent); display:block; margin-bottom:8px;">❶ ELIGE TU
+                                    APERTURA</label>
+                                <select class="btn-control" id="opening-sel-main" style="width:100%; font-weight:600;">
+                                    <option value="">-- Seleccionar Apertura --</option>
+                                </select>
+                            </div>
+
+                            <div style="margin-bottom:20px;">
+                                <label class="label-tiny"
+                                    style="color:var(--accent); display:block; margin-bottom:8px;">❷ NIVEL DEL MAESTRO
+                                    (ELO)</label>
+                                <select class="btn-control" id="opening-elo-sel" style="width:100%;">
+                                    <option value="1">♟️ Principiante (600)</option>
+                                    <option value="5" selected>♝ Intermedio (1200)</option>
+                                    <option value="10">♜ Avanzado (1800)</option>
+                                    <option value="15">♛ Experto (2200)</option>
+                                    <option value="20">♚ Maestro (2500+)</option>
+                                </select>
+                            </div>
+
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                                <button class="btn-tool" onclick="startTheoreticalStudy()"
+                                    style="background:rgba(56, 189, 248, 0.15); color:#38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); font-weight:800; padding:15px; border-radius:10px; transition:0.3s; cursor:pointer;">
+                                    <span style="font-size:1.2rem; display:block; margin-bottom:4px;">📖</span> TEORÍA
                                 </button>
-                                <button class="btn-tool" onclick="startOpeningPractice()"
-                                    style="background:rgba(139, 92, 246, 0.1); color:#a78bfa; border-color:rgba(139, 92, 246, 0.3);">
-                                    <span>⚔️</span> Entrenar
+                                <button class="btn-tool" onclick="startOpeningPracticeManual()"
+                                    style="background:rgba(139, 92, 246, 0.15); color:#a78bfa; border: 1px solid rgba(139, 92, 246, 0.4); font-weight:800; padding:15px; border-radius:10px; transition:0.3s; cursor:pointer;">
+                                    <span style="font-size:1.2rem; display:block; margin-bottom:4px;">⚔️</span> ENTRENAR
                                 </button>
                             </div>
+                            <p
+                                style="font-size:0.55rem; color:var(--text-muted); margin-top:12px; font-style:italic; text-align:center;">
+                                * En modo <b>Entrenar</b>, el Maestro jugará contra ti siguiendo la línea.
+                            </p>
                         </div>
 
                         <div class="btn-menu" onclick="showSubMenu('analisis')">

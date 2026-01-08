@@ -584,33 +584,27 @@ function makeAIMove() {
 
     // Opening Practice Logic
     if (aiPracticeLine && aiPracticeIndex < aiPracticeLine.length) {
-        // If it's AI turn, find the move in the practice line
         const sideThatMoves = game.turn();
 
-        // We only force the move if it's the AI's turn color
+        // El motor juega como el oponente del jugador
         if (sideThatMoves !== myColor) {
             let moveToPlay = aiPracticeLine[aiPracticeIndex];
 
-            // Check if the current board state matches the practice line
-            // If the user deviated, we stop the practice line
-            const currentHistory = game.history();
-            const matchingSoFar = aiPracticeLine.slice(0, aiPracticeIndex).every((m, i) => m === currentHistory[i]);
-
-            if (matchingSoFar) {
-                setTimeout(() => {
-                    game.move(moveToPlay);
+            setTimeout(() => {
+                const m = game.move(moveToPlay);
+                if (m) {
                     board.position(game.fen());
                     aiPracticeIndex++;
                     updateUI(true);
                     checkGameOver();
-
-                    // If next move is also AI (shouldn't happen in 1v1), recurse
-                    // But usually now it's player's turn, so we just wait.
-                }, 800);
-                return;
-            } else {
-                aiPracticeLine = null; // Deviated, switch to engine
-            }
+                    $('#book-move-indicator').fadeIn();
+                } else {
+                    // Fallback if move is somehow illegal (shouldn't happen with correct theory)
+                    aiPracticeLine = null;
+                    makeAIMove();
+                }
+            }, 800);
+            return;
         }
     }
 
@@ -847,6 +841,21 @@ function onDrop(source, target) {
     });
 
     if (move === null) return 'snapback';
+
+    // Práctica de Apertura: Verificar si el movimiento del jugador es teórico
+    if (currentMode === 'ai' && aiPracticeLine) {
+        let expected = aiPracticeLine[aiPracticeIndex];
+        // Normalizar comparación (san o lan)
+        if (move.san === expected || (move.from + move.to) === expected) {
+            aiPracticeIndex++;
+            $('#book-move-indicator').fadeIn();
+        } else {
+            // Se desvió de la teoría
+            aiPracticeLine = null;
+            $('#book-move-indicator').fadeOut();
+            showToast("Te has desviado de la línea teórica. ¡Ahora juegas contra el motor!", "⚙️");
+        }
+    }
 
     // Borrar flechas al mover
     drawBestMoveArrow(null);
@@ -2214,12 +2223,8 @@ window.startMaestroMode = function () {
 };
 
 window.startOpeningPractice = function () {
-    const val = $('#opening-sel-main').val();
-    if (!val) return alert("Selecciona una apertura primero.");
-
-    $('#ai-opening-practice').val(val);
-    $('#btn-start-ai').click();
-    showToast("Iniciando entrenamiento...", "⚔️");
+    // This was the old global function, redirected to manual for consistency
+    startOpeningPracticeManual();
 };
 
 window.createOnlineChallenge = function (fromSidebar) {
@@ -2250,11 +2255,12 @@ $(document).on('click', '#btn-flip, #btn-flip-mobile', function () {
     if (typeof board !== 'undefined') board.flip();
 });
 
-// Sync opening selector
-$('#opening-sel-main').on('change', function () {
-    var val = $(this).val();
-    if (!val) return;
-    setMode('study'); // Entrar en modo estudio al elegir apertura
+// Manual Opening Handlers
+window.startTheoreticalStudy = function () {
+    var val = $('#opening-sel-main').val();
+    if (!val) return alert("Selecciona una apertura primero.");
+
+    setMode('study');
 
     var parts = val.split('-');
     var gIdx = parseInt(parts[0]);
@@ -2270,7 +2276,21 @@ $('#opening-sel-main').on('change', function () {
     $('#study-controls').show();
     $('#btn-study-next').text("⏩ Siguiente Jugada (" + studyMoves.length + ")");
     updateUI();
-});
+    showToast("Modo Teoría: Sigue los pasos de la apertura", "📖");
+};
+
+window.startOpeningPracticeManual = function () {
+    var val = $('#opening-sel-main').val();
+    if (!val) return alert("Selecciona una apertura primero.");
+
+    // Configurar ELO de la IA para esta práctica
+    const openingElo = $('#opening-elo-sel').val();
+    $('#diff-sel').val(openingElo);
+
+    // Iniciar práctica de apertura
+    $('#ai-opening-practice').val(val);
+    $('#btn-start-ai').click();
+};
 
 // New menu triggers
 $('#btn-editor-main, #btn-editor').off('click').click(() => {
