@@ -197,14 +197,16 @@ function detectOpening() {
     return { name: foundName, moveCount: foundMoveCount };
 }
 
-function getQualityMsg(diff, isMate) {
+function getQualityMsg(diff, isMate, isBookMove = false) {
     const t = LANGS[currentLang];
+    if (isBookMove) return { text: "📖 " + (t.book || "Teoría / Libro"), class: 'quality-book', symbol: '📖' };
     if (isMate) return { text: "!! " + t.mate, class: 'quality-excellent', symbol: '!!' };
-    if (diff < 0.05) return { text: "!! " + (t.brilliant || "Jugada Maestra"), class: 'quality-excellent', symbol: '!!' };
-    if (diff < 0.15) return { text: "! " + t.best, class: 'quality-excellent', symbol: '!' };
-    if (diff < 0.35) return { text: t.good, class: 'quality-excellent', symbol: '' };
-    if (diff < 0.75) return { text: "?! " + t.inaccuracy, class: 'quality-dubious', symbol: '?!' };
-    if (diff < 1.6) return { text: "? " + t.mistake, class: 'quality-dubious', symbol: '?' };
+    if (diff < 0.1) return { text: "!! " + (t.brilliant || "Jugada Maestra"), class: 'quality-excellent', symbol: '!!' };
+    if (diff < 0.25) return { text: "! " + t.best, class: 'quality-excellent', symbol: '!' };
+    if (diff < 0.5) return { text: "⭐ " + (t.great || "Muy buena"), class: 'quality-excellent', symbol: '⭐' };
+    if (diff < 0.8) return { text: t.good, class: 'quality-excellent', symbol: '' };
+    if (diff < 1.4) return { text: "?! " + t.inaccuracy, class: 'quality-dubious', symbol: '?!' };
+    if (diff < 2.5) return { text: "? " + t.mistake, class: 'quality-dubious', symbol: '?' };
     return { text: "?? " + t.blunder, class: 'quality-blunder', symbol: '??' };
 }
 
@@ -461,23 +463,30 @@ try {
             if (pv && pv[1]) {
                 if (hintsActive || analysisActive) {
                     $('#best-move-display').html("💡 Sugerencia: <b style='color:white'>" + pv[1] + "</b>").show();
+                    drawBestMoveArrow(pv[1]);
                     $('.square-55d63').removeClass('highlight-hint');
                     $('[data-square="' + pv[1].substring(0, 2) + '"]').addClass('highlight-hint');
                     $('[data-square="' + pv[1].substring(2, 4) + '"]').addClass('highlight-hint');
                 } else {
+                    drawBestMoveArrow(null);
                     $('.square-55d63').removeClass('highlight-hint');
                     $('#best-move-display').hide();
                 }
 
                 if (currentMode === 'ai' || isJ || analysisActive || hintsActive || currentMode === 'study') {
-                    var diff = 0;
+                    const fullHistory = game.history({ verbose: true });
+                    const lastMove = fullHistory.length > 0 ? fullHistory[fullHistory.length - 1] : null;
+
+                    var diffVal = 0;
                     if (window.lastEval !== undefined) {
-                        const turn = game.turn();
-                        const prev = window.lastEval;
-                        const curr = ev;
-                        if (turn === 'b') { diff = prev - curr; }
-                        else { diff = curr - prev; }
+                        const gameTurn = game.turn();
+                        const prevE = window.lastEval;
+                        const currE = ev;
+                        if (gameTurn === 'b') { diffVal = prevE - currE; }
+                        else { diffVal = currE - prevE; }
                     }
+
+                    const evalMag = Math.abs(diffVal);
 
                     let trapMsg = "";
                     if (diff > 1.5) {
@@ -489,29 +498,24 @@ try {
                         }
                     }
 
-                    var evalMag = Math.abs(diff);
-                    var q = getQualityMsg(evalMag, l.includes('mate'));
-                    var acc = Math.max(0, Math.min(100, 100 - (evalMag * 20)));
+                    const historyStr = game.history().join(' ');
+                    const isBook = isBookMove(lastMove ? lastMove.san : '');
+                    var q = getQualityMsg(evalMag, l.includes('mate'), isBook);
+                    var acc = isBook ? 100 : Math.max(0, Math.min(100, 100 - (evalMag * 20)));
 
                     let explanation = '';
                     let tacticalInfo = '';
-                    const history = game.history({ verbose: true });
-                    const lastMove = history.length > 0 ? history[history.length - 1] : null;
-                    const isOpening = history.length <= 15;
+                    const isOpening = fullHistory.length <= 15;
                     const isEndgame = game.board().flat().filter(p => p && p.type !== 'p').length <= 8;
 
                     function getStrategicAdvice() {
                         const turn = game.turn();
-                        const myPieces = game.board().flat().filter(p => p && p.color === turn);
                         if (isOpening) {
-                            const developedPieces = myPieces.filter(p => ['n', 'b', 'r', 'q'].includes(p.type)).length;
-                            if (developedPieces < 3) return "🎯 Enfócate en desarrollar tus caballos y alfiles hacia el centro.";
-                            if (!game.history().some(m => m.includes('O-O'))) return "🏰 Considera proteger tu rey mediante el enroque pronto.";
-                            return "⚔️ Controla el centro con tus peones y prepara el ataque.";
+                            return "🎯 Enfócate en desarrollar tus caballos y alfiles hacia el centro y protege a tu rey.";
                         } else if (isEndgame) {
-                            return "👑 En el final, el rey es una pieza activa. Trata de centralizarlo.";
+                            return "👑 En el final, el rey es una pieza activa. Trata de centralizarlo y avanzar peones.";
                         } else {
-                            return "🧩 Busca debilidades en la estructura de peones del rival o piezas sin defensa.";
+                            return "🧩 Busca debilidades en la estructura de peones o ataques a piezas indefensas.";
                         }
                     }
 
@@ -521,42 +525,17 @@ try {
                         const detected = detectOpening();
                         if (detected.name) {
                             openingName = '🎯 ' + detected.name;
-                            // Si estamos dentro de los movimientos conocidos de la apertura, ser más tolerante
-                            if (history.length <= detected.moveCount + 2) {
-                                inKnownOpening = true;
-                            }
+                            if (history.length <= detected.moveCount) inKnownOpening = true;
                         }
                     }
 
-                    if (lastMove) {
-                        if (game.in_check()) tacticalInfo += '⚔️ ¡Jaque! ';
-                        if (lastMove.captured) tacticalInfo += `📍 Captura de ${lastMove.captured.toUpperCase()}. `;
-                        if (lastMove.flags.includes('p')) tacticalInfo += '👑 ¡Promoción! ';
-                        if (lastMove.flags.includes('k') || lastMove.flags.includes('q')) tacticalInfo += '🏰 Enroque. ';
-                    }
-
-                    // Evaluación numérica para mostrar
-                    let evalDisplay = '';
-                    if (window.currentEval !== undefined) {
-                        const evalNum = window.currentEval;
-                        if (Math.abs(evalNum) > 5) {
-                            evalDisplay = `<div style="font-size:0.65rem; color:${evalNum > 0 ? '#22c55e' : '#ef4444'}; margin-bottom:5px;">Evaluación: ${evalNum > 0 ? '+' : ''}${evalNum.toFixed(1)} (${evalNum > 0 ? 'Ventaja Blancas' : 'Ventaja Negras'})</div>`;
-                        } else {
-                            evalDisplay = `<div style="font-size:0.65rem; color:var(--text-muted); margin-bottom:5px;">Evaluación: ${evalNum > 0 ? '+' : ''}${evalNum.toFixed(1)}</div>`;
-                        }
-                    }
-
-                    // Ser más tolerante en aperturas conocidas
-                    const adjustedDiff = inKnownOpening && diff < 1.0 ? diff * 0.5 : diff;
-
-                    if (adjustedDiff > 2.0) {
+                    if (isBook) explanation = `<div style="color:var(--accent); font-weight:bold;">📖 JUGADA DE TEORÍA:</div> Estas siguiendo las líneas maestras de la apertura ${openingName || ''}.`;
+                    else if (diffVal > 2.0) {
                         explanation = `<div style="color:#ef4444; font-weight:bold;">💥 ERROR GRAVE:</div> Perdiste mucha ventaja. ${lastMove && lastMove.captured ? 'Entregaste material sin compensación.' : 'Permitiste un ataque decisivo o debilitaste gravemente tu posición.'}`;
-                    } else if (adjustedDiff > 0.8) {
+                    } else if (diffVal > 0.8) {
                         explanation = `<div style="color:#f59e0b; font-weight:bold;">⚠️ IMPRECISIÓN:</div> Hay una jugada mucho mejor. ${isOpening ? 'En la apertura, cada movimiento cuenta para el desarrollo.' : 'Estás descuidando la posición o la seguridad de tu rey.'}`;
-                    } else if (adjustedDiff < -0.5) {
+                    } else if (diffVal < -0.5) {
                         explanation = `<div style="color:#22c55e; font-weight:bold;">✨ ¡EXCELENTE!:</div> Has encontrado una jugada muy fuerte que mejora tu posición considerablemente. ${lastMove && lastMove.captured ? '¡Captura ganadora!' : '¡Sigue así!'}`;
-                    } else if (inKnownOpening && adjustedDiff < 0.5) {
-                        explanation = `<div style="color:var(--text-muted);">Siguiendo la teoría de apertura. ${getStrategicAdvice()}</div>`;
                     } else {
                         explanation = `<div style="color:var(--text-muted);">${getStrategicAdvice()}</div>`;
                     }
@@ -604,6 +583,50 @@ try {
     };
 } catch (e) {
     console.error("❌ Error cargando Stockfish:", e);
+}
+
+function makeAIMove() {
+    if (game.game_over()) return;
+
+    // Opening Practice Logic
+    if (aiPracticeLine && aiPracticeIndex < aiPracticeLine.length) {
+        // If it's AI turn, find the move in the practice line
+        const sideThatMoves = game.turn();
+
+        // We only force the move if it's the AI's turn color
+        if (sideThatMoves !== myColor) {
+            let moveToPlay = aiPracticeLine[aiPracticeIndex];
+
+            // Check if the current board state matches the practice line
+            // If the user deviated, we stop the practice line
+            const currentHistory = game.history();
+            const matchingSoFar = aiPracticeLine.slice(0, aiPracticeIndex).every((m, i) => m === currentHistory[i]);
+
+            if (matchingSoFar) {
+                setTimeout(() => {
+                    game.move(moveToPlay);
+                    board.position(game.fen());
+                    aiPracticeIndex++;
+                    updateUI(true);
+                    checkGameOver();
+
+                    // If next move is also AI (shouldn't happen in 1v1), recurse
+                    // But usually now it's player's turn, so we just wait.
+                }, 800);
+                return;
+            } else {
+                aiPracticeLine = null; // Deviated, switch to engine
+            }
+        }
+    }
+
+    // Engine Logic
+    if (stockfish) {
+        const diff = parseInt($('#diff-sel').val());
+        stockfish.postMessage('stop');
+        stockfish.postMessage('position fen ' + game.fen());
+        stockfish.postMessage('go depth ' + diff);
+    }
 }
 
 function checkGameOver() {
@@ -765,18 +788,12 @@ function updateUI(moved = false) {
         }
 
         // STOCKFISH ANALYSIS ON EVERY MOVE
-        // Trigger if: AI Mode OR Hints are Active (Study/Local)
         if (stockfish && (currentMode === 'ai' || hintsActive)) {
-            stockfish.postMessage('stop');
-            stockfish.postMessage('position fen ' + game.fen());
-
-            const diff = parseInt($('#diff-sel').val()) || 5;
-            // AI Turn: Use selected difficulty
-            // But if HintsActive and it's NOT AI mode, use max depth
             if (currentMode === 'ai' && game.turn() !== myColor) {
-                stockfish.postMessage('go depth ' + diff);
-            } else {
-                // Player Turn or Analysis/Hints
+                makeAIMove(); // AI Move
+            } else if (hintsActive) {
+                stockfish.postMessage('stop');
+                stockfish.postMessage('position fen ' + game.fen());
                 stockfish.postMessage('go depth 15');
             }
         }
@@ -1462,27 +1479,23 @@ $('#btn-start-ai').click(() => {
     gameStarted = false;
     $('#opp-name').text('Stockfish ' + $('#diff-sel option:selected').text());
 
-    currentMode = 'ai'; // Forzar modo IA por si acaso
+    // Check for specific opening practice
+    const practiceVal = $('#ai-opening-practice').val();
+    if (practiceVal) {
+        const [gIdx, iIdx] = practiceVal.split('-');
+        aiPracticeLine = OPENINGS_DATA[gIdx].items[iIdx].m;
+        aiPracticeIndex = 0;
+        showToast("Práctica de apertura: " + OPENINGS_DATA[gIdx].items[iIdx].name, "📖");
+    } else {
+        aiPracticeLine = null;
+    }
+
+    currentMode = 'ai';
     updateUI();
     resetTimers();
 
-    // Trigger analysis if it's AI turn (Black start)
     if (myColor === 'b') {
-        // Initial move for White (AI)
-        setTimeout(() => {
-            const openings = ['e4', 'd4', 'Nf3', 'c4'];
-            const move = openings[Math.floor(Math.random() * openings.length)];
-            game.move(move);
-            board.position(game.fen());
-            updateUI(true);
-        }, 500);
-    } else {
-        // Player is white, wait for move
-        if (stockfish) {
-            stockfish.postMessage('stop');
-            stockfish.postMessage('position fen ' + game.fen());
-            stockfish.postMessage('go depth 10'); // Warm up
-        }
+        setTimeout(makeAIMove, 600);
     }
 });
 
@@ -1618,6 +1631,88 @@ function calculateAccuracy(prevEval, currentEval, turn) {
     // Convert win probability loss to accuracy
     // A loss of 100% (mate missed) drops accuracy significantly
     return Math.max(0, 100 - (loss * 1.5));
+}
+
+// --- ARROW DRAWING LOGIC ---
+function drawBestMoveArrow(move) {
+    const canvas = document.getElementById('arrowCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // Adjust canvas size to parent
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (!move) return;
+
+    const from = move.substring(0, 2);
+    const to = move.substring(2, 4);
+
+    // Helper to get square pixel center
+    function getSqPos(sq) {
+        const file = sq.charCodeAt(0) - 97; // a=0, b=1...
+        const rank = 8 - parseInt(sq[1]);   // 8=0, 7=1...
+
+        // Adjust for board orientation
+        const isFlipped = $('.chessboard-63f37').hasClass('orientation-black');
+        let f = isFlipped ? (7 - file) : file;
+        let r = isFlipped ? (7 - rank) : rank;
+
+        const sqW = canvas.width / 8;
+        const sqH = canvas.height / 8;
+
+        return {
+            x: f * sqW + sqW / 2,
+            y: r * sqH + sqH / 2
+        };
+    }
+
+    const p1 = getSqPos(from);
+    const p2 = getSqPos(to);
+
+    // Draw Arrow
+    const headLen = 15;
+    const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.7)'; // Accent sky blue
+    ctx.lineWidth = 8;
+    ctx.lineCap = 'round';
+
+    // Line part
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+
+    // Head part
+    ctx.beginPath();
+    ctx.moveTo(p2.x, p2.y);
+    ctx.lineTo(p2.x - headLen * Math.cos(angle - Math.PI / 6), p2.y - headLen * Math.sin(angle - Math.PI / 6));
+    ctx.moveTo(p2.x, p2.y);
+    ctx.lineTo(p2.x - headLen * Math.cos(angle + Math.PI / 6), p2.y - headLen * Math.sin(angle + Math.PI / 6));
+    ctx.stroke();
+}
+
+function isBookMove(moveSan) {
+    const history = game.history();
+    const currentMovesStr = history.slice(0, -1).join(' ');
+    let isBook = false;
+
+    OPENINGS_DATA.forEach(group => {
+        group.items.forEach(item => {
+            const bookLine = item.m.join(' ');
+            if (bookLine.startsWith(currentMovesStr)) {
+                // If the current move matches the next move in a known sequence
+                const moveIdx = history.length - 1;
+                if (item.m[moveIdx] === moveSan || item.m[moveIdx] === (history[moveIdx])) {
+                    isBook = true;
+                }
+            }
+        });
+    });
+    return isBook;
 }
 
 async function analyzeFullGame() {
@@ -2079,6 +2174,7 @@ window.setMode = function (mode) {
     }
 
     if (mode === 'ai' || mode === 'study' || mode === 'exercises') {
+        $('#master-coach-panel').fadeIn();
         $('#btn-hint-main').css('display', 'flex').fadeIn();
         $('#btn-hint-mobile-bar').show();
         if (mode === 'study') {
@@ -2086,6 +2182,7 @@ window.setMode = function (mode) {
             $('#btn-hint-main, #btn-ai-hint, #btn-suggest-move').addClass('active').text("💡 PISTAS: ON");
         }
     } else {
+        $('#master-coach-panel').hide();
         $('#btn-hint-main').hide();
         $('#btn-hint-mobile-bar').hide();
     }
@@ -2132,6 +2229,8 @@ $(document).on('click', '#btn-flip, #btn-flip-mobile', function () {
 $('#opening-sel-main').on('change', function () {
     var val = $(this).val();
     if (!val) return;
+    setMode('study'); // Entrar en modo estudio al elegir apertura
+
     var parts = val.split('-');
     var gIdx = parseInt(parts[0]);
     var iIdx = parseInt(parts[1]);
@@ -2148,6 +2247,40 @@ $('#opening-sel-main').on('change', function () {
     updateUI();
 });
 
+// New menu triggers
+$('#btn-editor-main, #btn-editor').off('click').click(() => {
+    setMode('study');
+
+    // Configurar Chessboard para modo edición
+    if (board) board.destroy();
+    board = Chessboard('myBoard', {
+        draggable: true,
+        dropOffBoard: 'trash',
+        sparePieces: true,
+        position: game.fen(),
+        pieceTheme: getPieceTheme,
+        onDrop: (source, target, piece, newPos, oldPos, orientation) => {
+            // Sincronizar Chess.js con la nueva posición del editor
+            setTimeout(() => {
+                const newFen = Chessboard.objToFen(newPos) + " w - - 0 1";
+                try {
+                    game.load(newFen);
+                    updateUI(true);
+                } catch (e) { console.error("FEN Inválido", e); }
+            }, 100);
+        }
+    });
+
+    $(window).resize(board.resize);
+    showToast("Modo Editor: Arrastra piezas o bórralas fuera del tablero", "⛏️");
+    $('#coach-txt').html("<b>Modo Editor Activo.</b> Coloca las piezas y luego usa las herramientas de análisis.");
+});
+
+$('#btn-pgn-main').click(() => {
+    setMode('study');
+    $('#btn-pgn').click();
+});
+
 // Sync puzzles categories
 $('#puz-cat-sel-main').on('change', function () {
     $('#puz-cat-sel').val($(this).val()).trigger('change');
@@ -2155,7 +2288,7 @@ $('#puz-cat-sel-main').on('change', function () {
 
 $('#btn-pgn-main').click(() => $('#btn-pgn').click());
 
-// Fill opening selector main
+// Fill opening selector main & AI Practice selector
 if (typeof OPENINGS_DATA !== 'undefined') {
     OPENINGS_DATA.forEach((group, groupIdx) => {
         let optgroup = `<optgroup label="${group.group}">`;
@@ -2163,9 +2296,12 @@ if (typeof OPENINGS_DATA !== 'undefined') {
             optgroup += `<option value="${groupIdx}-${itemIdx}">${item.name}</option>`;
         });
         optgroup += `</optgroup>`;
-        $('#opening-sel-main').append(optgroup);
+        $('#opening-sel-main, #ai-opening-practice').append(optgroup);
     });
 }
+
+let aiPracticeLine = null;
+let aiPracticeIndex = 0;
 
 $('#btn-pgn').click(function () {
     const pgn = prompt("Pega el PGN de la partida:");
@@ -2201,6 +2337,8 @@ $('#btn-logout-drawer').click(() => {
 window.goBackToMenu = () => {
     $('body').removeClass('board-active');
     $('#game-sidebar-controls').hide();
+    $('#master-coach-panel').hide();
+    $('#analysis-report-container').hide();
     $('#main-menu-container').show();
     showSubMenu('root');
 };
