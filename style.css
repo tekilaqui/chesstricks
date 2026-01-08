@@ -1,4 +1,4 @@
-        :root {
+﻿        :root {
             /* PROFESSIONAL BLUE & GRAY PALETTE - PREMIUM REFINEMENT */
             --accent: #38bdf8;
             /* Sky Blue 400 */
@@ -45,7 +45,8 @@
             align-items: center;
             justify-content: space-between;
             padding: 0 20px;
-            border-bottom: 2px solid var(--accent);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            /* Soft border instead of blue */
             z-index: 1000;
             flex-shrink: 0;
             position: sticky;
@@ -67,80 +68,83 @@
         /* FIX MOBILE: Quitar height fijo de 1vh para permitir que crezca */
         .app-container {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             flex: 1;
             padding: 8px;
-            gap: 8px;
-            max-width: 1200px;
+            gap: 15px;
+            max-width: 1400px;
             margin: 0 auto;
             width: 100%;
+            height: calc(100vh - 48px);
+            overflow: hidden;
         }
 
         .sidebar-left {
-            width: 100%;
-            order: 1;
+            width: 280px;
+            flex-shrink: 0;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 10px;
+            overflow-y: auto;
         }
 
         .game-zone {
-            width: 100%;
-            order: 2;
+            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
             gap: 8px;
+            min-width: 400px;
         }
 
         .sidebar-right {
-            width: 100%;
-            order: 3;
+            width: 320px;
+            flex-shrink: 0;
             display: flex;
             flex-direction: column;
             gap: 8px;
-            padding-bottom: 20px;
+            overflow-y: auto;
         }
 
         @media (max-width: 900px) {
             .app-container {
                 padding: 0;
                 gap: 0;
+                flex-direction: column;
+                height: auto;
+                overflow-y: auto;
             }
 
-            /* HIDE EVERYTHING EXCEPT MENU INITIALLY ON MOBILE */
             .game-zone,
             .sidebar-right {
                 display: none;
             }
 
-            /* When board is active, show game zone and hide sidebar-left (menu) */
             .board-active .game-zone {
                 display: flex;
+                width: 100% !important;
             }
 
             .board-active .sidebar-left {
+                display: flex;
+                height: auto;
+                padding: 10px;
+                width: 100%;
+            }
+
+            .board-active #main-menu-container {
                 display: none;
             }
 
             .board-active .sidebar-right {
                 display: flex;
                 width: 100% !important;
-                padding: 15px;
+                padding: 10px;
                 background: #0f172a;
-                border-top: 2px solid var(--accent);
+                border-top: 1px solid var(--accent);
                 box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
                 z-index: 10;
-            }
-
-            .tab-content {
-                height: auto !important;
-                min-height: 300px;
-                max-height: 75vh;
-            }
-
-            body.board-active {
-                overflow-y: auto !important;
             }
 
             .sidebar-left {
@@ -153,35 +157,14 @@
 
             .game-zone {
                 width: 100% !important;
-                padding: 10px;
-                height: calc(100vh - 48px);
-                justify-content: space-between;
+                padding: 5px;
+                height: auto;
+                min-height: calc(100vh - 48px);
+                justify-content: flex-start;
+                gap: 4px;
                 overflow-y: auto;
             }
 
-            #myBoard {
-                max-width: 95vw;
-                max-height: 50vh;
-            }
-
-            .nav-toolbar {
-                width: 100%;
-                justify-content: space-between;
-                margin: 10px 0;
-                display: flex !important;
-                gap: 5px;
-            }
-
-            .board-active .mobile-actions-bar {
-                display: flex !important;
-            }
-        }
-
-        .mode-selectors {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            width: 100%;
-            gap: 6px;
         }
 
         .mode-pill {
@@ -282,9 +265,21 @@
             }
 
             .master-panel {
-                padding: 10px;
-                gap: 8px;
-                margin: 4px 0;
+                padding: 8px 12px;
+                gap: 5px;
+                margin: 2px 0;
+                border-radius: 8px;
+            }
+
+            .master-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 1.2rem;
+            }
+
+            .master-text {
+                font-size: 0.65rem;
+                line-height: 1.2;
             }
 
             .mobile-hide {
@@ -297,6 +292,31 @@
 
             .desktop-only {
                 display: none !important;
+            }
+
+            #game-sidebar-controls {
+                display: grid !important;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 5px;
+                width: 100%;
+                margin-top: 5px;
+            }
+
+            #game-sidebar-controls .btn-menu,
+            #game-sidebar-controls .btn-primary,
+            #game-sidebar-controls .btn-danger {
+                padding: 10px 5px !important;
+                font-size: 0.65rem !important;
+                justify-content: center;
+                gap: 5px;
+                margin: 0 !important;
+            }
+
+            #game-sidebar-controls .btn-menu span:first-child {
+                font-size: 1rem;
+                background: none;
+                width: auto;
+                height: auto;
             }
         }
 
@@ -452,26 +472,35 @@
         /* DESKTOP LAYOUT - ALL ON SCREEN */
         @media (min-width: 1150px) {
             .app-container {
+                display: flex;
                 flex-direction: row;
-                justify-content: center;
-                align-items: center;
-                gap: 30px;
-                padding: 10px;
-                height: calc(100vh - 48px);
+                flex: 1;
+                padding: 8px;
+                gap: 15px;
                 max-width: 1400px;
+                margin: 0 auto;
+                width: 100%;
+                height: calc(100vh - 48px);
+                overflow: hidden;
             }
 
             .sidebar-left {
-                width: 250px;
-                height: 100%;
-                justify-content: center;
+                width: 280px;
+                flex-shrink: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                overflow-y: auto;
             }
 
             .game-zone {
-                width: auto;
-                flex: none;
-                height: 100%;
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
                 justify-content: center;
+                gap: 8px;
+                min-width: 400px;
             }
 
             #myBoard {
@@ -483,8 +512,11 @@
 
             .sidebar-right {
                 width: 320px;
-                height: auto;
-                max-height: 90%;
+                flex-shrink: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                overflow-y: auto;
             }
 
             .master-panel {
@@ -545,7 +577,9 @@
             width: 100%;
             max-width: 450px;
             gap: 8px;
-            margin-bottom: 5px;
+            margin-bottom: 2px;
+            margin-top: -5px;
+            /* Pull it up closer */
         }
 
         .btn-action {
@@ -624,7 +658,7 @@
             display: block;
         }
 
-        .board-active #hamburger-menu {
+        .board-active #hamburger-menu-hidden {
             display: none;
         }
 
@@ -1035,7 +1069,7 @@
             display: flex;
             justify-content: center;
             gap: 10px;
-            margin: 10px 0;
+            margin: 2px 0;
             width: 100%;
             max-width: 450px;
         }
@@ -1390,4 +1424,225 @@
 
         #active-games-list {
             padding: 5px 0;
+        }
+
+        /* REFINAMIENTO DE MODOS (ESTUDIO / AN�LISIS) */
+        body.mode-study #sec-ai .btn-danger,
+        body.mode-exercises #sec-ai .btn-danger,
+        body.mode-study #btn-resign-game,
+        body.mode-study #btn-abort-game,
+        body.mode-maestro #btn-resign-game,
+        body.mode-maestro #btn-abort-game,
+        body.mode-exercises #btn-resign-game,
+        body.mode-exercises #btn-abort-game {
+            display: none !important;
+        }
+
+        /* Ocultar pesta�as de chat/historial/ranking en modos de estudio/ejercicios */
+        body.mode-study .sidebar-tabs .tab-btn[data-tab='tab-chat'],
+        body.mode-study .sidebar-tabs .tab-btn[data-tab='tab-history'],
+        body.mode-study .sidebar-tabs .tab-btn[data-tab='tab-ranking'],
+        body.mode-exercises .sidebar-tabs .tab-btn[data-tab='tab-chat'],
+        body.mode-exercises .sidebar-tabs .tab-btn[data-tab='tab-history'],
+        body.mode-exercises .sidebar-tabs .tab-btn[data-tab='tab-ranking'] {
+            display: none !important;
+        }
+
+        /* Ocultar botones de juego en el 'men� inicial' (cuando no hay partida activa) */
+        body:not(.board-active) #btn-flip,
+        body:not(.board-active) #btn-resign-game,
+        body:not(.board-active) #btn-abort-game,
+        body:not(.board-active) #btn-resign-local,
+        body:not(.board-active) #btn-abort {
+            display: none !important;
+        }
+
+        /* Barra de acciones m�vil: Ocultar rendirse en estudio */
+        body.mode-study .btn-action.resign,
+        body.mode-exercises .btn-action.resign {
+            display: none !important;
+        }
+
+        #guest-access-section {
+            animation: fadeIn 0.5s ease;
+        }
+
+        /* Ocultar pesta�as del sidebar derecho (ahora en el men� hamburguesa) */
+        .sidebar-tabs {
+            display: none !important;
+        }
+
+        .sidebar-right {
+            width: 320px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+        }
+
+        /* REFINAMIENTOS MAESTRO Y MENU INICIAL */
+        body:not(.board-active) #game-sidebar-controls,
+        body:not(.board-active) .sidebar-right .mode-section,
+        body:not(.board-active) .sidebar-right .tab-btn {
+            display: none !important;
+        }
+
+        /* En el menu inicial el sidebar derecho debe estar vacio */
+        body:not(.board-active) .sidebar-right {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Ocultar selectores de apertura en modo Maestro */
+        body.mode-maestro #opening-sel-container,
+        body.mode-maestro #ai-opening-practice {
+            display: none !important;
+        }
+
+        #coach-actions-pc {
+            display: none;
+            margin-top: 10px;
+            gap: 8px;
+        }
+
+        body.mode-ai #coach-actions-pc,
+        body.mode-maestro #coach-actions-pc,
+        body.mode-study #coach-actions-pc,
+        body.mode-exercises #coach-actions-pc {
+            display: flex !important;
+        }
+
+        /* Ajustes adicionales para visibilidad */
+        .sidebar-tabs {
+            display: none !important;
+        }
+
+        .sidebar-right {
+            padding-top: 10px;
+        }
+
+        /* En modo Maestro PC, ocultar el boton de ejercicios y dejar solo girar */
+        body.mode-maestro #coach-actions-pc button[onclick*='startOpeningDrillsManual'] {
+            display: none !important;
+        }
+
+        body.mode-maestro #coach-actions-pc #btn-flip-pc {
+            flex: 1;
+        }
+
+        /* MOVIL: Limpieza de UI en modos Maestro y Local */
+        @media (max-width: 900px) {
+
+            /* Quitar botones superiores (abortar, rendirse, etc) en estos modos */
+            body.mode-maestro #game-sidebar-controls,
+            body.mode-pass-and-play #game-sidebar-controls {
+                display: none !important;
+            }
+
+            /* Reducir panel de maestro para que quepa todo */
+            body.mode-maestro #master-coach-panel {
+                padding: 6px 10px !important;
+                margin-top: 5px !important;
+                background: rgba(30, 41, 59, 0.95) !important;
+            }
+
+            body.mode-maestro .master-avatar {
+                width: 28px !important;
+                height: 28px !important;
+                font-size: 0.9rem !important;
+            }
+
+            body.mode-maestro .master-text {
+                font-size: 0.6rem !important;
+                line-height: 1.1 !important;
+            }
+        }
+
+        /* Local: Quitar biblioteca de aperturas y botones extras */
+        body.mode-pass-and-play #opening-sel,
+        body.mode-pass-and-play #study-controls,
+        body.mode-pass-and-play #btn-suggest-move,
+        body.mode-pass-and-play h4[style*='color:var(--accent); letter-spacing:1px;'] {
+            display: none !important;
+        }
+
+        /* Ocultar botones de arriba en Juego Local (Online/Room) si el usuario lo pide tamien */
+        body.mode-local #game-sidebar-controls {
+            display: none !important;
+        }
+
+        /* Refinamiento adicional local */
+        body.mode-pass-and-play .label-tiny:contains('BIBLIOTECA'),
+        body.mode-pass-and-play #opening-sel,
+        body.mode-pass-and-play label[for='opening-sel'] {
+            display: none !important;
+        }
+
+        /* Ocultar ejercicios en PC para modo local */
+        body.mode-pass-and-play #coach-actions-pc button[onclick*='startOpeningDrillsManual'] {
+            display: none !important;
+        }
+
+        /* Asegurar que el titulo de biblioteca no salga (busqueda por texto no funciona en CSS puro, usamos el selector de hermano o posicion si es posible, o simplemente ocultamos todo el bloque si es pass-and-play) */
+        body.mode-pass-and-play #sec-study label:first-child {
+            display: none !important;
+        }
+
+        body.mode-pass-and-play #coach-actions-pc #btn-flip-pc {
+            flex: 1;
+        }
+
+        /* PUZZLES Y MAESTRO: Ajustes de visibilidad y tamano */
+        body.mode-exercises #master-coach-panel,
+        body.mode-exercises #btn-hint-mobile-bar,
+        body.mode-exercises #btn-hint-main {
+            display: none !important;
+        }
+
+        /* Expandir dialogo del maestro en modo estudio/análisis PC */
+        body.mode-study #master-coach-panel,
+        body.mode-maestro #master-coach-panel {
+            min-height: 120px;
+        }
+
+        body.mode-study .master-text {
+            font-size: 0.8rem !important;
+            line-height: 1.4 !important;
+        }
+
+        @media (max-width: 900px) {
+
+            /* Ocultar barra superior de control en Online y Puzzles */
+            body.mode-local #game-sidebar-controls,
+            body.mode-exercises #game-sidebar-controls {
+                display: none !important;
+            }
+
+            /* Master box ultra compacta para que quepan los 2 niveles de botones */
+            #master-coach-panel {
+                max-height: 90px !important;
+                overflow-y: auto !important;
+                padding: 6px 10px !important;
+                margin-top: 5px !important;
+                gap: 5px !important;
+            }
+
+            .master-avatar {
+                width: 25px !important;
+                height: 25px !important;
+                font-size: 0.8rem !important;
+            }
+
+            .master-text {
+                font-size: 0.6rem !important;
+                line-height: 1.1 !important;
+            }
+
+            .best-move-box {
+                margin-top: 4px !important;
+                padding: 4px !important;
+                font-size: 0.65rem !important;
+            }
         }

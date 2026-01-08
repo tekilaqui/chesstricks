@@ -33,14 +33,25 @@
                 <h1>CHESS <span style="color:var(--accent)">TRICKS</span></h1>
             </div>
         </div>
-        <div id="header-user-info" style="display:flex; align-items:center; gap:10px;">
-            <div id="header-elo" title="ELO Partidas"
-                style="background:rgba(34, 197, 94, 0.1); border:1px solid var(--accent); color:var(--accent); padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:700;">
-                500 ELO</div>
-            <div id="header-elo-puz" title="ELO Puzzles"
-                style="background:rgba(59, 130, 246, 0.1); border:1px solid #3b82f6; color:#3b82f6; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:700;">
-                500🧩</div>
-            <div id="btn-auth-trigger" style="cursor:pointer; font-size:0.8rem; color:var(--text-muted);">👤 Acceder
+        <div id="header-user-info"
+            style="display:flex; align-items:center; gap:6px; overflow-x:auto; max-width:60vw; scrollbar-width:none;">
+            <div id="header-elo1" title="Bullet (1m)"
+                style="background:rgba(239, 68, 68, 0.1); border:1px solid #ef4444; color:#ef4444; padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:700; flex-shrink:0;">
+                1m: 500</div>
+            <div id="header-elo3" title="Blitz (3m)"
+                style="background:rgba(245, 158, 11, 0.1); border:1px solid #f59e0b; color:#f59e0b; padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:700; flex-shrink:0;">
+                3m: 500</div>
+            <div id="header-elo10" title="Rapid (10-30m)"
+                style="background:rgba(34, 197, 94, 0.1); border:1px solid var(--accent); color:var(--accent); padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:700; flex-shrink:0;">
+                R: 500</div>
+            <div id="header-eloDaily" title="Daily (24h)"
+                style="background:rgba(167, 139, 250, 0.1); border:1px solid #a78bfa; color:#a78bfa; padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:700; flex-shrink:0;">
+                24h: 500</div>
+            <div id="header-elo-puz" title="Puzzles"
+                style="background:rgba(59, 130, 246, 0.1); border:1px solid #3b82f6; color:#3b82f6; padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:700; flex-shrink:0;">
+                🧩: 500</div>
+            <div id="btn-auth-trigger"
+                style="cursor:pointer; font-size:0.8rem; color:var(--text-muted); flex-shrink:0; margin-left:5px;">👤
             </div>
         </div>
     </div>
@@ -92,6 +103,20 @@
             </div>
         </div>
 
+        <!-- SECCIÓN DE NAVEGACIÓN EXTRA -->
+        <div class="drawer-section" id="drawer-nav-extra"
+            style="margin-bottom:20px; border-top:1px solid rgba(255,255,255,0.05); padding-top:15px;">
+            <div class="btn-menu" style="padding:10px; font-size:0.8rem;" onclick="setTab('tab-history')">
+                <span>📜</span><span>Historial de Partidas</span>
+            </div>
+            <div class="btn-menu" style="padding:10px; font-size:0.8rem;" onclick="setTab('tab-ranking')">
+                <span>🏆</span><span>Ranking Global</span>
+            </div>
+            <div class="btn-menu" style="padding:10px; font-size:0.8rem;"
+                onclick="alert('Estadísticas detalladas próximamente...')"><span>📊</span><span>Estadísticas</span>
+            </div>
+        </div>
+
         <div class="drawer-section" style="margin-bottom:20px;">
             <label class="label-tiny" id="lbl-appearance">🎨 APARIENCIA</label>
             <div style="margin-bottom:10px;">
@@ -133,6 +158,22 @@
     <div class="app-container">
         <aside class="sidebar-left">
             <div id="main-menu-container">
+                <!-- SECCIÓN PARA NO AUTENTICADOS (Invitados) -->
+                <div id="guest-access-section"
+                    style="padding:15px; background:rgba(34, 197, 94, 0.05); border:1px solid rgba(34, 197, 94, 0.2); border-radius:12px; margin-bottom:15px; display:none;">
+                    <p
+                        style="font-size:0.75rem; color:var(--text-main); font-weight:700; text-align:center; margin-bottom:10px;">
+                        ¡MEJORA TU NIVEL!</p>
+                    <p style="font-size:0.65rem; color:var(--text-muted); text-align:center; margin-bottom:12px;">
+                        Regístrate para guardar tu progreso, subir ELO y chatear.</p>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <button class="btn-primary" onclick="openAuth()" style="padding:8px; font-size:0.65rem;">INICIAR
+                            SESIÓN</button>
+                        <button class="btn-tool" onclick="openAuth(); $('#auth-switch').click()"
+                            style="padding:8px; font-size:0.65rem;">REGISTRO</button>
+                    </div>
+                </div>
+
                 <!-- MENU PRINCIPAL (LEVEL 1) -->
                 <div class="menu-step active" id="menu-root">
                     <div class="btn-menu" onclick="showSubMenu('jugar')"><span>🎮</span><span>Jugar</span></div>
@@ -142,19 +183,81 @@
 
                 <!-- SUBMENU: JUGAR -->
                 <div class="menu-step" id="menu-jugar">
-                    <button class="btn-back" onclick="showSubMenu('root')">⬅️ Volver</button>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <button class="btn-back" onclick="showSubMenu('root')" style="margin:0;">⬅️ Atras</button>
+                    </div>
 
                     <!-- OPCIONES RÁPIDAS -->
                     <div class="btn-menu" onclick="showSubMenu('online')"><span>🌐</span><span>Juego Online</span></div>
-                    <div class="btn-menu" onclick="startMaestroMode()"><span>👴</span><span>Entrenamiento Maestro</span>
-                    </div>
+                    <div class="btn-menu" onclick="showSubMenu('maestro-setup')"><span>👴</span><span>Entrenamiento
+                            Maestro</span></div>
                     <div class="btn-menu" onclick="setMode('pass-and-play')"><span>👥</span><span>Juego Local</span>
+                    </div>
+                </div>
+
+                <!-- SUBMENU: MAESTRO SETUP -->
+                <div class="menu-step" id="menu-maestro-setup">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <button class="btn-back" onclick="showSubMenu('jugar')" style="margin:0;">⬅️ Atras</button>
+                        <button class="btn-back" onclick="showSubMenu('root')"
+                            style="margin:0; font-size:0.6rem; color:var(--accent);">🏠 Menu</button>
+                    </div>
+                    <div
+                        style="background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
+                        <h3 style="font-size:0.8rem; color:var(--accent); text-align:center;">CONFIGURAR ENTRENAMIENTO
+                        </h3>
+
+                        <div>
+                            <label class="label-tiny">ELIJE TU COLOR</label>
+                            <select class="btn-control" id="maestro-color-sel" style="width:100%;">
+                                <option value="w">Blancas (Empiezas tú)</option>
+                                <option value="b">Negras (Empieza el Maestro)</option>
+                                <option value="random" selected>Aleatorio</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="label-tiny">TIEMPO POR JUGADOR</label>
+                            <select class="btn-control" id="maestro-time-sel" style="width:100%;">
+                                <option value="1">1 Minuto (Bullet)</option>
+                                <option value="3">3 Minutos (Blitz)</option>
+                                <option value="5">5 Minutos (Blitz)</option>
+                                <option value="10" selected>10 Minutos (Rápida)</option>
+                                <option value="15">15 Minutos (Rápida)</option>
+                                <option value="1440">24 Horas (Correspondencia)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="label-tiny">DIFICULTAD DEL MAESTRO</label>
+                            <select class="btn-control" id="maestro-diff-sel" style="width:100%;">
+                                <option value="1">Principiante (600)</option>
+                                <option value="5">Intermedio (1200)</option>
+                                <option value="10">Avanzado (1800)</option>
+                                <option value="15" selected>Experto (2200)</option>
+                                <option value="20">Gran Maestro (2800+)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="label-tiny">PRACTICAR APERTURA (OPCIONAL)</label>
+                            <select class="btn-control" id="maestro-opening-sel" style="width:100%;">
+                                <option value="">-- Juego Libre --</option>
+                            </select>
+                        </div>
+
+                        <button class="btn-primary" onclick="startMaestroModeReal()" style="margin-top:10px;">🚀 EMPEZAR
+                            ENTRENAMIENTO</button>
                     </div>
                 </div>
 
                 <!-- SUBMENU: ONLINE -->
                 <div class="menu-step" id="menu-online">
-                    <button class="btn-back" onclick="showSubMenu('jugar')">⬅️ Volver</button>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <button class="btn-back" onclick="showSubMenu('jugar')" style="margin:0;">⬅️ Atras</button>
+                        <button class="btn-back" onclick="showSubMenu('root')"
+                            style="margin:0; font-size:0.6rem; color:var(--accent);">🏠 Menu</button>
+                    </div>
 
                     <div class="btn-menu" onclick="setMode('local')"><span>🏰</span><span>Sala de Retos</span></div>
 
@@ -170,6 +273,7 @@
                             <option value="5">5 Minutos (Blitz)</option>
                             <option value="10" selected>10 Minutos (Rapid)</option>
                             <option value="30">30 Minutos (Clásico)</option>
+                            <option value="1440">24 Horas (Daily)</option>
                         </select>
                         <button class="btn-primary" onclick="createOnlineChallenge()">⚔️ LANZAR RETO</button>
                         <p style="font-size:0.55rem; color:var(--text-muted); margin-top:5px; text-align:center;">* El
@@ -184,9 +288,11 @@
 
                 <!-- SUBMENU: ESTUDIO -->
                 <div class="menu-step" id="menu-estudio">
-                    <button class="btn-back" onclick="showSubMenu('root')">⬅️ Volver</button>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <button class="btn-back" onclick="showSubMenu('root')" style="margin:0;">⬅️ Atras</button>
+                    </div>
                     <div style="display:flex; flex-direction:column; gap:12px;">
-                        <div class="btn-menu" onclick="$('#opening-sel-container').slideToggle()">
+                        <div class="btn-menu" id="btn-toggle-openings" style="cursor:pointer;">
                             <span>📖</span><span>Aperturas</span>
                         </div>
 
@@ -215,7 +321,29 @@
                                 </select>
                             </div>
 
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                            <div style="margin-bottom:20px;">
+                                <label class="label-tiny"
+                                    style="color:var(--accent); display:block; margin-bottom:8px;">❹ TIEMPO</label>
+                                <select class="btn-control" id="ai-time-sel-opening" style="width:100%;">
+                                    <option value="1">1 Minuto</option>
+                                    <option value="3" selected>3 Minutos</option>
+                                    <option value="10">10 Minutos</option>
+                                    <option value="30">30 Minutos</option>
+                                    <option value="1440">24 Horas (Daily)</option>
+                                </select>
+                            </div>
+
+                            <div style="margin-bottom:20px;">
+                                <label class="label-tiny"
+                                    style="color:var(--accent); display:block; margin-bottom:8px;">❸ TU BANDO</label>
+                                <select class="btn-control" id="opening-side-sel" style="width:100%;">
+                                    <option value="auto">🤖 Auto (Sugerido)</option>
+                                    <option value="w">⚪ Jugar con Blancas</option>
+                                    <option value="b">⚫ Jugar con Negras</option>
+                                </select>
+                            </div>
+
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                                 <button class="btn-tool" onclick="startTheoreticalStudy()"
                                     style="background:rgba(56, 189, 248, 0.15); color:#38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); font-weight:800; padding:15px; border-radius:10px; transition:0.3s; cursor:pointer;">
                                     <span style="font-size:1.2rem; display:block; margin-bottom:4px;">📖</span> TEORÍA
@@ -223,6 +351,11 @@
                                 <button class="btn-tool" onclick="startOpeningPracticeManual()"
                                     style="background:rgba(139, 92, 246, 0.15); color:#a78bfa; border: 1px solid rgba(139, 92, 246, 0.4); font-weight:800; padding:15px; border-radius:10px; transition:0.3s; cursor:pointer;">
                                     <span style="font-size:1.2rem; display:block; margin-bottom:4px;">⚔️</span> ENTRENAR
+                                </button>
+                                <button class="btn-tool" onclick="startOpeningDrillsManual()"
+                                    style="background:rgba(16, 185, 129, 0.15); color:#10b981; border: 1px solid rgba(16, 185, 129, 0.4); font-weight:800; padding:15px; border-radius:10px; transition:0.3s; cursor:pointer; grid-column: span 2;">
+                                    <span style="font-size:1.2rem; display:block; margin-bottom:4px;">🧪</span>
+                                    EJERCICIOS TÁCTICOS
                                 </button>
                             </div>
                             <p
@@ -239,7 +372,11 @@
 
                 <!-- SUBMENU: ANÁLISIS -->
                 <div class="menu-step" id="menu-analisis">
-                    <button class="btn-back" onclick="showSubMenu('estudio')">⬅️ Volver</button>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <button class="btn-back" onclick="showSubMenu('estudio')" style="margin:0;">⬅️ Atras</button>
+                        <button class="btn-back" onclick="showSubMenu('root')"
+                            style="margin:0; font-size:0.6rem; color:var(--accent);">🏠 Menu</button>
+                    </div>
                     <div style="display:flex; flex-direction:column; gap:12px;">
                         <div class="btn-menu" id="btn-editor-main">
                             <span>⛏️</span><span>Editor de Tablero</span>
@@ -255,18 +392,50 @@
 
                 <!-- SUBMENU: PUZZLES -->
                 <div class="menu-step" id="menu-puzzles">
-                    <button class="btn-back" onclick="showSubMenu('root')">⬅️ Volver</button>
-                    <div style="display:flex; flex-direction:column; gap:8px;">
-                        <label class="label-tiny">Categoría</label>
-                        <select class="btn-control" id="puz-cat-sel-main">
-                            <option value="mixed">Mezclados</option>
-                            <option value="mateIn2">Mate en 2</option>
-                            <option value="midgame">Medio Juego</option>
-                            <option value="endgame">Finales</option>
-                        </select>
-                        <div class="btn-menu" onclick="setMode('exercises'); loadRandomPuzzle();">
-                            <span>🚀</span><span>Empezar Puzzles</span>
-                        </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <button class="btn-back" onclick="showSubMenu('root')" style="margin:0;">⬅️ Atras</button>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                        <button class="btn-menu" onclick="setPuzzleCat('mixed')"
+                            style="padding:10px; flex-direction:column; gap:5px; height:auto;">
+                            <span style="font-size:1.2rem; background:none; width:auto; height:auto;">🧩</span>
+                            <span style="font-size:0.65rem;">Mezclados</span>
+                        </button>
+                        <button class="btn-menu" onclick="setPuzzleCat('mateIn1')"
+                            style="padding:10px; flex-direction:column; gap:5px; height:auto;">
+                            <span style="font-size:1.2rem; background:none; width:auto; height:auto;">☝️</span>
+                            <span style="font-size:0.65rem;">Mate en 1</span>
+                        </button>
+                        <button class="btn-menu" onclick="setPuzzleCat('mateIn2')"
+                            style="padding:10px; flex-direction:column; gap:5px; height:auto;">
+                            <span style="font-size:1.2rem; background:none; width:auto; height:auto;">✌️</span>
+                            <span style="font-size:0.65rem;">Mate en 2</span>
+                        </button>
+                        <button class="btn-menu" onclick="setPuzzleCat('mateIn3')"
+                            style="padding:10px; flex-direction:column; gap:5px; height:auto;">
+                            <span style="font-size:1.2rem; background:none; width:auto; height:auto;">🤟</span>
+                            <span style="font-size:0.65rem;">Mate en 3</span>
+                        </button>
+                        <button class="btn-menu" onclick="setPuzzleCat('midgame')"
+                            style="padding:10px; flex-direction:column; gap:5px; height:auto;">
+                            <span style="font-size:1.2rem; background:none; width:auto; height:auto;">⚔️</span>
+                            <span style="font-size:0.65rem;">Medio Juego</span>
+                        </button>
+                        <button class="btn-menu" onclick="setPuzzleCat('endgame')"
+                            style="padding:10px; flex-direction:column; gap:5px; height:auto;">
+                            <span style="font-size:1.2rem; background:none; width:auto; height:auto;">🏁</span>
+                            <span style="font-size:0.65rem;">Finales</span>
+                        </button>
+                        <button class="btn-menu" onclick="setPuzzleCat('opening')"
+                            style="padding:10px; flex-direction:column; gap:5px; height:auto;">
+                            <span style="font-size:1.2rem; background:none; width:auto; height:auto;">📖</span>
+                            <span style="font-size:0.65rem;">Aperturas</span>
+                        </button>
+                        <button class="btn-menu" onclick="setPuzzleCat('advanced')"
+                            style="padding:10px; flex-direction:column; gap:5px; height:auto;">
+                            <span style="font-size:1.2rem; background:none; width:auto; height:auto;">🏆</span>
+                            <span style="font-size:0.65rem;">Avanzados</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -290,6 +459,27 @@
                     style="background:rgba(59, 130, 246, 0.1); border-color:rgba(59, 130, 246, 0.2); color:#3b82f6; padding:10px;">
                     <span>🏠</span><span>Volver al Menú</span>
                 </button>
+
+                <!-- SELECTOR DE CATEGORÍAS RAPIDO PARA PUZZLES -->
+                <div id="puzzle-categories-sidebar"
+                    style="display:none; margin-top:10px; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
+                    <label class="label-tiny" style="margin-bottom:8px; display:block; text-align:center;">CAMBIAR TIPO
+                        DE PUZZLE</label>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+                        <button class="btn-tool" onclick="setPuzzleCat('mixed')"
+                            style="font-size:0.55rem; padding:8px;">🧩 Mezclados</button>
+                        <button class="btn-tool" onclick="setPuzzleCat('mateIn1')"
+                            style="font-size:0.55rem; padding:8px;">☝️ Mate en 1</button>
+                        <button class="btn-tool" onclick="setPuzzleCat('mateIn2')"
+                            style="font-size:0.55rem; padding:8px;">✌️ Mate en 2</button>
+                        <button class="btn-tool" onclick="setPuzzleCat('mateIn3')"
+                            style="font-size:0.55rem; padding:8px;">🤟 Mate en 3</button>
+                        <button class="btn-tool" onclick="setPuzzleCat('midgame')"
+                            style="font-size:0.55rem; padding:8px;">⚔️ Medio Juego</button>
+                        <button class="btn-tool" onclick="setPuzzleCat('endgame')"
+                            style="font-size:0.55rem; padding:8px;">🏁 Finales</button>
+                    </div>
+                </div>
             </div>
 
             <!-- MAESTRO IA PANEL REFINADO -->
@@ -302,6 +492,11 @@
                 <div class="master-content" style="border-left: 1px solid rgba(255,255,255,0.1); padding-left:15px;">
                     <div id="coach-txt" class="master-text" style="text-align:left; font-style:italic;">
                         Inicia un reto para empezar tu entrenamiento...
+                    </div>
+                    <div id="coach-actions-pc" style="margin-top:10px; display:none; gap:5px;">
+                        <button class="btn-tool btn-only-girar" id="btn-flip-pc"
+                            style="flex:1; padding:8px; font-size:0.75rem; font-weight:700;">🔄
+                            GIRAR TABLERO</button>
                     </div>
                     <div id="best-move-display" class="best-move-box"></div>
                 </div>
@@ -344,6 +539,23 @@
                             style="width:auto; padding:10px 25px;">CERRAR</button>
                     </div>
                 </div>
+            </div>
+
+            <!-- CONTROLES PUZZLE DEBAJO DEL TABLERO -->
+            <div id="puzzle-controls-bottom"
+                style="display:none; width:100%; max-width:450px; overflow-x:auto; white-space:nowrap; gap:5px; padding:5px 0; scrollbar-width:none;">
+                <button class="btn-tool" onclick="setPuzzleCat('mixed')" style="font-size:0.6rem; padding:6px 10px;">🧩
+                    Mix</button>
+                <button class="btn-tool" onclick="setPuzzleCat('mateIn1')"
+                    style="font-size:0.6rem; padding:6px 10px;">☝️ Mate 1</button>
+                <button class="btn-tool" onclick="setPuzzleCat('mateIn2')"
+                    style="font-size:0.6rem; padding:6px 10px;">✌️ Mate 2</button>
+                <button class="btn-tool" onclick="setPuzzleCat('midgame')"
+                    style="font-size:0.6rem; padding:6px 10px;">⚔️ Medio</button>
+                <button class="btn-tool" onclick="setPuzzleCat('endgame')"
+                    style="font-size:0.6rem; padding:6px 10px;">🏁 Final</button>
+                <button class="btn-tool" onclick="setPuzzleCat('opening')"
+                    style="font-size:0.6rem; padding:6px 10px;">📖 Apertura</button>
             </div>
 
             <!-- CONTROLES DE NAVEGACIÓN -->
@@ -424,9 +636,10 @@
 
             <!-- BARRA DE ACCIONES SECUNDARIA (SOLO MÓVIL) -->
             <div class="mobile-actions-bar mobile-only">
-                <button class="btn-action" onclick="toggleHints(this)" id="btn-hint-mobile-bar">💡 PISTA</button>
-                <button class="btn-action resign" onclick="resignGame()">🏳️ RENDIRSE</button>
-                <button class="btn-action menu" onclick="goBackToMenu()">🏠 VOLVER</button>
+                <button class="btn-action" id="btn-hint-mobile-bar">💡 PISTA</button>
+                <button class="btn-action" id="btn-drills-mobile-bar">🧪 EJERCICIOS</button>
+                <button class="btn-action resign">🏳️ RENDIRSE</button>
+                <button class="btn-action menu">🏠 VOLVER</button>
             </div>
 
             <!-- BOTÓN PISTAS IA (Para PC, visible en modos entrenamiento) -->
@@ -554,7 +767,8 @@
                         <button class="btn-tool" id="btn-study-prev" style="width:100%">⏪ Anterior</button>
                     </div>
 
-                    <div style="margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
+                    <div
+                        style="margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px; display:none;">
                         <label class="label-tiny">HERRAMIENTAS</label>
                         <button class="btn-tool" id="btn-suggest-move"
                             style="width:100%; margin-bottom:5px; color:var(--accent);">💡 Sugerir Mejor Jugada</button>

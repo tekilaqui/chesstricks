@@ -169,9 +169,13 @@ io.on('connection', (socket) => {
     const u = users[socket.username];
     socket.emit('auth_success', {
       user: socket.username,
-      elo: u.elo || 500, // Ensure updated to 500 default
+      elo: u.elo || 500,
+      elo1: u.elo1 || 500,
+      elo3: u.elo3 || 500,
+      elo10: u.elo10 || 500,
+      eloDaily: u.eloDaily || 500,
       puzElo: u.puzElo || 500,
-      token: socket.handshake.auth.token // Echo back
+      token: socket.handshake.auth.token
     });
     connectedUsers.set(socket.id, socket.username);
   }
@@ -190,7 +194,7 @@ io.on('connection', (socket) => {
 
       users[data.user] = {
         hash, salt, email: data.email,
-        elo: 500, puzElo: 500,
+        elo: 500, elo1: 500, elo3: 500, elo10: 500, eloDaily: 500, puzElo: 500,
         createdAt: new Date().toISOString(),
         stats: { wins: 0, losses: 0, draws: 0 }
       };
@@ -201,7 +205,7 @@ io.on('connection', (socket) => {
       socket.authenticated = true;
       connectedUsers.set(socket.id, data.user);
 
-      socket.emit('auth_success', { user: data.user, elo: 1200, puzElo: 1200, token });
+      socket.emit('auth_success', { user: data.user, elo: 500, elo1: 500, elo3: 500, elo10: 500, eloDaily: 500, puzElo: 500, token });
     } catch (error) {
       console.error('Error en registro:', error);
       socket.emit('auth_error', 'Error en el servidor');
@@ -220,7 +224,16 @@ io.on('connection', (socket) => {
         socket.username = data.user;
         socket.authenticated = true;
         connectedUsers.set(socket.id, data.user);
-        socket.emit('auth_success', { user: data.user, elo: u.elo, puzElo: u.puzElo, token, stats: u.stats || {} });
+        socket.emit('auth_success', {
+          user: data.user,
+          elo: u.elo || 500,
+          elo1: u.elo1 || 500,
+          elo3: u.elo3 || 500,
+          elo10: u.elo10 || 500,
+          eloDaily: u.eloDaily || 500,
+          puzElo: u.puzElo || 500,
+          token, stats: u.stats || {}
+        });
       } else {
         socket.emit('auth_error', 'Credenciales incorrectas');
       }
@@ -233,8 +246,12 @@ io.on('connection', (socket) => {
   socket.on('update_elo', (data) => {
     if (!socket.authenticated || socket.username !== data.user) return;
     if (users[data.user]) {
-      users[data.user].elo = Math.max(0, Math.min(3000, data.elo));
-      users[data.user].puzElo = Math.max(0, Math.min(3000, data.puzElo));
+      if (data.type === 'puz') users[data.user].puzElo = Math.max(0, Math.min(3000, data.elo));
+      else if (data.type === 'elo1') users[data.user].elo1 = Math.max(0, Math.min(3000, data.elo));
+      else if (data.type === 'elo3') users[data.user].elo3 = Math.max(0, Math.min(3000, data.elo));
+      else if (data.type === 'elo10') users[data.user].elo10 = Math.max(0, Math.min(3000, data.elo));
+      else if (data.type === 'eloDaily') users[data.user].eloDaily = Math.max(0, Math.min(3000, data.elo));
+      else users[data.user].elo = Math.max(0, Math.min(3000, data.elo));
       saveUsers();
     }
   });
@@ -274,6 +291,8 @@ io.on('connection', (socket) => {
         fen: game.fen,
         white: game.white,
         black: game.black,
+        whiteElo: game.whiteElo,
+        blackElo: game.blackElo,
         whiteTime: game.whiteTime,
         blackTime: game.blackTime,
         turn: game.turn,
@@ -294,17 +313,23 @@ io.on('connection', (socket) => {
     const isWhite = Math.random() > 0.5;
     const gameTime = (challenge.time || 10) * 60;
 
+    const time = challenge.time || 10;
+    const type = time <= 1 ? 'elo1' : (time <= 3 ? 'elo3' : (time >= 1440 ? 'eloDaily' : 'elo10'));
+
     activeGames[data.id] = {
       id: data.id,
       white: isWhite ? challenge.user : socket.username,
       black: isWhite ? socket.username : challenge.user,
+      whiteElo: isWhite ? (users[challenge.user][type] || 500) : (users[socket.username][type] || 500),
+      blackElo: isWhite ? (users[socket.username][type] || 500) : (users[challenge.user][type] || 500),
       startTime: Date.now(),
       moves: [],
       fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
       turn: 'w',
       whiteTime: gameTime,
       blackTime: gameTime,
-      lastUpdate: Date.now()
+      lastUpdate: Date.now(),
+      time: time
     };
 
     saveGames();
@@ -315,7 +340,9 @@ io.on('connection', (socket) => {
       gameId: data.id,
       white: activeGames[data.id].white,
       black: activeGames[data.id].black,
-      time: challenge.time || 10
+      whiteElo: activeGames[data.id].whiteElo,
+      blackElo: activeGames[data.id].blackElo,
+      time: activeGames[data.id].time
     });
   });
 

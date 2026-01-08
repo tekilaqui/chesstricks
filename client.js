@@ -1,42 +1,49 @@
+﻿// --- PASSWORD TOGGLE ---
+$('#btn-show-pass').off('click').on('click', function () {
+    const input = $('#auth-pass');
+    const type = input.attr('type') === 'password' ? 'text' : 'password';
+    input.attr('type', type);
+    $(this).text(type === 'password' ? '👁️' : '🔒');
+});
+
 const OPENINGS_DATA = [
     {
         group: "Juegos Abiertos (1.e4 e5)", items: [
-            { name: "Apertura Española (Ruy Lopez)", m: ["e4", "e5", "Nf3", "Nc6", "Bb5"] },
-            { name: "Apertura Italiana", m: ["e4", "e5", "Nf3", "Nc6", "Bc4"] },
-            { name: "Defensa De los Dos Caballos", m: ["e4", "e5", "Nf3", "Nc6", "Bc4", "Nf6"] },
-            { name: "Apertura Escocesa", m: ["e4", "e5", "Nf3", "Nc6", "d4"] },
-            { name: "Gambito de Rey", m: ["e4", "e5", "f4"] },
-            { name: "Defensa Philidor", m: ["e4", "e5", "Nf3", "d6"] },
-            { name: "Defensa Petrov", m: ["e4", "e5", "Nf3", "Nf6"] }
+            { name: "Apertura Española (Ruy Lopez)", m: ["e4", "e5", "Nf3", "Nc6", "Bb5", "a6", "Ba4", "Nf6", "O-O"] },
+            { name: "Apertura Italiana", m: ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5", "c3", "Nf6", "d4"] },
+            { name: "Defensa De los Dos Caballos", m: ["e4", "e5", "Nf3", "Nc6", "Bc4", "Nf6", "d3", "Bc5"] },
+            { name: "Apertura Escocesa", m: ["e4", "e5", "Nf3", "Nc6", "d4", "exd4", "Nxd4"] },
+            { name: "Gambito de Rey", m: ["e4", "e5", "f4", "exf4", "Nf3", "d6", "d4"] },
+            { name: "Defensa Philidor", m: ["e4", "e5", "Nf3", "d6", "d4", "exd4", "Nxd4"] },
+            { name: "Defensa Petrov", m: ["e4", "e5", "Nf3", "Nf6", "Nxe5", "d6", "Nf3", "Nxe4"] }
         ]
     },
     {
         group: "Juegos Semi-Abiertos (1.e4 Otros)", items: [
-            { name: "Defensa Siciliana", m: ["e4", "c5"] },
-            { name: "Siciliana Najdorf", m: ["e4", "c5", "Nf3", "d6", "d4", "cxd4", "Nxd4", "Nf6", "Nc3", "a6"] },
-            { name: "Siciliana Dragón", m: ["e4", "c5", "Nf3", "d6", "d4", "cxd4", "Nxd4", "Nf6", "Nc3", "g6"] },
-            { name: "Defensa Francesa", m: ["e4", "e6"] },
-            { name: "Defensa Caro-Kann", m: ["e4", "c6"] },
-            { name: "Defensa Escandinava", m: ["e4", "d5"] },
-            { name: "Defensa Pirc", m: ["e4", "d6", "d4", "Nf6", "Nc3", "g6"] },
-            { name: "Defensa Alekhine", m: ["e4", "Nf6"] }
+            { name: "Defensa Siciliana", m: ["e4", "c5", "Nf3", "d6", "d4", "cxd4", "Nxd4", "Nf6", "Nc3"] },
+            { name: "Siciliana Najdorf", m: ["e4", "c5", "Nf3", "d6", "d4", "cxd4", "Nxd4", "Nf6", "Nc3", "a6", "Be3", "e5"] },
+            { name: "Siciliana Dragón", m: ["e4", "c5", "Nf3", "d6", "d4", "cxd4", "Nxd4", "Nf6", "Nc3", "g6", "Be3", "Bg7", "f3"] },
+            { name: "Defensa Francesa", m: ["e4", "e6", "d4", "d5", "Nc3", "Nf6", "Bg5", "Be7"] },
+            { name: "Defensa Caro-Kann", m: ["e4", "c6", "d4", "d5", "Nc3", "dxe4", "Nxe4", "Bf5"] },
+            { name: "Defensa Escandinava", m: ["e4", "d5", "exd5", "Qxd5", "Nc3", "Qa5", "d4"] },
+            { name: "Defensa Alekhine", m: ["e4", "Nf6", "e5", "Nd5", "d4", "d6", "c4", "Nb6"] }
         ]
     },
     {
         group: "Juegos Cerrados (1.d4 d5)", items: [
-            { name: "Gambito de Dama", m: ["d4", "d5", "c4"] },
-            { name: "Gambito de Dama Aceptado", m: ["d4", "d5", "c4", "dxc4"] },
+            { name: "Gambito de Dama", m: ["d4", "d5", "c4", "e6", "Nc3", "Nf6", "Bg5", "Be7"] },
+            { name: "Gambito de Dama Aceptado", m: ["d4", "d5", "c4", "dxc4", "Nf3", "Nf6", "e3"] },
             { name: "Gambito de Dama Rehusado", m: ["d4", "d5", "c4", "e6"] },
-            { name: "Defensa Eslava", m: ["d4", "d5", "c4", "c6"] },
-            { name: "Sistema Londres", m: ["d4", "d5", "Bf4"] }
+            { name: "Defensa Eslava", m: ["d4", "d5", "c4", "c6", "Nf3", "Nf6", "Nc3", "e6"] },
+            { name: "Sistema Londres", m: ["d4", "d5", "Bf4", "Nf6", "e3", "c5", "c3"] }
         ]
     },
     {
         group: "Defensas Indias (1.d4 Nf6)", items: [
-            { name: "India de Rey", m: ["d4", "Nf6", "c4", "g6", "Nc3", "Bg7", "e4", "d6"] },
-            { name: "India de Dama", m: ["d4", "Nf6", "c4", "e6", "Nf3", "b6"] },
-            { name: "Defensa Nimzo-India", m: ["d4", "Nf6", "c4", "e6", "Nc3", "Bb4"] },
-            { name: "Defensa Grunfeld", m: ["d4", "Nf6", "c4", "g6", "Nc3", "d5"] }
+            { name: "India de Rey", m: ["d4", "Nf6", "c4", "g6", "Nc3", "Bg7", "e4", "d6", "Nf3", "O-O"] },
+            { name: "India de Dama", m: ["d4", "Nf6", "c4", "e6", "Nf3", "b6", "g3", "Ba6"] },
+            { name: "Defensa Nimzo-India", m: ["d4", "Nf6", "c4", "e6", "Nc3", "Bb4", "e3", "O-O"] },
+            { name: "Defensa Grunfeld", m: ["d4", "Nf6", "c4", "g6", "Nc3", "d5", "cxd5", "Nxd5", "e4", "Nxd3"] }
         ]
     },
     {
@@ -49,6 +56,36 @@ const OPENINGS_DATA = [
         ]
     }
 ];
+
+const OPENING_TAG_MAP = {
+    'Apertura Española (Ruy Lopez)': 'Ruy_Lopez',
+    'Apertura Italiana': 'Italian_Game',
+    'Defensa De los Dos Caballos': 'Two_Knights_Defense',
+    'Apertura Escocesa': 'Scotch_Game',
+    'Gambito de Rey': 'Kings_Gambit',
+    'Defensa Philidor': 'Philidor_Defense',
+    'Defensa Petrov': 'Petrov_Defense',
+    'Defensa Siciliana': 'Sicilian_Defense',
+    'Siciliana Najdorf': 'Sicilian_Defense_Najdorf_Variation',
+    'Siciliana Dragón': 'Sicilian_Defense_Dragon_Variation',
+    'Defensa Francesa': 'French_Defense',
+    'Defensa Caro-Kann': 'Caro-Kann_Defense',
+    'Defensa Escandinava': 'Scandinavian_Defense',
+    'Defensa Alekhine': 'Alekhine_Defense',
+    'Gambito de Dama': 'Queens_Gambit',
+    'Gambito de Dama Aceptado': 'Queens_Gambit_Accepted',
+    'Gambito de Dama Rehusado': 'Queens_Gambit_Declined',
+    'Defensa Eslava': 'Slav_Defense',
+    'Sistema Londres': 'London_System',
+    'India de Rey': 'Kings_Indian_Defense',
+    'India de Dama': 'Queens_Indian_Defense',
+    'Defensa Nimzo-India': 'Nimzo-Indian_Defense',
+    'Defensa Grunfeld': 'Grunfeld_Defense',
+    'Apertura Inglesa': 'English_Opening',
+    'Apertura Reti': 'Reti_Opening',
+    'Apertura Bird': 'Bird_Opening',
+    'Apertura Larsen': 'Larsen_Opening'
+};
 
 var game = new Chess();
 var board = null;
@@ -108,6 +145,11 @@ window.lastEval = undefined;
 window.currentEval = undefined;
 var stockfish = null;
 var myColor = 'w';
+var userEloBullet = 500;
+var userEloBlitz = 500;
+var userEloRapid = 500;
+var userEloDaily = 500;
+var opponentElo = 500;
 
 // TIMER VARIABLES
 var whiteTime = 600; // default 10m
@@ -122,6 +164,8 @@ var puzTimerInterval = null;
 var currentPuzzle = null;
 var puzzleStep = 0;
 var userPuzzleElo = parseInt(localStorage.getItem('chess_puz_elo')) || 500;
+var drillCategory = null;
+var localPuzzles = (typeof LOCAL_PUZZLES_DB !== 'undefined') ? LOCAL_PUZZLES_DB : [];
 
 // SISTEMA ELO & AUTH
 var userElo = parseInt(localStorage.getItem('chess_user_elo')) || 500;
@@ -197,10 +241,19 @@ function detectOpening() {
     return { name: foundName, moveCount: foundMoveCount };
 }
 
+function getAiElo() {
+    const diff = parseInt($('#diff-sel').val()) || 5;
+    return 600 + (diff * 100);
+}
+
 function getQualityMsg(diff, isMate, isBookMove = false) {
     const t = LANGS[currentLang];
     if (isBookMove) return { text: "📖 " + (t.book || "Teoría / Libro"), class: 'quality-book', symbol: '📖' };
     if (isMate) return { text: "!! " + t.mate, class: 'quality-excellent', symbol: '!!' };
+
+    // Safety check for null/undefined diff
+    if (diff === null || diff === undefined) diff = 0;
+
     if (diff < 0.1) return { text: "!! " + (t.brilliant || "Jugada Maestra"), class: 'quality-excellent', symbol: '!!' };
     if (diff < 0.25) return { text: "! " + t.best, class: 'quality-excellent', symbol: '!' };
     if (diff < 0.5) return { text: "⭐ " + (t.great || "Muy buena"), class: 'quality-excellent', symbol: '⭐' };
@@ -236,6 +289,7 @@ function setLanguage(l) {
 }
 
 function formatTime(s) {
+    if (isNaN(s) || s === null) return "00:00";
     if (s < 0) s = 0;
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
@@ -280,7 +334,7 @@ function updateTimerVisuals() {
 function endGameByTime(loser) {
     stopClock();
     const winner = loser === 'w' ? 'Negras' : 'Blancas';
-    alert(`¡TIEMPO AGOTADO! Ganan las ${winner}`);
+    alert(`¡TIEMPO AGOTADO! Ganan las ${winner} `);
     checkGameOver(); // handles elo
 }
 
@@ -318,7 +372,7 @@ function updateElo(opponentElo, result, isPuzzle = false) {
         });
     }
 
-    $('#coach-txt').append(`<br><b style="color:var(--accent)">${isPuzzle ? 'Puzzle ELO' : 'ELO'}: ${newElo}</b>`);
+    $('#coach-txt').append(`< br > <b style="color:var(--accent)">${isPuzzle ? 'Puzzle ELO' : 'ELO'}: ${newElo}</b>`);
 }
 
 var solvedPuzzles = JSON.parse(localStorage.getItem('chess_solved_puzzles') || '[]');
@@ -327,8 +381,11 @@ var solvedPuzzles = JSON.parse(localStorage.getItem('chess_solved_puzzles') || '
 // Initial Load or Fallback
 var localPuzzles = (typeof LOCAL_PUZZLES_DB !== 'undefined') ? LOCAL_PUZZLES_DB : [];
 
-async function loadRandomPuzzle(retryCount = 0) {
-    const cat = $('#puz-cat-sel').val();
+var drillCategory = null;
+
+async function loadRandomPuzzle(retryCount = 0, forcedCat = null) {
+    if (forcedCat) drillCategory = forcedCat;
+    const cat = drillCategory || $('#puz-cat-sel').val();
     const themesPool = ['fork', 'pin', 'skewer', 'sacrifice', 'mate', 'mateIn2', 'mateIn1', 'advantage', 'crushing', 'opening', 'middlegame', 'endgame', 'long', 'short'];
 
     if (retryCount === 0) {
@@ -357,8 +414,11 @@ async function loadRandomPuzzle(retryCount = 0) {
             let candidates = localPuzzles.filter(x => !solvedPuzzles.includes(x.PuzzleId));
 
             if (candidates.length > 0) {
-                if (cat !== 'all') {
-                    const match = candidates.filter(x => (x.Themes || "").toLowerCase().includes(cat.toLowerCase()));
+                if (cat !== 'all' && cat !== 'mixed') {
+                    const match = candidates.filter(x =>
+                        (x.Themes || "").toLowerCase().includes(cat.toLowerCase()) ||
+                        (x.OpeningTags || "").toLowerCase().includes(cat.toLowerCase())
+                    );
                     if (match.length > 0) candidates = match;
                 }
                 p = candidates[Math.floor(Math.random() * candidates.length)];
@@ -391,6 +451,9 @@ async function loadRandomPuzzle(retryCount = 0) {
             if (data && data.length > 0) {
                 const fresh = data.filter(x => !solvedPuzzles.includes(x.PuzzleId));
                 p = fresh.length > 0 ? fresh[Math.floor(Math.random() * fresh.length)] : data[0];
+            } else {
+                console.warn("API returned empty list, retrying...");
+                return loadRandomPuzzle(retryCount + 1);
             }
         }
 
@@ -553,9 +616,17 @@ try {
             window.currentEval = ev;
         }
 
-        if (l.startsWith('bestmove') && currentMode === 'ai' && game.turn() !== myColor) {
+        if (l.startsWith('bestmove') && (currentMode === 'ai' || currentMode === 'maestro') && game.turn() !== myColor) {
+            // BLOQUEO: Si estamos en modo práctica de apertura, no dejar que el motor mueva
+            if (aiPracticeLine && aiPracticeIndex < aiPracticeLine.length) {
+                console.log("🛠️ Bloqueando movimiento del motor para favorecer la teoría.");
+                return;
+            }
+
             var bestMove = l.split(' ')[1];
-            const diffLvl = parseInt($('#diff-sel').val());
+            // Use the correct selector based on mode
+            const diffSel = (currentMode === 'maestro') ? '#maestro-diff-sel' : '#diff-sel';
+            const diffLvl = parseInt($(diffSel).val()) || 10;
             let blunderChance = 0;
             if (diffLvl === 1) blunderChance = 0.5;
             else if (diffLvl === 3) blunderChance = 0.35;
@@ -582,35 +653,80 @@ try {
 function makeAIMove() {
     if (game.game_over()) return;
 
-    // Opening Practice Logic
+    if (aiThinking) return;
+
+    const sideThatMoves = game.turn();
+    if (sideThatMoves === myColor) return;
+
+    console.log(`🤖 IA pensando... (Turno: ${sideThatMoves}, MiColor: ${myColor}, PrácticaIdx: ${aiPracticeIndex})`);
+
+    // --- MODO ENTRENAMIENTO DE APERTURA ---
     if (aiPracticeLine && aiPracticeIndex < aiPracticeLine.length) {
-        const sideThatMoves = game.turn();
 
-        // El motor juega como el oponente del jugador
-        if (sideThatMoves !== myColor) {
-            let moveToPlay = aiPracticeLine[aiPracticeIndex];
+        // Sincronización de turno (Paridad)
+        // Blanco (0, 2...) Negro (1, 3...)
+        const expectedParity = (game.turn() === 'w' ? 0 : 1);
+        if (aiPracticeIndex % 2 !== expectedParity) {
+            console.warn(`⚠️ Sincronizando índice de teoría. Turno: ${game.turn()}, Indice: ${aiPracticeIndex}`);
+            aiPracticeIndex++;
+        }
 
-            setTimeout(() => {
-                const m = game.move(moveToPlay);
-                if (m) {
-                    board.position(game.fen());
-                    aiPracticeIndex++;
-                    updateUI(true);
-                    checkGameOver();
-                    $('#book-move-indicator').fadeIn();
-                } else {
-                    // Fallback if move is somehow illegal (shouldn't happen with correct theory)
-                    aiPracticeLine = null;
-                    makeAIMove();
-                }
-            }, 800);
+        if (aiPracticeIndex >= aiPracticeLine.length) {
+            aiPracticeLine = null;
+            makeAIMove();
             return;
         }
+
+        let moveToPlay = aiPracticeLine[aiPracticeIndex];
+        console.log(`📖 [MAESTRO] Turno IA: ${sideThatMoves}. Jugada teórica ID: ${aiPracticeIndex}, Move: ${moveToPlay}`);
+
+        // Detener el motor si está pensando para que no interfiera
+        if (stockfish) stockfish.postMessage('stop');
+
+        // Pequeña pausa para realismo
+        aiThinking = true;
+        setTimeout(() => {
+            // Verificar si sigue siendo el turno de la IA
+            if (game.turn() === myColor) { aiThinking = false; return; }
+
+            console.log(`📖 [MAESTRO] Intentando jugar: ${moveToPlay}`);
+
+            // Intentar mover usando SAN directo o buscando coincidencias relajadas
+            let m = game.move(moveToPlay);
+            if (!m) {
+                // Intento de recuperación para casos de notación sloppy (e.g. 'Nf3' vs 'Nf3+')
+                const verboseMoves = game.moves({ verbose: true });
+                const match = verboseMoves.find(vm => vm.san.replace(/[+#]/g, '') === moveToPlay.replace(/[+#]/g, ''));
+                if (match) {
+                    m = game.move(match.san);
+                }
+            }
+
+            if (m) {
+                board.position(game.fen());
+                aiPracticeIndex++;
+                updateUI(true); // This might trigger makeAIMove again, but lock prevents it
+                checkGameOver();
+                $('#book-move-indicator').fadeIn();
+                $('#coach-txt').html(`<div class="quality-book" style="color:var(--accent); font-weight:800;">📖 MAESTRO IA</div><div style="font-size:0.75rem;">Jugada teórica: <b>${m.san}</b>. Esperando tu respuesta...</div>`);
+                aiThinking = false;
+            } else {
+                console.warn(`❌ [MAESTRO] Jugada teórica ilegal o fallida: ${moveToPlay}. Recurriendo al motor.`);
+                // Si falla la teoría, cancelamos la línea y dejamos que piense el motor
+                aiPracticeLine = null;
+                aiThinking = false; // Release lock so recursive call can work
+                makeAIMove();
+            }
+        }, 800);
+        return;
     }
 
-    // Engine Logic
+    // --- MODO MOTOR ESTÁNDAR (STOCKFISH) ---
     if (stockfish) {
-        const diff = parseInt($('#diff-sel').val());
+        // Use the correct selector based on mode
+        const diffSel = (currentMode === 'maestro') ? '#maestro-diff-sel' : '#diff-sel';
+        const diff = parseInt($(diffSel).val()) || 10;
+
         stockfish.postMessage('stop');
         stockfish.postMessage('position fen ' + game.fen());
         stockfish.postMessage('go depth ' + diff);
@@ -642,10 +758,10 @@ function checkGameOver() {
         stopClock();
         saveToHistory(result);
 
-        if (currentMode === 'ai') {
+        if (currentMode === 'ai' || currentMode === 'maestro') {
             updateElo(getAiElo(), result);
         } else if (currentMode === 'local') {
-            updateElo(800, result);
+            updateElo(opponentElo, result);
         }
 
         // Alert with specific message
@@ -779,8 +895,8 @@ function updateUI(moved = false) {
             window.lastEval = window.currentEval;
         }
 
-        if (stockfish && (currentMode === 'ai' || hintsActive || currentMode === 'study')) {
-            if (currentMode === 'ai' && game.turn() !== myColor) {
+        if (stockfish && currentMode !== 'local' && (currentMode === 'ai' || currentMode === 'maestro' || hintsActive || currentMode === 'study')) {
+            if ((currentMode === 'ai' || currentMode === 'maestro') && game.turn() !== myColor) {
                 makeAIMove();
             } else {
                 stockfish.postMessage('stop');
@@ -819,7 +935,7 @@ function onSnapEnd() {
 
 function onDrop(source, target) {
     // Validar que solo puedas mover tus propias piezas en modos competitivos
-    if (currentMode === 'local' || currentMode === 'ai') {
+    if (currentMode === 'local' || currentMode === 'ai' || currentMode === 'maestro') {
         const piece = game.get(source);
         if (!piece) return 'snapback';
 
@@ -828,7 +944,7 @@ function onDrop(source, target) {
             return 'snapback';
         }
 
-        // En modo AI, solo puedes mover cuando es tu turno
+        // En modo AI, solo puedes mover cuando es tu turno (Maestro permite intervención)
         if (currentMode === 'ai' && game.turn() !== myColor) {
             return 'snapback';
         }
@@ -842,18 +958,29 @@ function onDrop(source, target) {
 
     if (move === null) return 'snapback';
 
-    // Práctica de Apertura: Verificar si el movimiento del jugador es teórico
-    if (currentMode === 'ai' && aiPracticeLine) {
+    // Práctica de Apertura: Verificar si el movimiento es teórico (Jugador o Intervención)
+    if ((currentMode === 'ai' || currentMode === 'maestro') && aiPracticeLine) {
         let expected = aiPracticeLine[aiPracticeIndex];
-        // Normalizar comparación (san o lan)
-        if (move.san === expected || (move.from + move.to) === expected) {
+
+        // Normalizar comparaciones (ignorando '+' de jaque o '#' de mate en la teoría si no están)
+        const moveSan = move.san.replace(/[+#]/g, '');
+        const expectedSan = expected.replace(/[+#]/g, '');
+        const isMatch = (moveSan === expectedSan || (move.from + move.to) === expected);
+
+        console.log(`🕵️ Verificando movimiento: Jugador: ${move.san}, Esperado: ${expected}, Coincide: ${isMatch}`);
+
+        if (isMatch) {
             aiPracticeIndex++;
             $('#book-move-indicator').fadeIn();
+            showToast("Jugada de libro: " + move.san, "📖");
+            $('#coach-txt').html(`<div class="quality-book" style="color:var(--accent); font-weight:800;">📖 MAESTRO IA</div><div style="font-size:0.75rem;">¡Excelente! <b>${move.san}</b> es la jugada teórica.</div>`);
         } else {
-            // Se desvió de la teoría
+            // El jugador se desvió
+            console.warn("⚠️ Desviación teórica detectada. Esperaba:", expected, "Moviste:", move.san);
             aiPracticeLine = null;
             $('#book-move-indicator').fadeOut();
-            showToast("Te has desviado de la línea teórica. ¡Ahora juegas contra el motor!", "⚙️");
+            showToast("Te has desviado de la línea. ¡Cuidado!", "⚠️");
+            $('#coach-txt').html("<div style='color:#f59e0b; font-weight:800;'>⚠️ DESVIACIÓN DETECTADA</div><div style='font-size:0.7rem;'>Has salido de la teoría. El Maestro ahora jugará con toda su fuerza táctica.</div>");
         }
     }
 
@@ -951,6 +1078,26 @@ function onSquareClick(sq) {
             board.position(game.fen());
             selectedSq = null;
 
+            // Práctica de Apertura: Verificar si el movimiento es teórico (Jugador o Intervención)
+            if ((currentMode === 'ai' || currentMode === 'maestro') && aiPracticeLine) {
+                let expected = aiPracticeLine[aiPracticeIndex];
+                const moveSan = move.san.replace(/[+#]/g, '');
+                const expectedSan = expected.replace(/[+#]/g, '');
+                const isMatch = (moveSan === expectedSan || (move.from + move.to) === expected);
+
+                if (isMatch) {
+                    aiPracticeIndex++;
+                    $('#book-move-indicator').fadeIn();
+                    showToast("Jugada de libro: " + move.san, "📖");
+                    $('#coach-txt').html(`<div class="quality-book" style="color:var(--accent); font-weight:800;">📖 MAESTRO IA</div><div style="font-size:0.75rem;">¡Excelente! <b>${move.san}</b> es la jugada teórica.</div>`);
+                } else {
+                    aiPracticeLine = null;
+                    $('#book-move-indicator').fadeOut();
+                    showToast("Te has desviado de la línea. ¡Cuidado!", "⚠️");
+                    $('#coach-txt').html("<div style='color:#f59e0b; font-weight:800;'>⚠️ DESVIACIÓN DETECTADA</div><div style='font-size:0.7rem;'>Has salido de la teoría. El Maestro ahora jugará con toda su fuerza táctica.</div>");
+                }
+            }
+
             if (currentMode === 'local') {
                 socket.emit('move', { move: move.san, gameId: gameId, fen: game.fen() });
 
@@ -990,6 +1137,83 @@ $(document).ready(() => {
         pieceTheme: getPieceTheme,
         onDrop: onDrop,
         onSnapEnd: onSnapEnd
+    });
+
+    // Populate Maestro Openings
+    const maestroOpSel = $('#maestro-opening-sel');
+    if (typeof OPENINGS_DATA !== 'undefined' && maestroOpSel.length > 0) {
+        OPENINGS_DATA.forEach((group, gIdx) => {
+            const optgroup = $('<optgroup>').attr('label', group.category);
+            group.items.forEach((item, iIdx) => {
+                optgroup.append($('<option>').val(`${gIdx}-${iIdx}`).text(item.name));
+            });
+            maestroOpSel.append(optgroup);
+        });
+    }
+
+    // --- NAVIGATION HANDLERS (Unified for History & Theory) ---
+    $('#btn-nav-first').click(() => {
+        if (currentMode === 'study' && studyMoves) {
+            studyIndex = 0;
+            game.reset(); board.start();
+            historyPositions = ['start'];
+            currentHistoryIndex = 0;
+            updateUI();
+        } else {
+            navigateHistory('first');
+        }
+    });
+
+    $('#btn-nav-prev').click(() => {
+        if (currentMode === 'study' && studyMoves) {
+            if (studyIndex > 0) {
+                game.undo();
+                board.position(game.fen());
+
+                // Sync history backwards
+                historyPositions.pop();
+                currentHistoryIndex--;
+
+                studyIndex--;
+                updateUI();
+            }
+        } else {
+            navigateHistory('prev');
+        }
+    });
+
+    $('#btn-nav-next').click(() => {
+        if (currentMode === 'study' && studyMoves) {
+            if (studyIndex < studyMoves.length) {
+                const m = game.move(studyMoves[studyIndex]);
+                board.position(game.fen());
+
+                // IMPORTANT: Sync history so updateUI doesn't reset us
+                updateHistory();
+
+                studyIndex++;
+                playSnd('move');
+                updateUI(true);
+                if (studyIndex >= studyMoves.length) showToast("Teoría completada", "🎉");
+            }
+        } else {
+            navigateHistory('next');
+        }
+    });
+
+    $('#btn-nav-last').click(() => {
+        if (currentMode === 'study' && studyMoves) {
+            // Fast forward all theory
+            while (studyIndex < studyMoves.length) {
+                game.move(studyMoves[studyIndex]);
+                studyIndex++;
+            }
+            board.position(game.fen());
+            playSnd('move');
+            updateUI();
+        } else {
+            navigateHistory('last');
+        }
     });
 
     // Theme Handlers
@@ -1105,8 +1329,19 @@ $(document).ready(() => {
     });
 
     // Side Drawer
+    $('#btn-toggle-openings').off('click').on('click', function () {
+        $('#opening-sel-container').slideToggle();
+    });
+
+    // Side Drawer
     $('#hamburger-menu').off('click').click(() => { $('#side-drawer').addClass('open'); $('#side-drawer-overlay').fadeIn(); });
     $('#side-drawer-overlay').off('click').click(() => { $('#side-drawer').removeClass('open'); $('#side-drawer-overlay').fadeOut(); });
+
+    // Re-bind actions bar for all screens
+    $('.btn-action.resign').off('click').click(resignGame);
+    $('.btn-action.menu').off('click').click(goBackToMenu);
+    $('#btn-hint-mobile-bar').off('click').click(function () { toggleHints(this); });
+    $('#btn-drills-mobile-bar').off('click').click(function () { startOpeningDrillsManual(); });
 
 }); // END READY
 
@@ -1340,6 +1575,52 @@ window.joinGame = (id, oppName, time) => {
     alert("Te has unido a la partida de " + oppName);
 };
 
+window.getEloTypeFromTime = function (mins) {
+    if (mins <= 1) return 'elo1';
+    if (mins <= 3) return 'elo3';
+    if (mins >= 1440) return 'eloDaily';
+    return 'elo10';
+};
+
+window.updateElo = function (oppElo, result, isPuzzle = false) {
+    if (!isAuth) return;
+
+    let type = 'elo';
+    let currentRating = userEloRapid; // default
+
+    if (isPuzzle) {
+        type = 'puz';
+        currentRating = userPuzzleElo;
+    } else {
+        const activeSelector = currentMode === 'ai' || currentMode === 'maestro' ? '#ai-time-selector' : '#local-time-selector';
+        const mins = parseInt($(activeSelector + ' .time-btn.active').data('time')) || 10;
+        type = getEloTypeFromTime(mins);
+
+        if (type === 'elo1') currentRating = userEloBullet;
+        else if (type === 'elo3') currentRating = userEloBlitz;
+        else if (type === 'eloDaily') currentRating = userEloDaily;
+        else currentRating = userEloRapid;
+    }
+
+    const K = 32;
+    const expected = 1 / (1 + Math.pow(10, (oppElo - currentRating) / 400));
+    const newElo = Math.round(currentRating + K * (result - expected));
+
+    // Update locally
+    if (type === 'puz') {
+        userPuzzleElo = newElo;
+        localStorage.setItem('chess_puz_elo', newElo);
+    } else {
+        if (type === 'elo1') { userEloBullet = newElo; localStorage.setItem('chess_elo_1', newElo); }
+        else if (type === 'elo3') { userEloBlitz = newElo; localStorage.setItem('chess_elo_3', newElo); }
+        else if (type === 'eloDaily') { userEloDaily = newElo; localStorage.setItem('chess_elo_daily', newElo); }
+        else { userEloRapid = newElo; localStorage.setItem('chess_elo_10', newElo); }
+    }
+
+    if (socket) socket.emit('update_elo', { user: userName, elo: newElo, type: type });
+    updateAuthUI();
+};
+
 socket.on('game_start', function (data) {
     gameId = data.gameId;
     myColor = (data.white === userName) ? 'w' : 'b';
@@ -1348,6 +1629,7 @@ socket.on('game_start', function (data) {
     game.reset();
 
     var oppName = (myColor === 'w') ? data.black : data.white;
+    opponentElo = (myColor === 'w') ? (data.blackElo || 500) : (data.whiteElo || 500);
     $('#opp-name').text(oppName);
     gameStarted = true;
 
@@ -1370,6 +1652,7 @@ socket.on('game_resume', function (data) {
     blackTime = data.blackTime;
 
     var oppName = (myColor === 'w') ? data.black : data.white;
+    opponentElo = (myColor === 'w') ? (data.blackElo || 500) : (data.whiteElo || 500);
     $('#opp-name').text(oppName);
     gameStarted = true;
 
@@ -1486,8 +1769,14 @@ $('#btn-toggle-sound').off('click').click(function () {
 
 // AI COLOR SELECTION
 $('#btn-start-ai').click(() => {
-    const color = $('#ai-color-sel').val();
+    let color = $('#ai-color-sel').val();
+    // Normalizar a w / b
+    if (color === 'white') color = 'w';
+    if (color === 'black') color = 'b';
+
     myColor = color === 'random' ? (Math.random() > 0.5 ? 'w' : 'b') : color;
+
+    console.log("🚀 Iniciando IA Mode. MyColor:", myColor);
 
     game.reset();
     board.orientation(myColor === 'w' ? 'white' : 'black');
@@ -1498,13 +1787,16 @@ $('#btn-start-ai').click(() => {
 
     // Check for specific opening practice
     const practiceVal = $('#ai-opening-practice').val();
-    if (practiceVal) {
+    console.log(`🎯 Iniciando práctica. Val: ${practiceVal}`);
+    if (practiceVal && practiceVal.includes('-')) {
         const [gIdx, iIdx] = practiceVal.split('-');
         aiPracticeLine = OPENINGS_DATA[gIdx].items[iIdx].m;
         aiPracticeIndex = 0;
         showToast("Práctica de apertura: " + OPENINGS_DATA[gIdx].items[iIdx].name, "📖");
+        console.log("📜 Línea cargada:", aiPracticeLine);
     } else {
         aiPracticeLine = null;
+        console.log("🆓 Juego libre activado.");
     }
 
     currentMode = 'ai';
@@ -1901,23 +2193,53 @@ $('#auth-switch').click(function () {
     }
 });
 
-const updateAuthUI = () => {
-    if (localStorage.getItem('chess_is_auth') === 'true') {
-        isAuth = true;
-        userName = localStorage.getItem('chess_username');
-        userElo = parseInt(localStorage.getItem('chess_user_elo')) || 500;
+// --- DEFINITIVE AUTH UI SYNC ---
+window.updateAuthUI = function () {
+    if (isAuth) {
+        // Sync local vars just in case
+        userName = localStorage.getItem('chess_username') || "Invitado";
+        userEloBullet = parseInt(localStorage.getItem('chess_elo_1')) || 500;
+        userEloBlitz = parseInt(localStorage.getItem('chess_elo_3')) || 500;
+        userEloRapid = parseInt(localStorage.getItem('chess_elo_10')) || 500;
+        userEloDaily = parseInt(localStorage.getItem('chess_elo_daily')) || 500;
         userPuzzleElo = parseInt(localStorage.getItem('chess_puz_elo')) || 500;
 
-        $('#btn-auth-trigger').text("👤 " + userName);
-        $('#my-name-display').text(userName);
-        $('#btn-auth-drawer').text("CERRAR SESIÓN").off('click').click(() => {
-            localStorage.clear(); location.reload();
-        });
-        $('#drawer-user-name').text(userName);
-        $('#drawer-user-elo, #header-elo').text(userElo + " ELO");
-        $('#header-elo-puz, #puz-elo-display').text(userPuzzleElo + "🧩");
+        $('#btn-auth-trigger').hide();
+        $('#btn-auth-drawer').hide();
+        $('#btn-logout-drawer').show();
+
+        $('#my-name-display, #drawer-user-name').text(userName);
+
+        // Update header Elo boxes
+        $('#header-elo1').text("1m: " + userEloBullet);
+        $('#header-elo3').text("3m: " + userEloBlitz);
+        $('#header-elo10').text("R: " + userEloRapid);
+        $('#header-eloDaily').text("24h: " + userEloDaily);
+        $('#header-elo-puz').text("🧩: " + userPuzzleElo);
+
+        // Update drawer Elo Summary
+        $('#drawer-user-elo').html(`
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-top:5px;">
+                <span style="color:#ef4444">Bullet: ${userEloBullet}</span>
+                <span style="color:#f59e0b">Blitz: ${userEloBlitz}</span>
+                <span style="color:var(--accent)">Rapid: ${userEloRapid}</span>
+                <span style="color:#a78bfa">Daily: ${userEloDaily}</span>
+            </div>
+            <div style="margin-top:5px; color:#3b82f6">Puzzles: ${userPuzzleElo}</div>
+        `);
+
+        $('#guest-access-section').hide();
+    } else {
+        $('#btn-auth-trigger').show();
+        $('#btn-auth-drawer').show();
+        $('#btn-logout-drawer').hide();
+
+        $('#drawer-user-name').text("Invitado");
+        $('#my-name-display').text("Invitado");
+        $('#guest-access-section').show();
     }
 };
+updateAuthUI();
 
 $('.mode-pill').on('click', function () {
     const mode = $(this).data('mode');
@@ -1968,13 +2290,19 @@ $('#btn-show-pass').mousedown(function () {
 
 socket.on('auth_success', (data) => {
     userName = data.user;
-    userElo = data.elo;
+    userEloBullet = data.elo1 || 500;
+    userEloBlitz = data.elo3 || 500;
+    userEloRapid = data.elo10 || 500;
+    userEloDaily = data.eloDaily || 500;
     userPuzzleElo = data.puzElo;
     isAuth = true;
 
     localStorage.setItem('chess_username', userName);
     localStorage.setItem('chess_is_auth', 'true');
-    localStorage.setItem('chess_user_elo', userElo);
+    localStorage.setItem('chess_elo_1', userEloBullet);
+    localStorage.setItem('chess_elo_3', userEloBlitz);
+    localStorage.setItem('chess_elo_10', userEloRapid);
+    localStorage.setItem('chess_elo_daily', userEloDaily);
     localStorage.setItem('chess_puz_elo', userPuzzleElo);
     if (data.token) localStorage.setItem('chess_token', data.token);
 
@@ -1987,7 +2315,12 @@ socket.on('auth_error', (msg) => {
     alert("Error: " + msg);
 });
 
-// Socket handlers for online games
+$(document).ready(() => {
+    // Other logic...
+    $('#btn-toggle-openings').off('click').on('click', function () {
+        $('#opening-sel-container').slideToggle();
+    });
+});
 socket.on('game_start', (data) => {
     console.log("🎮 Game started:", data);
     gameId = data.gameId;
@@ -2050,15 +2383,16 @@ updateAuthUI();
 $('#hamburger-menu').off('click'); // remove old if any
 $('#side-drawer-overlay').off('click');
 
-// Llenar aperturas
-OPENINGS_DATA.forEach((group, groupIdx) => {
+// Llenar aperturas en todos los selectores disponibles
+const opHtml = OPENINGS_DATA.map((group, groupIdx) => {
     let optgroup = `<optgroup label="${group.group}">`;
     group.items.forEach((item, itemIdx) => {
         optgroup += `<option value="${groupIdx}-${itemIdx}">${item.name}</option>`;
     });
-    optgroup += `</optgroup>`;
-    $('#opening-sel').append(optgroup);
-});
+    return optgroup + `</optgroup>`;
+}).join('');
+
+$('#opening-sel, #opening-sel-main, #ai-opening-practice').append(opHtml);
 
 var studyMoves = [];
 var studyIndex = 0;
@@ -2106,6 +2440,7 @@ $('#btn-study-prev').click(() => {
 
 // NEW UNIFIED HINT TOGGLE (Study & AI)
 const toggleHints = (btn) => {
+    if (currentMode === 'exercises') return; // No hints in puzzles
     hintsActive = !hintsActive;
     const txt = hintsActive ? "💡 PISTAS: ON" : "💡 ACTIVAR PISTAS";
     $('#btn-ai-hint, #btn-suggest-move').text(txt).toggleClass('active', hintsActive);
@@ -2125,7 +2460,7 @@ const toggleHints = (btn) => {
 // Unbind old handlers and bind new one
 $('#btn-suggest-move, #btn-ai-hint, #btn-hint-main, #btn-hint-mobile-bar').off('click').on('click', function () { toggleHints(this); });
 
-$('#btn-flip, #btn-flip-mobile').off('click').on('click', function () {
+$('#btn-flip, #btn-flip-mobile, #btn-flip-pc').off('click').on('click', function () {
     board.flip();
     if ($('#mobile-actions-menu').is(':visible')) $('#mobile-actions-menu').fadeOut();
 });
@@ -2138,13 +2473,34 @@ $('#btn-hint-main').click(function () {
 });
 
 // NEW MENU LOGIC
-window.showSubMenu = function (id) {
+window.showSubMenu = function (id, addToHistory = true) {
     $('.menu-step').removeClass('active');
     $('#menu-' + id).addClass('active');
+
+    // Manage History
+    if (addToHistory) {
+        history.pushState({ view: 'menu', id: id }, '', '#menu-' + id);
+    }
 };
 
-window.setMode = function (mode) {
+window.exitGameView = function () {
+    $('body').removeClass('board-active');
+    $('#game-sidebar-controls').hide();
+    $('#master-coach-panel').hide();
+    $('#analysis-report-container').hide();
+    $('#main-menu-container').show();
+};
+
+window.setMode = function (mode, addToHistory = true) {
     currentMode = mode;
+
+    if (addToHistory) {
+        history.pushState({ view: 'game', mode: mode }, '', '#game-' + mode);
+    }
+
+    // UI Mode Classes for CSS targeting
+    $('body').removeClass('mode-local mode-ai mode-study mode-exercises mode-pass-and-play');
+    $('body').addClass('mode-' + mode);
 
     // UI Visual Feedback
     $('.tab-btn').removeClass('active');
@@ -2174,8 +2530,8 @@ window.setMode = function (mode) {
     if (mode === 'study') targetSec = 'study';
     $('#sec-' + targetSec).addClass('active');
 
-    if (mode === 'ai') {
-        var isMaestro = (hintsActive === true);
+    if (mode === 'ai' || mode === 'maestro') {
+        var isMaestro = (mode === 'maestro' || hintsActive === true);
         $('#opp-name').text(isMaestro ? 'Maestro IA' : 'Stockfish');
     } else if (mode === 'local') {
         $('#opp-name').text('Oponente Online');
@@ -2189,20 +2545,22 @@ window.setMode = function (mode) {
         $('#opp-name').text('Oponente (Estudio)');
     }
 
-    if (mode === 'ai' || mode === 'study' || mode === 'exercises') {
+    if (mode === 'ai' || mode === 'study' || mode === 'exercises' || mode === 'maestro') {
         $('#master-coach-panel').css('display', 'flex').hide().fadeIn();
         $('#btn-hint-main').css('display', 'flex').fadeIn();
         $('#btn-hint-mobile-bar').show();
 
-        // Ensure analysis starts immediately in study/ai
+        // Ensure analysis starts immediately
         setTimeout(() => {
             isJ = true;
-            stockfish.postMessage('stop');
-            stockfish.postMessage('position fen ' + game.fen());
-            stockfish.postMessage('go depth 15');
+            if (stockfish) {
+                stockfish.postMessage('stop');
+                stockfish.postMessage('position fen ' + game.fen());
+                stockfish.postMessage('go depth 15');
+            }
         }, 300);
 
-        if (mode === 'study') {
+        if (mode === 'study' || mode === 'maestro') {
             hintsActive = true;
             $('#btn-hint-main, #btn-ai-hint, #btn-suggest-move').addClass('active').text("💡 PISTAS: ON");
         }
@@ -2212,8 +2570,105 @@ window.setMode = function (mode) {
         $('#btn-hint-mobile-bar').hide();
     }
 
-    resetTimers();
     updateUI(mode === 'study');
+
+    // ADJUST MOBILE ACTIONS BAR BASED ON MODE
+    if (mode === 'maestro' || mode === 'study') {
+        // En estudio/maestro, el boton de rendirse se convierte en GIRAR
+        $('.btn-action.resign').text("🔄 GIRAR").off('click').on('click', () => board.flip()).css('background', '#1e293b').css('color', '#fff');
+        $('#btn-drills-mobile-bar').hide();
+    } else {
+        $('.btn-action.resign').html("🏳️ RENDIRSE").off('click').on('click', () => resignGame()).css('background', '').css('color', '');
+        $('#btn-drills-mobile-bar').show();
+
+        if (mode === 'pass-and-play' || mode === 'local' || mode === 'exercises') {
+            $('#btn-drills-mobile-bar').text("🔄 GIRAR").off('click').on('click', () => board.flip());
+        } else {
+            $('#btn-drills-mobile-bar').text("🧪 EJERCICIOS").off('click').on('click', () => startOpeningDrillsManual());
+        }
+    }
+
+    if (mode === 'exercises') {
+        $('#btn-hint-mobile-bar').hide();
+        $('#master-coach-panel').hide();
+        $('#puzzle-categories-sidebar').hide(); // Hide old sidebar
+        $('#puzzle-controls-bottom').css('display', 'flex'); // Show new bottom controls
+    } else {
+        $('#puzzle-categories-sidebar').hide();
+        $('#puzzle-controls-bottom').hide();
+    }
+
+    // Ensure board is CLEAN (no spare pieces) after being in editor
+    if (board && board.config().sparePieces) {
+        board.destroy();
+        board = Chessboard('myBoard', {
+            draggable: true,
+            position: game.fen(),
+            pieceTheme: getPieceTheme,
+            onDrop: onDrop,
+            onSnapEnd: onSnapEnd
+        });
+        $(window).resize(board.resize);
+    }
+};
+
+window.setPuzzleCat = function (cat) {
+    // Sync both selectors just in case
+    $('#puz-cat-sel-main, #puz-cat-sel').val(cat);
+    setMode('exercises');
+    // Force load immediately
+    loadRandomPuzzle(0, cat);
+};
+
+window.startMaestroModeReal = function () {
+    const color = $('#maestro-color-sel').val();
+    const mins = parseInt($('#maestro-time-sel').val());
+
+    // Set myColor
+    myColor = color === 'random' ? (Math.random() > 0.5 ? 'w' : 'b') : color;
+
+    const diff = parseInt($('#maestro-diff-sel').val() || 15);
+    $('#diff-sel').val(diff);
+
+    // Config board and game
+    game.reset();
+    board.orientation(myColor === 'w' ? 'white' : 'black');
+    board.start();
+    gameStarted = false;
+
+    // Setup Timers
+    whiteTime = mins * 60;
+    blackTime = mins * 60;
+    $('#my-timer, #opp-timer').text(formatTime(whiteTime)).removeClass('low-time active');
+
+    // Set Name
+    $('#opp-name').text('Maestro IA (Nivel ' + diff + ')');
+    $('#diff-sel').val(diff);
+
+    // Mode Maestro specific
+    hintsActive = true;
+    setMode('maestro');
+
+    showToast("Entrenamiento Maestro Iniciado", "👴");
+
+    // Check for specific opening practice in Maestro
+    const practiceVal = $('#maestro-opening-sel').val();
+    if (practiceVal && practiceVal.includes('-')) {
+        const [gIdx, iIdx] = practiceVal.split('-');
+        aiPracticeLine = OPENINGS_DATA[gIdx].items[iIdx].m;
+        aiPracticeIndex = 0;
+        const opName = OPENINGS_DATA[gIdx].items[iIdx].name;
+        showToast("Entrenando: " + opName, "📖");
+        $('#coach-txt').html(`<div class="quality-book" style="color:var(--accent); font-weight:800;">📖 ENTRENAMIENTO ACTIVO</div><div style="font-size:0.8rem;">Apertura: <b>${opName}</b><br>Sigue la línea teórica.</div>`);
+        console.log("📜 Maestro Line Loaded:", aiPracticeLine);
+    } else {
+        aiPracticeLine = null;
+        $('#coach-txt').html(`<div style="font-weight:bold; color:var(--text-main);">Maestro IA listo.</div><div style="font-size:0.75rem;">Modo de juego libre.</div>`);
+    }
+
+    if (myColor === 'b') {
+        setTimeout(makeAIMove, 600);
+    }
 };
 
 window.startMaestroMode = function () {
@@ -2260,8 +2715,6 @@ window.startTheoreticalStudy = function () {
     var val = $('#opening-sel-main').val();
     if (!val) return alert("Selecciona una apertura primero.");
 
-    setMode('study');
-
     var parts = val.split('-');
     var gIdx = parseInt(parts[0]);
     var iIdx = parseInt(parts[1]);
@@ -2270,26 +2723,98 @@ window.startTheoreticalStudy = function () {
     game.reset();
     board.start();
 
+    // Setup Manual Study State
     studyMoves = opening.m;
     studyIndex = 0;
 
-    $('#study-controls').show();
-    $('#btn-study-next').text("⏩ Siguiente Jugada (" + studyMoves.length + ")");
-    updateUI();
-    showToast("Modo Teoría: Sigue los pasos de la apertura", "📖");
+    setMode('study');
+
+    // Hide old controls, use nav bar
+    $('#study-controls').hide();
+
+    // Update Coach Panel manual info
+    $('#coach-txt').html(`<div class="quality-book" style="color:var(--accent); font-weight:800;">📖 ESTUDIO TEÓRICO</div><div style="font-size:0.75rem;">Apertura: <b>${opening.name}</b><br>Usa las flechas de navegación (▶) para avanzar.</div>`);
+
+    showToast("Modo Teoría: " + opening.name, "📖");
 };
+
+// Controls for Manual Study
+$('#btn-study-next').click(function () {
+    if (currentMode === 'study' && studyMoves && studyIndex < studyMoves.length) {
+        let move = studyMoves[studyIndex];
+        game.move(move);
+        board.position(game.fen());
+        studyIndex++;
+        $(this).text(`⏩ Siguiente Jugada (${studyIndex}/${studyMoves.length})`);
+        playSnd('move');
+        if (studyIndex >= studyMoves.length) {
+            $(this).text("✅ Teoría Completada").prop('disabled', true);
+            showToast("Línea teórica finalizada", "🎉");
+        }
+    }
+});
+
+$('#btn-study-prev').click(function () {
+    if (currentMode === 'study' && studyIndex > 0) {
+        game.undo();
+        board.position(game.fen());
+        studyIndex--;
+        $('#btn-study-next').text(`⏩ Siguiente Jugada (${studyIndex}/${studyMoves.length})`).prop('disabled', false);
+    }
+});
 
 window.startOpeningPracticeManual = function () {
     var val = $('#opening-sel-main').val();
     if (!val) return alert("Selecciona una apertura primero.");
 
-    // Configurar ELO de la IA para esta práctica
+    // 1. Decidir el bando (Tu Bando)
+    const sideChoice = $('#opening-side-sel').val();
+
+    if (sideChoice === 'auto') {
+        // Lógica automática anterior
+        var parts = val.split('-');
+        var gIdx = parseInt(parts[0]);
+        var iIdx = parseInt(parts[1]);
+        var opName = OPENINGS_DATA[gIdx].items[iIdx].name.toLowerCase();
+
+        if (opName.includes('defensa') || opName.includes('contra') || opName.includes('indian')) {
+            $('#ai-color-sel').val('b');
+        } else {
+            $('#ai-color-sel').val('w');
+        }
+    } else {
+        // Respetar elección manual del usuario
+        $('#ai-color-sel').val(sideChoice);
+    }
+
+    setMode('ai');
+
+    // 2. Configurar ELO
     const openingElo = $('#opening-elo-sel').val();
     $('#diff-sel').val(openingElo);
 
-    // Iniciar práctica de apertura
+    // 3. Iniciar Práctica
     $('#ai-opening-practice').val(val);
     $('#btn-start-ai').click();
+};
+
+window.startOpeningDrillsManual = function () {
+    var val = $('#opening-sel-main').val();
+    if (!val) return alert("Selecciona una apertura primero.");
+
+    var parts = val.split('-');
+    var gIdx = parseInt(parts[0]);
+    var iIdx = parseInt(parts[1]);
+    var opName = OPENINGS_DATA[gIdx].items[iIdx].name;
+
+    const mappedTag = OPENING_TAG_MAP[opName] || opName.replace(/ /g, '_');
+    console.log(`🧪 Iniciando ejercicios tácticos para: ${opName} (Tag: ${mappedTag})`);
+
+    drillCategory = mappedTag;
+    setMode('exercises');
+    loadRandomPuzzle(0, mappedTag);
+
+    showToast("Ejercicios de: " + opName, "🧪");
 };
 
 // New menu triggers
@@ -2327,8 +2852,10 @@ $('#btn-pgn-main').click(() => {
 });
 
 // Sync puzzles categories
-$('#puz-cat-sel-main').on('change', function () {
-    $('#puz-cat-sel').val($(this).val()).trigger('change');
+$('#puz-cat-sel-main, #puz-cat-sel').on('change', function () {
+    const val = $(this).val();
+    $('#puz-cat-sel-main, #puz-cat-sel').val(val);
+    drillCategory = val; // Reset or update drillCategory
 });
 
 $('#btn-pgn-main').click(() => $('#btn-pgn').click());
@@ -2345,8 +2872,10 @@ if (typeof OPENINGS_DATA !== 'undefined') {
     });
 }
 
-let aiPracticeLine = null;
-let aiPracticeIndex = 0;
+var aiPracticeLine = null;
+var aiPracticeIndex = 0;
+var drillCategory = null; // For holding current puzzle category in drill mode
+var aiThinking = false; // Lock to prevent overlapping AI moves
 
 $('#btn-pgn').click(function () {
     const pgn = prompt("Pega el PGN de la partida:");
@@ -2380,25 +2909,45 @@ $('#btn-logout-drawer').click(() => {
 });
 
 window.goBackToMenu = () => {
-    $('body').removeClass('board-active');
-    $('#game-sidebar-controls').hide();
-    $('#master-coach-panel').hide();
-    $('#analysis-report-container').hide();
-    $('#main-menu-container').show();
+    // If we have history, we might want to go back, but "Home" button usually means force root.
+    // We will push root state to be safe and clear view.
+    exitGameView();
     showSubMenu('root');
+};
+
+// HISTORY LISTENER (Browser Back Button)
+window.onpopstate = function (event) {
+    if (event.state) {
+        if (event.state.view === 'menu') {
+            exitGameView();
+            showSubMenu(event.state.id, false); // false = don't push again
+        } else if (event.state.view === 'game') {
+            // Restore game view if user goes forward to it
+            setMode(event.state.mode, false);
+        }
+    } else {
+        // Root state (or initial)
+        exitGameView();
+        showSubMenu('root', false);
+    }
 };
 
 $('#btn-mobile-menu-back').click(function () {
     goBackToMenu();
 });
 
-// UI Auth Check for Drawer
-if (isAuth) {
-    $('#btn-auth-drawer, #btn-auth-trigger').hide();
-    $('#btn-logout-drawer').show();
-    $('#drawer-user-name').text(userName);
-    $('#drawer-user-elo').text("ELO: " + userElo);
-}
+
+// Helper para cambiar pestañas desde el drawer
+window.setTab = function (tabId) {
+    $('.tab-btn[data-tab="' + tabId + '"]').click();
+    $('#side-drawer').removeClass('open');
+    $('#side-drawer-overlay').fadeOut();
+
+    // Si no estamos en modo board, activar el modo board para ver el sidebar-right
+    if (!$('body').hasClass('board-active')) {
+        setMode('local');
+    }
+};
 
 // PWA Service Worker Registration
 if ('serviceWorker' in navigator) {
