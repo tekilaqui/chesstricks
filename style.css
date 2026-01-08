@@ -1646,3 +1646,25 @@
                 font-size: 0.65rem !important;
             }
         }
+
+        /* MENU NAVIGATION SYSTEM */
+        .menu-step {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .menu-step.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
