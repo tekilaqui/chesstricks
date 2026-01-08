@@ -207,6 +207,36 @@
             box-shadow: var(--neon-glow);
         }
 
+        #book-move-indicator {
+            animation: pulse-purple 2s infinite;
+        }
+
+        @keyframes pulse-purple {
+            0% {
+                box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(139, 92, 246, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(139, 92, 246, 0);
+            }
+        }
+
+        .quality-book {
+            color: #a78bfa;
+            font-weight: 800;
+            text-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+        }
+
+        /* Ensure arrow canvas covers the board correctly */
+        #arrowCanvas {
+            pointer-events: none;
+            touch-action: none;
+        }
+
         .mode-section {
             display: none;
             background: rgba(15, 23, 42, 0.3);

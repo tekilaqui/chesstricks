@@ -482,22 +482,15 @@ try {
                         const gameTurn = game.turn();
                         const prevE = window.lastEval;
                         const currE = ev;
-                        if (gameTurn === 'b') { diffVal = prevE - currE; }
-                        else { diffVal = currE - prevE; }
-                    }
-
-                    const evalMag = Math.abs(diffVal);
-
-                    let trapMsg = "";
-                    if (diff > 1.5) {
-                        if (!hintsActive) {
-                            trapMsg = `<span class="trap-warning">⚠️ ¡ERROR GRAVE DETECTADO!</span>`;
-                            playSnd('error');
-                        } else {
-                            trapMsg = `<span class="trap-warning">⚠️ ¡OJO! MEJOR RECTIFICAR</span>`;
+                        // For the side that just moved:
+                        if (gameTurn === 'w') { // Black just moved
+                            diffVal = currE - prevE;
+                        } else { // White just moved
+                            diffVal = prevE - currE;
                         }
                     }
 
+                    const evalMag = Math.abs(diffVal);
                     const historyStr = game.history().join(' ');
                     const isBook = isBookMove(lastMove ? lastMove.san : '');
                     var q = getQualityMsg(evalMag, l.includes('mate'), isBook);
@@ -509,49 +502,50 @@ try {
                     const isEndgame = game.board().flat().filter(p => p && p.type !== 'p').length <= 8;
 
                     function getStrategicAdvice() {
-                        const turn = game.turn();
-                        if (isOpening) {
-                            return "🎯 Enfócate en desarrollar tus caballos y alfiles hacia el centro y protege a tu rey.";
-                        } else if (isEndgame) {
-                            return "👑 En el final, el rey es una pieza activa. Trata de centralizarlo y avanzar peones.";
-                        } else {
-                            return "🧩 Busca debilidades en la estructura de peones o ataques a piezas indefensas.";
-                        }
+                        if (isOpening) return "🎯 Desarrolla tus piezas menores y controla el centro.";
+                        if (isEndgame) return "👑 Activa tu rey y busca promocionar peones.";
+                        return "🧩 Busca debilidades tácticas o mejora la posición de tu peor pieza.";
                     }
 
                     let openingName = '';
-                    let inKnownOpening = false;
-                    if (isOpening && history.length >= 2) {
+                    if (isOpening && fullHistory.length >= 2) {
                         const detected = detectOpening();
-                        if (detected.name) {
-                            openingName = '🎯 ' + detected.name;
-                            if (history.length <= detected.moveCount) inKnownOpening = true;
+                        if (detected.name) openingName = '🎯 ' + detected.name;
+                    }
+
+                    if (isBook) {
+                        explanation = `<div style="color:var(--accent); font-weight:bold;">📖 JUGADA DE TEORÍA:</div> Siguiendo las líneas maestras de la apertura ${openingName || ''}.`;
+                        $('#book-move-indicator').fadeIn();
+                    } else {
+                        $('#book-move-indicator').fadeOut();
+                        if (diffVal > 2.0) {
+                            explanation = `<div style="color:#ef4444; font-weight:bold;">💥 ERROR GRAVE:</div> Perdiste mucha ventaja. ${lastMove && lastMove.captured ? 'Entregaste material.' : 'Debilitaste gravemente tu posición.'}`;
+                        } else if (diffVal > 0.8) {
+                            explanation = `<div style="color:#f59e0b; font-weight:bold;">⚠️ IMPRECISIÓN:</div> Hay una jugada mejor. ${isOpening ? 'Cada tiempo cuenta en la apertura.' : 'Estás descuidando la seguridad de tu posición.'}`;
+                        } else if (diffVal < -0.5) {
+                            explanation = `<div style="color:#22c55e; font-weight:bold;">✨ ¡EXCELENTE!:</div> Has encontrado una jugada muy fuerte.`;
+                        } else {
+                            explanation = `<div style="color:var(--text-muted);">${getStrategicAdvice()}</div>`;
                         }
                     }
 
-                    if (isBook) explanation = `<div style="color:var(--accent); font-weight:bold;">📖 JUGADA DE TEORÍA:</div> Estas siguiendo las líneas maestras de la apertura ${openingName || ''}.`;
-                    else if (diffVal > 2.0) {
-                        explanation = `<div style="color:#ef4444; font-weight:bold;">💥 ERROR GRAVE:</div> Perdiste mucha ventaja. ${lastMove && lastMove.captured ? 'Entregaste material sin compensación.' : 'Permitiste un ataque decisivo o debilitaste gravemente tu posición.'}`;
-                    } else if (diffVal > 0.8) {
-                        explanation = `<div style="color:#f59e0b; font-weight:bold;">⚠️ IMPRECISIÓN:</div> Hay una jugada mucho mejor. ${isOpening ? 'En la apertura, cada movimiento cuenta para el desarrollo.' : 'Estás descuidando la posición o la seguridad de tu rey.'}`;
-                    } else if (diffVal < -0.5) {
-                        explanation = `<div style="color:#22c55e; font-weight:bold;">✨ ¡EXCELENTE!:</div> Has encontrado una jugada muy fuerte que mejora tu posición considerablemente. ${lastMove && lastMove.captured ? '¡Captura ganadora!' : '¡Sigue así!'}`;
-                    } else {
-                        explanation = `<div style="color:var(--text-muted);">${getStrategicAdvice()}</div>`;
+                    if (lastMove) {
+                        if (game.in_check()) tacticalInfo += '⚔️ ¡Jaque! ';
+                        if (lastMove.captured) tacticalInfo += `📍 Captura de ${lastMove.captured.toUpperCase()}. `;
                     }
 
-                    let moveQuality = `<div class="${q.class}" style="font-size:1rem; margin-bottom:5px;">${q.text}</div>`;
+                    let moveQuality = `<div class="${q.class}" style="font-size:1.1rem; margin-bottom:5px;">${q.text}</div>`;
                     let precisionMsg = `<div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:5px;">Precisión: ${acc.toFixed(0)}%</div>`;
                     let openingMsg = openingName ? `<div style="color:#8b5cf6; font-size:0.75rem; margin-bottom:5px; font-weight:bold;">${openingName}</div>` : '';
 
                     $('#coach-txt').html(`
                         ${moveQuality}
-                        ${evalDisplay}
+                        <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:5px;">Evaluación: ${ev > 0 ? '+' : ''}${ev.toFixed(1)}</div>
                         ${precisionMsg}
                         ${openingMsg}
-                        <div style="font-size:0.75rem; line-height:1.4; color:var(--text-main); margin-top:8px; background:rgba(255,255,255,0.03); padding:8px; border-radius:6px; border-left:3px solid var(--accent); shadow: 0 4px 6px rgba(0,0,0,0.1);">${explanation}</div>
+                        <div style="font-size:0.75rem; line-height:1.4; color:var(--text-main); margin-top:8px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; border-left:3px solid var(--accent);">${explanation}</div>
                         <div style="font-size:0.7rem; color:#3b82f6; margin-top:8px; font-weight:600;">${tacticalInfo}</div>
-                        ${hintsActive ? `<div style="margin-top:10px; padding:10px; background:rgba(34,197,94,0.1); border-radius:6px; border:1px dashed var(--accent); font-size:0.75rem;">💡 Sugerencia del Maestro: <b style="color:var(--accent); font-size:0.9rem;">${pv[1]}</b></div>` : ''}
+                        ${hintsActive ? `<div style="margin-top:10px; padding:10px; background:rgba(34,197,94,0.1); border-radius:6px; border:1px dashed var(--accent); font-size:0.75rem;">💡 Sugerencia: <b style="color:var(--accent); font-size:0.9rem;">${pv[1]}</b></div>` : ''}
                     `);
                     isJ = false;
                 }
@@ -663,7 +657,11 @@ function checkGameOver() {
         // Alert with specific message
         const msgText = LANGS[currentLang][reasonKey] || LANGS[currentLang].draw;
         // Timeout to let the overlay render first
-        setTimeout(() => alert("Fin de la partida: " + msgText), 100);
+        setTimeout(() => {
+            if (confirm("Fin de la partida: " + msgText + ". ¿Quieres analizar la partida?")) {
+                analyzeFullGame();
+            }
+        }, 500);
     }
 }
 
@@ -787,15 +785,21 @@ function updateUI(moved = false) {
             window.lastEval = window.currentEval;
         }
 
-        // STOCKFISH ANALYSIS ON EVERY MOVE
-        if (stockfish && (currentMode === 'ai' || hintsActive)) {
+        if (stockfish && (currentMode === 'ai' || hintsActive || currentMode === 'study')) {
             if (currentMode === 'ai' && game.turn() !== myColor) {
-                makeAIMove(); // AI Move
-            } else if (hintsActive) {
+                makeAIMove();
+            } else {
                 stockfish.postMessage('stop');
                 stockfish.postMessage('position fen ' + game.fen());
                 stockfish.postMessage('go depth 15');
             }
+        }
+    } else {
+        // Even if not moved, if we are in study mode and just entered, start analysis
+        if (currentMode === 'study' || currentMode === 'ai') {
+            stockfish.postMessage('stop');
+            stockfish.postMessage('position fen ' + game.fen());
+            stockfish.postMessage('go depth 15');
         }
     }
 }
@@ -843,6 +847,10 @@ function onDrop(source, target) {
     });
 
     if (move === null) return 'snapback';
+
+    // Borrar flechas al mover
+    drawBestMoveArrow(null);
+    $('.square-55d63').removeClass('highlight-hint');
 
     if (currentMode === 'local') {
         socket.emit('move', { move: move.san, gameId: gameId, fen: game.fen() });
@@ -1636,13 +1644,12 @@ function calculateAccuracy(prevEval, currentEval, turn) {
 // --- ARROW DRAWING LOGIC ---
 function drawBestMoveArrow(move) {
     const canvas = document.getElementById('arrowCanvas');
-    if (!canvas) return;
+    if (!canvas || !$(canvas).is(':visible')) return;
     const ctx = canvas.getContext('2d');
 
-    // Adjust canvas size to parent
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
+    // Adjust canvas size to actual pixel size of its element
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (!move) return;
@@ -2174,9 +2181,18 @@ window.setMode = function (mode) {
     }
 
     if (mode === 'ai' || mode === 'study' || mode === 'exercises') {
-        $('#master-coach-panel').fadeIn();
+        $('#master-coach-panel').css('display', 'flex').hide().fadeIn();
         $('#btn-hint-main').css('display', 'flex').fadeIn();
         $('#btn-hint-mobile-bar').show();
+
+        // Ensure analysis starts immediately in study/ai
+        setTimeout(() => {
+            isJ = true;
+            stockfish.postMessage('stop');
+            stockfish.postMessage('position fen ' + game.fen());
+            stockfish.postMessage('go depth 15');
+        }, 300);
+
         if (mode === 'study') {
             hintsActive = true;
             $('#btn-hint-main, #btn-ai-hint, #btn-suggest-move').addClass('active').text("💡 PISTAS: ON");
@@ -2195,6 +2211,15 @@ window.startMaestroMode = function () {
     hintsActive = true;
     setMode('ai');
     showToast("Modo Entrenamiento Activado", "👴");
+};
+
+window.startOpeningPractice = function () {
+    const val = $('#opening-sel-main').val();
+    if (!val) return alert("Selecciona una apertura primero.");
+
+    $('#ai-opening-practice').val(val);
+    $('#btn-start-ai').click();
+    showToast("Iniciando entrenamiento...", "⚔️");
 };
 
 window.createOnlineChallenge = function (fromSidebar) {
