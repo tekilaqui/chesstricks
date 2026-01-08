@@ -35,17 +35,17 @@
         </div>
         <div id="header-user-info"
             style="display:flex; align-items:center; gap:6px; overflow-x:auto; max-width:60vw; scrollbar-width:none;">
-            <div id="header-elo1" title="Bullet (1m)"
-                style="background:rgba(239, 68, 68, 0.1); border:1px solid #ef4444; color:#ef4444; padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:700; flex-shrink:0;">
+            <div id="header-elo1" title="Bullet (1m)" onclick="showSubMenu('lobby')"
+                style="background:rgba(239, 68, 68, 0.1); border:1px solid #ef4444; color:#ef4444; padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:700; flex-shrink:0; cursor:pointer;">
                 1m: 500</div>
-            <div id="header-elo3" title="Blitz (3m)"
-                style="background:rgba(245, 158, 11, 0.1); border:1px solid #f59e0b; color:#f59e0b; padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:700; flex-shrink:0;">
+            <div id="header-elo3" title="Blitz (3m)" onclick="showSubMenu('lobby')"
+                style="background:rgba(245, 158, 11, 0.1); border:1px solid #f59e0b; color:#f59e0b; padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:700; flex-shrink:0; cursor:pointer;">
                 3m: 500</div>
-            <div id="header-elo10" title="Rapid (10-30m)"
-                style="background:rgba(34, 197, 94, 0.1); border:1px solid var(--accent); color:var(--accent); padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:700; flex-shrink:0;">
+            <div id="header-elo10" title="Rapid (10-30m)" onclick="showSubMenu('lobby')"
+                style="background:rgba(34, 197, 94, 0.1); border:1px solid var(--accent); color:var(--accent); padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:700; flex-shrink:0; cursor:pointer;">
                 R: 500</div>
-            <div id="header-eloDaily" title="Daily (24h)"
-                style="background:rgba(167, 139, 250, 0.1); border:1px solid #a78bfa; color:#a78bfa; padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:700; flex-shrink:0;">
+            <div id="header-eloDaily" title="Daily (24h)" onclick="showSubMenu('lobby')"
+                style="background:rgba(167, 139, 250, 0.1); border:1px solid #a78bfa; color:#a78bfa; padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:700; flex-shrink:0; cursor:pointer;">
                 24h: 500</div>
             <div id="header-elo-puz" title="Puzzles"
                 style="background:rgba(59, 130, 246, 0.1); border:1px solid #3b82f6; color:#3b82f6; padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:700; flex-shrink:0;">
@@ -176,7 +176,8 @@
 
                 <!-- MENU PRINCIPAL (LEVEL 1) -->
                 <div class="menu-step active" id="menu-root">
-                    <div class="btn-menu" onclick="showSubMenu('jugar')"><span>🎮</span><span>Jugar</span></div>
+                    <div class="btn-menu" onclick="showSubMenu('lobby')"><span>🌐</span><span>Jugar Online</span></div>
+                    <div class="btn-menu" onclick="showSubMenu('jugar')"><span>🤖</span><span>Vs IA / Local</span></div>
                     <div class="btn-menu" onclick="showSubMenu('estudio')"><span>📚</span><span>Estudiar</span></div>
                     <div class="btn-menu" onclick="showSubMenu('puzzles')"><span>🧩</span><span>Puzzles</span></div>
                 </div>
@@ -188,7 +189,6 @@
                     </div>
 
                     <!-- OPCIONES RÁPIDAS -->
-                    <div class="btn-menu" onclick="showSubMenu('online')"><span>🌐</span><span>Juego Online</span></div>
                     <div class="btn-menu" onclick="showSubMenu('maestro-setup')"><span>👴</span><span>Entrenamiento
                             Maestro</span></div>
                     <div class="btn-menu" onclick="setMode('pass-and-play')"><span>👥</span><span>Juego Local</span>
@@ -251,38 +251,61 @@
                     </div>
                 </div>
 
-                <!-- SUBMENU: ONLINE -->
-                <div class="menu-step" id="menu-online">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <button class="btn-back" onclick="showSubMenu('jugar')" style="margin:0;">⬅️ Atras</button>
-                        <button class="btn-back" onclick="showSubMenu('root')"
-                            style="margin:0; font-size:0.6rem; color:var(--accent);">🏠 Menu</button>
+                <!-- SUBMENU: LOBBY (SALA ONLINE) -->
+                <div class="menu-step" id="menu-lobby" style="display:none;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <button class="btn-back" onclick="showSubMenu('root')" style="margin:0;">🏠 Volver
+                            Inicio</button>
+                        <div style="font-size:0.8rem; font-weight:bold; color:var(--accent);">SALA ONLINE 🌐</div>
                     </div>
 
-                    <div class="btn-menu" onclick="setMode('local')"><span>🏰</span><span>Sala de Retos</span></div>
+                    <!-- PESTAÑAS LOBBY -->
+                    <div style="display:flex; gap:5px; margin-bottom:15px;">
+                        <button class="btn-tool active" onclick="filterLobby('live')" id="tab-lobby-live"
+                            style="flex:1;">⚡ EN VIVO</button>
+                        <button class="btn-tool" onclick="filterLobby('daily')" id="tab-lobby-daily" style="flex:1;">📅
+                            DIARIAS</button>
+                    </div>
 
-                    <div class="btn-menu" onclick="$('#online-setup-container').slideToggle()"><span>➕</span><span>Crear
-                            Nuevo Reto</span></div>
+                    <!-- LISTA DE PARTIDAS ACTIVAS -->
+                    <div
+                        style="background:rgba(255,255,255,0.05); padding:10px; border-radius:10px; margin-bottom:15px; border:1px solid rgba(255,255,255,0.05);">
+                        <label class="label-tiny" style="color:var(--text-main);">MIS PARTIDAS EN CURSO</label>
+                        <div id="lobby-active-games" style="max-height:150px; overflow-y:auto; min-height:40px;">
+                            <!-- Populated by JS -->
+                            <div style="text-align:center; padding:10px; color:var(--text-muted); font-size:0.7rem;">
+                                Cargando...</div>
+                        </div>
+                    </div>
 
-                    <div id="online-setup-container"
-                        style="display:none; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px; margin-bottom:10px;">
-                        <label class="label-tiny">Tiempo por Jugador</label>
-                        <select class="btn-control" id="online-time-sel" style="margin-bottom:10px;">
+                    <!-- LISTA DE RETOS -->
+                    <div
+                        style="background:rgba(255,255,255,0.05); padding:10px; border-radius:10px; margin-bottom:15px; border:1px solid rgba(255,255,255,0.05);">
+                        <label class="label-tiny" style="color:var(--accent);">RETOS ABIERTOS</label>
+                        <div id="lobby-challenges" style="max-height:150px; overflow-y:auto; min-height:40px;">
+                            <!-- Populated by JS -->
+                            <div style="text-align:center; padding:10px; color:var(--text-muted); font-size:0.7rem;">
+                                Buscando oponentes...</div>
+                        </div>
+                    </div>
+
+                    <!-- CREAR RETO -->
+                    <button class="btn-primary" onclick="$('#lobby-create-panel').slideToggle()"
+                        style="margin-bottom:10px;">➕ CREAR NUEVO RETO</button>
+
+                    <div id="lobby-create-panel"
+                        style="display:none; background:rgba(0,0,0,0.3); padding:15px; border-radius:10px; border:1px solid var(--accent);">
+                        <label class="label-tiny" style="margin-bottom:5px; display:block;">Ritmo de Juego</label>
+                        <select class="btn-control" id="online-time-sel-lobby" style="margin-bottom:15px;">
                             <option value="1">1 Minuto (Bala)</option>
                             <option value="3">3 Minutos (Blitz)</option>
-                            <option value="5">5 Minutos (Blitz)</option>
                             <option value="10" selected>10 Minutos (Rapid)</option>
                             <option value="30">30 Minutos (Clásico)</option>
                             <option value="1440">24 Horas (Daily)</option>
                         </select>
-                        <button class="btn-primary" onclick="createOnlineChallenge()">⚔️ LANZAR RETO</button>
-                        <p style="font-size:0.55rem; color:var(--text-muted); margin-top:5px; text-align:center;">* El
-                            color será asignado aleatoriamente para justicia.</p>
-                    </div>
-
-                    <div class="btn-menu"
-                        onclick="setMode('local'); setTimeout(() => { $('#active-games-list')[0].scrollIntoView({behavior:'smooth'}); }, 300)">
-                        <span>📖</span><span>Mis Partidas Activas</span>
+                        <button class="btn-tool" onclick="createOnlineChallenge(false, true)"
+                            style="width:100%; border-color:var(--accent); color:var(--text-main);">⚔️ PUBLICAR
+                            RETO</button>
                     </div>
                 </div>
 

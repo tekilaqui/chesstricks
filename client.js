@@ -1480,6 +1480,9 @@ socket.on('my_games_list', (games) => {
         $('#header-elo3').css('border-color', '').css('background', '').find('.notify-dot').remove();
     }
 
+    // Update Lobby View
+    if (typeof populateLobbyGames === 'function') populateLobbyGames(games);
+
     if (games.length === 0) {
         list.html('<div style="font-size:0.65rem; color:var(--text-muted); text-align:center; padding:10px;">No tienes partidas activas.</div>');
     } else {
@@ -1690,6 +1693,9 @@ socket.on('lobby_update', (challenges) => {
     } else {
         $('#header-elo10').css('border-color', '').find('.notify-dot').remove();
     }
+
+    // Update Lobby View as well
+    if (typeof populateLobbyChallenges === 'function') populateLobbyChallenges(challenges);
 
     if (challenges.length === 0) return list.append('<div style="font-size:0.65rem; color:var(--text-muted); text-align:center; padding:10px;">No hay retos disponibles.</div>');
 
@@ -2521,6 +2527,13 @@ window.showSubMenu = function (id, addToHistory = true) {
     if (addToHistory) {
         history.pushState({ view: 'menu', id: id }, '', '#menu-' + id);
     }
+
+    if (id === 'lobby') {
+        if (socket && isAuth) {
+            socket.emit('get_lobby');
+            socket.emit('get_my_games');
+        }
+    }
 };
 
 window.exitGameView = function () {
@@ -2722,9 +2735,14 @@ window.startOpeningPractice = function () {
     startOpeningPracticeManual();
 };
 
-window.createOnlineChallenge = function (fromSidebar) {
+window.createOnlineChallenge = function (fromSidebar, fromLobby = false) {
     if (!isAuth) { alert("Inicia sesión para jugar online."); return openAuth(); }
-    var time = fromSidebar ? $('#local-time-selector .time-btn.active').data('time') : $('#online-time-sel').val();
+
+    var time;
+    if (fromLobby) time = $('#online-time-sel-lobby').val();
+    else if (fromSidebar) time = $('#local-time-selector .time-btn.active').data('time');
+    else time = $('#online-time-sel').val();
+
     var id = Math.random().toString(36).substr(2, 9);
     var info = {
         id: id,
@@ -2733,10 +2751,79 @@ window.createOnlineChallenge = function (fromSidebar) {
         time: parseInt(time)
     };
     if (socket) socket.emit('create_challenge', info);
-    showToast("Reto lanzado a la sala", "⚔️");
-    $('#online-setup-container').slideUp();
-    setMode('local');
+    showToast("Reto publicado en la sala", "⚔️");
+
+    if (fromLobby) {
+        $('#lobby-create-panel').slideUp();
+        // Stay in Lobby view
+    } else {
+        $('#online-setup-container').slideUp();
+        setMode('local');
+    }
 };
+
+window.filterLobby = function (type) {
+    // type: 'live' or 'daily'
+    $('.btn-tool').removeClass('active');
+    $('#tab-lobby-' + type).addClass('active');
+
+    $('#lobby-active-games .lobby-game-card').each(function () {
+        const t = parseInt($(this).data('time'));
+        if (type === 'live') {
+            if (t <= 60) $(this).show(); else $(this).hide();
+        } else {
+            if (t > 60) $(this).show(); else $(this).hide();
+        }
+    });
+};
+
+function populateLobbyGames(games) {
+    const container = $('#lobby-active-games');
+    container.empty();
+    if (games.length === 0) return container.html('<div style="text-align:center; padding:20px; color:var(--text-muted); font-size:0.7rem;">No tienes partidas en curso.</div>');
+
+    games.forEach(g => {
+        const opp = g.white === userName ? g.black : g.white;
+        const isMyTurn = (g.turn === 'w' && g.white === userName) || (g.turn === 'b' && g.black === userName);
+        const timeMins = Math.floor((g.white === userName ? g.whiteTime : g.blackTime) / 60);
+        const typeLabel = (g.whiteTime > 3600 * 10) ? 'DAILY' : 'LIVE';
+
+        const html = `
+            <div class="lobby-game-card" data-time="${timeMins}" onclick="resumeGame('${g.id}', '${opp}', '${g.fen}', '${g.white === userName ? 'w' : 'b'}', ${g.whiteTime}, ${g.blackTime})"
+                 style="background:rgba(255,255,255,0.05); padding:12px; border-radius:8px; margin-bottom:8px; border:1px solid ${isMyTurn ? 'var(--accent)' : 'transparent'}; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                 <div>
+                    <div style="font-weight:bold; font-size:0.9rem;">vs ${opp}</div>
+                    <div style="font-size:0.75rem; opacity:0.7;">⏳ ${timeMins} min • ${typeLabel}</div>
+                 </div>
+                 <div style="font-size:0.8rem; font-weight:bold; color:${isMyTurn ? 'var(--accent)' : '#aaa'}">
+                    ${isMyTurn ? 'TU TURNO ⚡' : 'Esperando...'}
+                 </div>
+            </div>
+        `;
+        container.append(html);
+    });
+
+    // Apply current filter
+    const currentFilter = $('#tab-lobby-live').hasClass('active') ? 'live' : 'daily';
+    filterLobby(currentFilter);
+}
+
+function populateLobbyChallenges(challenges) {
+    const list = $('#lobby-challenges');
+    list.empty();
+    if (challenges.length === 0) return list.html('<div style="text-align:center; padding:10px; color:var(--text-muted); font-size:0.7rem;">No hay retos disponibles.</div>');
+
+    challenges.forEach(data => {
+        const html = `
+            <div onclick="joinGame('${data.id}', '${data.user}', '${data.time}')"
+                 style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; margin-bottom:5px; border-left:3px solid var(--accent); cursor:pointer; display:flex; justify-content:space-between;">
+                 <span>👤 ${data.user} (${data.elo})</span>
+                 <span style="font-weight:bold;">${data.time} min ⚔️</span>
+            </div>
+        `;
+        list.append(html);
+    });
+}
 
 // Auto-sync active games list and lobby
 setInterval(function () {
