@@ -1470,6 +1470,15 @@ socket.on('new_challenge', (data) => {
 socket.on('my_games_list', (games) => {
     const list = $('#active-games-list');
     list.empty();
+
+    // NOTIFICATION LOGIC (Active Turns)
+    const myTurns = games.filter(g => (g.turn === 'w' && g.white === userName) || (g.turn === 'b' && g.black === userName));
+    if (myTurns.length > 0) {
+        $('#header-elo3').css('border-color', '#ef4444').css('background', 'rgba(239, 68, 68, 0.2)').attr('title', 'Es tu turno!');
+    } else {
+        $('#header-elo3').css('border-color', '').css('background', '');
+    }
+
     if (games.length === 0) {
         list.html('<div style="font-size:0.65rem; color:var(--text-muted); text-align:center; padding:10px;">No tienes partidas activas.</div>');
     } else {
@@ -1537,10 +1546,13 @@ window.resignBackgroundGame = (id) => {
     }
 };
 
-// Request active games every 10 seconds or when switching to local
+// Request active games every 10 seconds to keep notifications updated
 setInterval(() => {
-    if (isAuth && currentMode === 'local') socket.emit('get_my_games');
-}, 5000);
+    if (isAuth) {
+        socket.emit('get_my_games');
+        socket.emit('get_lobby'); // Ensure we also get challenges
+    }
+}, 8000);
 
 window.joinGame = (id, oppName, time) => {
     console.log("Joining game:", id, oppName, time);
@@ -1664,6 +1676,32 @@ window.loadGame = function (id) {
     if (socket) socket.emit('join_game', { gameId: id });
     showToast("Cambiando de partida...", "🔄");
 };
+
+socket.on('lobby_update', (challenges) => {
+    const list = $('#challenges-list');
+    list.empty();
+
+    // NOTIFICATION LOGIC
+    if (challenges.length > 0) {
+        $('#header-elo10').css('border-color', '#ef4444').attr('title', 'Hay retos pendientes!');
+    } else {
+        $('#header-elo10').css('border-color', '');
+    }
+
+    if (challenges.length === 0) return list.append('<div style="font-size:0.65rem; color:var(--text-muted); text-align:center; padding:10px;">No hay retos disponibles.</div>');
+
+    games.forEach(g => {
+        const isMyTurn = (g.turn === 'w' && g.white === userName) || (g.turn === 'b' && g.black === userName);
+        const opp = (g.white === userName) ? g.black : g.white;
+        const item = $(`
+            <div class="active-game-item ${isMyTurn ? 'my-turn' : ''}" onclick="loadGame('${g.id}')">
+                <div style="flex:1"><b>vs ${opp}</b></div>
+                <div style="font-size:0.6rem; opacity:0.8">${isMyTurn ? 'TU TURNO ⚡' : 'Esperando...'}</div>
+            </div>
+        `);
+        list.append(item);
+    });
+});
 
 socket.on('active_games_update', function (games) {
     const list = $('#active-games-list');
