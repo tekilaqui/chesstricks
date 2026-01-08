@@ -459,7 +459,7 @@ try {
 
             var pv = l.match(/ pv ([a-h0-9]{4})/);
             if (pv && pv[1]) {
-                if (hintsActive) {
+                if (hintsActive || analysisActive) {
                     $('#best-move-display').html("💡 Sugerencia: <b style='color:white'>" + pv[1] + "</b>").show();
                     $('.square-55d63').removeClass('highlight-hint');
                     $('[data-square="' + pv[1].substring(0, 2) + '"]').addClass('highlight-hint');
@@ -1531,6 +1531,212 @@ $('#btn-analyze-game').click(() => {
     stockfish.postMessage('position fen ' + game.fen());
     stockfish.postMessage('go depth 14');
 });
+
+// --- CHESSIS-STYLE FULL ANALYSIS LOGIC ---
+let evalChart = null;
+let analysisResults = [];
+
+function initEvalChart(data = []) {
+    const ctx = document.getElementById('evalChart').getContext('2d');
+    if (evalChart) evalChart.destroy();
+
+    const labels = data.map((_, i) => i);
+    const evaluations = data.map(d => Math.max(-10, Math.min(10, d.ev)));
+
+    evalChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Evaluación',
+                data: evaluations,
+                borderColor: '#38bdf8',
+                backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 2,
+                pointHitRadius: 10,
+                pointHoverRadius: 5,
+                pointBackgroundColor: '#38bdf8'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            onClick: (e, elements) => {
+                if (elements.length > 0) {
+                    const index = elements[0].index;
+                    currentHistoryIndex = index;
+                    board.position(historyPositions[index]);
+                    game.load(historyPositions[index]);
+                    navigateHistory('none'); // Trigger analysis for this index
+                    showToast("Jugada #" + index, "🎯");
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    enabled: true,
+                    callbacks: {
+                        label: (ctx) => {
+                            const val = ctx.raw;
+                            return (val > 0 ? '+' : '') + val.toFixed(1);
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { display: false },
+                y: {
+                    min: -10,
+                    max: 10,
+                    ticks: { color: '#94a3b8', font: { size: 10 } },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                }
+            }
+        }
+    });
+}
+
+function calculateAccuracy(prevEval, currentEval, turn) {
+    // Standard Accuracy model based on Win Probability change
+    // WinProb(cp) = 50 + 50 * (2 / (1 + exp(-0.0036 * cp)) - 1)
+    function winProb(cp) {
+        return 100 / (1 + Math.exp(-0.0036 * cp * 100));
+    }
+
+    const wpBefore = winProb(prevEval);
+    const wpAfter = winProb(currentEval);
+
+    let loss = 0;
+    if (turn === 'w') loss = wpBefore - wpAfter;
+    else loss = wpAfter - wpBefore;
+
+    if (loss < 0) loss = 0;
+
+    // Convert win probability loss to accuracy
+    // A loss of 100% (mate missed) drops accuracy significantly
+    return Math.max(0, 100 - (loss * 1.5));
+}
+
+async function analyzeFullGame() {
+    if (historyPositions.length < 2) return alert("No hay suficientes jugadas para analizar.");
+
+    $('#analysis-report-container').fadeIn();
+    $('#accuracy-display').text('--%');
+    $('#analysis-progress-bar').css('width', '0%');
+
+    const stats = { brilliant: 0, great: 0, best: 0, inaccuracy: 0, mistake: 0, blunder: 0 };
+    const historicalEvals = [{ ev: 0, acc: 100 }];
+    const phaseAccs = { opening: [], middle: [], endgame: [] };
+
+    const analysisGame = new Chess();
+    analysisResults = [];
+
+    // Disable UI interaction during deep analysis
+    const originalMode = currentMode;
+
+    for (let i = 1; i < historyPositions.length; i++) {
+        const fen = historyPositions[i];
+        const prevFen = historyPositions[i - 1];
+        analysisGame.load(fen);
+        const turnMoved = analysisGame.turn() === 'w' ? 'b' : 'w'; // Side that just moved
+
+        // Use Stockfish to get eval at this position
+        const evalData = await getPositionEval(fen);
+        const prevEval = historicalEvals[i - 1].ev;
+        const currentEval = evalData.cp;
+
+        let diff = 0;
+        if (turnMoved === 'w') diff = prevEval - currentEval;
+        else diff = currentEval - prevEval;
+
+        const quality = getQualityMsg(Math.abs(diff), evalData.isMate);
+
+        // Update Stats
+        if (quality.symbol === '!!') stats.brilliant++;
+        else if (quality.symbol === '!') stats.great++;
+        else if (quality.symbol === '') stats.best++;
+        else if (quality.symbol === '?!') stats.inaccuracy++;
+        else if (quality.symbol === '?') stats.mistake++;
+        else if (quality.symbol === '??') stats.blunder++;
+
+        const moveAcc = calculateAccuracy(prevEval, currentEval, turnMoved);
+        historicalEvals.push({ ev: currentEval, acc: moveAcc });
+
+        // Phase categorization
+        const pieces = analysisGame.board().flat().filter(p => p).length;
+        if (i <= 10) phaseAccs.opening.push(moveAcc);
+        else if (pieces > 12) phaseAccs.middle.push(moveAcc);
+        else phaseAccs.endgame.push(moveAcc);
+
+        // Update Progress
+        const percent = Math.round((i / (historyPositions.length - 1)) * 100);
+        $('#analysis-progress-bar').css('width', percent + '%');
+
+        // Small delay to keep UI responsive
+        await new Promise(r => setTimeout(r, 50));
+    }
+
+    // Calculate Final Stats
+    const totalAcc = historicalEvals.slice(1).reduce((a, b) => a + b.acc, 0) / (historicalEvals.length - 1);
+    const avgOp = phaseAccs.opening.length ? (phaseAccs.opening.reduce((a, b) => a + b, 0) / phaseAccs.opening.length) : 0;
+    const avgMid = phaseAccs.middle.length ? (phaseAccs.middle.reduce((a, b) => a + b, 0) / phaseAccs.middle.length) : 0;
+    const avgEnd = phaseAccs.endgame.length ? (phaseAccs.endgame.reduce((a, b) => a + b, 0) / phaseAccs.endgame.length) : 0;
+
+    // Update UI
+    $('#accuracy-display').text(totalAcc.toFixed(1) + '%');
+    $('#phase-opening').text(`Apertura: ${avgOp.toFixed(0)}%`);
+    $('#phase-middlegame').text(`Medio Juego: ${avgMid.toFixed(0)}%`);
+    $('#phase-endgame').text(`Final: ${avgEnd.toFixed(0)}%`);
+
+    $('#stat-brilliant').text(stats.brilliant);
+    $('#stat-great').text(stats.great);
+    $('#stat-best').text(stats.best);
+    $('#stat-inaccuracy').text(stats.inaccuracy);
+    $('#stat-mistake').text(stats.mistake);
+    $('#stat-blunder').text(stats.blunder);
+
+    initEvalChart(historicalEvals);
+    showToast("Análisis completo", "📊");
+}
+
+function getPositionEval(fen) {
+    return new Promise((resolve) => {
+        stockfish.postMessage('stop');
+        stockfish.postMessage('position fen ' + fen);
+        stockfish.postMessage('go depth 14');
+
+        const handler = (e) => {
+            const l = e.data;
+            if (l.includes('score cp')) {
+                const match = l.match(/score cp (-?\d+)/);
+                if (match) {
+                    const cp = parseInt(match[1]) / 100;
+                    // We need to know whose turn it is in this FEN to normalize the CP
+                    const turn = fen.split(' ')[1];
+                    const normalizedCp = (turn === 'w' ? cp : -cp);
+
+                    stockfish.removeEventListener('message', handler);
+                    resolve({ cp: normalizedCp, isMate: false });
+                }
+            } else if (l.includes('score mate')) {
+                const match = l.match(/score mate (-?\d+)/);
+                if (match) {
+                    const mate = parseInt(match[1]);
+                    const turn = fen.split(' ')[1];
+                    const normalizedCp = (turn === 'w' ? (mate > 0 ? 10 : -10) : (mate > 0 ? -10 : 10));
+                    stockfish.removeEventListener('message', handler);
+                    resolve({ cp: normalizedCp, isMate: true });
+                }
+            }
+        };
+        stockfish.addEventListener('message', handler);
+    });
+}
+
+$('#btn-full-analysis').click(analyzeFullGame);
 
 $('#btn-show-sol').click(() => {
     if (!currentPuzzle) return;

@@ -663,6 +663,45 @@
             font-weight: bold;
         }
 
+        /* CHESSIS STYLE ANALYSIS REPORT */
+        .quality-stat {
+            transition: transform 0.2s, background 0.2s;
+            cursor: default;
+        }
+
+        .quality-stat:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.08) !important;
+        }
+
+        #accuracy-display {
+            text-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+        }
+
+        .q-icon {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.8rem;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        #analysis-report-container {
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #analysis-report-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent);
+        }
+
         .trap-warning {
             color: var(--trap-color);
             font-weight: 800;

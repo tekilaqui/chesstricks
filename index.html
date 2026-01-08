@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="manifest" href="manifest.json">
     <script src="puzzles_data.js"></script>
     <meta name="theme-color" content="#22c55e">
@@ -177,7 +178,8 @@
 
                     <div class="btn-menu"
                         onclick="setMode('local'); setTimeout(() => { $('#active-games-list')[0].scrollIntoView({behavior:'smooth'}); }, 300)">
-                        <span>📖</span><span>Mis Partidas Activas</span></div>
+                        <span>📖</span><span>Mis Partidas Activas</span>
+                    </div>
                 </div>
 
                 <!-- SUBMENU: ESTUDIO -->
@@ -200,7 +202,10 @@
                         <div class="btn-menu" onclick="game.reset(); board.start(); updateUI();">
                             <span>🔄</span><span>Resetear Tablero</span>
                         </div>
-                        <div class="btn-menu" id="btn-pgn-main"><span>📄</span><span>Cargar PGN</span></div>
+                        <div class="btn-menu" id="btn-full-analysis"
+                            style="background:rgba(139, 92, 246, 0.1); border-color:rgba(139, 92, 246, 0.3); color:#a78bfa;">
+                            <span>📊</span><span>Revisión de Partida</span>
+                        </div>
                     </div>
                 </div>
 
@@ -223,12 +228,24 @@
             </div>
 
             <div id="game-sidebar-controls" style="display:none; flex-direction:column; gap:10px; margin-top:15px;">
-                <button class="btn-menu" onclick="goBackToMenu()"
-                    style="background:rgba(239, 68, 68, 0.1); border-color:rgba(239, 68, 68, 0.2); color:#ef4444; padding:10px;"><span>🏠</span><span>Volver
-                        al Menú</span></button>
                 <button class="btn-primary" id="btn-flip"
                     style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-muted); padding:10px;">🔄
                     GIRAR TABLERO</button>
+
+                <button class="btn-menu" id="btn-resign-game"
+                    style="background:rgba(239, 68, 68, 0.1); border-color:rgba(239, 68, 68, 0.2); color:#ef4444; padding:10px;">
+                    <span>🏳️</span><span>Rendirse</span>
+                </button>
+
+                <button class="btn-menu" id="btn-abort-game"
+                    style="background:rgba(245, 158, 11, 0.1); border-color:rgba(245, 158, 11, 0.2); color:#f59e0b; padding:10px;">
+                    <span>⏹️</span><span>Abortar Partida</span>
+                </button>
+
+                <button class="btn-menu" onclick="goBackToMenu()"
+                    style="background:rgba(59, 130, 246, 0.1); border-color:rgba(59, 130, 246, 0.2); color:#3b82f6; padding:10px;">
+                    <span>🏠</span><span>Volver al Menú</span>
+                </button>
             </div>
 
             <!-- MAESTRO IA PANEL REFINADO -->
@@ -284,6 +301,68 @@
                 <button class="btn-nav" id="btn-nav-prev" title="Anterior">◀</button>
                 <button class="btn-nav" id="btn-nav-next" title="Siguiente">▶</button>
                 <button class="btn-nav" id="btn-nav-last" title="Fin">⏭</button>
+            </div>
+
+            <!-- REPORTE DE ANÁLISIS ESTILO CHESSIS -->
+            <div id="analysis-report-container"
+                style="display:none; width:100%; max-width:450px; background:var(--glass-bg); backdrop-filter:var(--glass-blur); border-radius:12px; border:var(--border-glass); margin-top:15px; padding:15px; animation:fadeIn 0.4s ease;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h3 style="font-size:0.9rem; color:var(--accent);">ANÁLISIS DE PARTIDA</h3>
+                    <button class="btn-tool" onclick="$('#analysis-report-container').fadeOut()"
+                        style="padding:4px 8px;">CERRAR</button>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:20px;">
+                    <div style="text-align:center; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px;">
+                        <div id="accuracy-display" style="font-size:2rem; font-weight:800; color:var(--accent);">--%
+                        </div>
+                        <div class="label-tiny">PRECISIÓN TOTAL</div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; justify-content:center; gap:4px;">
+                        <div id="phase-opening" style="font-size:0.6rem; color:var(--text-muted);">Apertura: --%</div>
+                        <div id="phase-middlegame" style="font-size:0.6rem; color:var(--text-muted);">Medio Juego: --%
+                        </div>
+                        <div id="phase-endgame" style="font-size:0.6rem; color:var(--text-muted);">Final: --%</div>
+                    </div>
+                </div>
+
+                <!-- Gráfico de Evaluación -->
+                <div
+                    style="width:100%; height:120px; background:rgba(0,0,0,0.2); border-radius:8px; margin-bottom:15px; position:relative; overflow:hidden;">
+                    <canvas id="evalChart"></canvas>
+                </div>
+
+                <!-- Detalles de Jugadas -->
+                <div class="quality-grid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;">
+                    <div class="quality-stat brilliance"
+                        style="display:flex; align-items:center; gap:8px; background:rgba(167, 139, 250, 0.1); padding:8px; border-radius:6px; border:1px solid rgba(167, 139, 250, 0.2);">
+                        <span class="q-icon" style="color:#a78bfa; font-weight:900;">!!</span> <span id="stat-brilliant"
+                            style="font-weight:700;">0</span></div>
+                    <div class="quality-stat great"
+                        style="display:flex; align-items:center; gap:8px; background:rgba(56, 189, 248, 0.1); padding:8px; border-radius:6px; border:1px solid rgba(56, 189, 248, 0.2);">
+                        <span class="q-icon" style="color:var(--accent); font-weight:900;">!</span> <span
+                            id="stat-great" style="font-weight:700;">0</span></div>
+                    <div class="quality-stat best"
+                        style="display:flex; align-items:center; gap:8px; background:rgba(16, 185, 129, 0.1); padding:8px; border-radius:6px; border:1px solid rgba(16, 185, 129, 0.2);">
+                        <span class="q-icon" style="color:#10b981; font-weight:900;">⭐</span> <span id="stat-best"
+                            style="font-weight:700;">0</span></div>
+                    <div class="quality-stat inaccuracy"
+                        style="display:flex; align-items:center; gap:8px; background:rgba(251, 191, 36, 0.1); padding:8px; border-radius:6px; border:1px solid rgba(251, 191, 36, 0.2);">
+                        <span class="q-icon" style="color:#fbbf24; font-weight:900;">?!</span> <span
+                            id="stat-inaccuracy" style="font-weight:700;">0</span></div>
+                    <div class="quality-stat mistake"
+                        style="display:flex; align-items:center; gap:8px; background:rgba(249, 115, 22, 0.1); padding:8px; border-radius:6px; border:1px solid rgba(249, 115, 22, 0.2);">
+                        <span class="q-icon" style="color:#f97316; font-weight:900;">?</span> <span id="stat-mistake"
+                            style="font-weight:700;">0</span></div>
+                    <div class="quality-stat blunder"
+                        style="display:flex; align-items:center; gap:8px; background:rgba(239, 68, 68, 0.1); padding:8px; border-radius:6px; border:1px solid rgba(239, 68, 68, 0.2);">
+                        <span class="q-icon" style="color:#ef4444; font-weight:900;">??</span> <span id="stat-blunder"
+                            style="font-weight:700;">0</span></div>
+                </div>
+
+                <div id="analysis-progress-bar"
+                    style="height:4px; width:0; background:var(--accent); margin-top:15px; border-radius:2px; transition: width 0.3s;">
+                </div>
             </div>
 
             <!-- BARRA DE ACCIONES SECUNDARIA (SOLO MÓVIL) -->
