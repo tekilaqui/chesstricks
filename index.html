@@ -185,26 +185,37 @@
                 <!-- SUBMENU: ESTUDIO -->
                 <div class="menu-step" id="menu-estudio">
                     <button class="btn-back" onclick="showSubMenu('root')">⬅️ Volver</button>
-                    <div style="display:flex; flex-direction:column; gap:10px;">
+                    <div style="display:flex; flex-direction:column; gap:12px;">
                         <div class="btn-menu" onclick="$('#opening-sel-container').slideToggle()">
-                            <span>📖</span><span>Ver Aperturas</span>
+                            <span>📖</span><span>Aperturas</span>
                         </div>
 
                         <div id="opening-sel-container"
-                            style="display:none; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;">
+                            style="display:none; background:rgba(0,0,0,0.2); padding:10px; border-radius:12px; border: 1px solid rgba(255,255,255,0.1);">
                             <label class="label-tiny">Elegir Apertura</label>
                             <select class="btn-control" id="opening-sel-main">
                                 <option value="">-- Seleccionar --</option>
                             </select>
                         </div>
 
-                        <div class="btn-menu" onclick="setMode('study')"><span>🔍</span><span>Modo Análisis</span></div>
-                        <div class="btn-menu" onclick="game.reset(); board.start(); updateUI();">
-                            <span>🔄</span><span>Resetear Tablero</span>
+                        <div class="btn-menu" onclick="showSubMenu('analisis')">
+                            <span>🔍</span><span>Análisis</span>
                         </div>
-                        <div class="btn-menu" id="btn-full-analysis"
-                            style="background:rgba(139, 92, 246, 0.1); border-color:rgba(139, 92, 246, 0.3); color:#a78bfa;">
-                            <span>📊</span><span>Revisión de Partida</span>
+                    </div>
+                </div>
+
+                <!-- SUBMENU: ANÁLISIS -->
+                <div class="menu-step" id="menu-analisis">
+                    <button class="btn-back" onclick="showSubMenu('estudio')">⬅️ Volver</button>
+                    <div style="display:flex; flex-direction:column; gap:12px;">
+                        <div class="btn-menu" id="btn-editor-main">
+                            <span>⛏️</span><span>Editor de Tablero</span>
+                        </div>
+                        <div class="btn-menu" onclick="setMode('study')">
+                            <span>📈</span><span>Análisis de Tablero</span>
+                        </div>
+                        <div class="btn-menu" id="btn-pgn-main">
+                            <span>📄</span><span>Importar PGN / Otros</span>
                         </div>
                     </div>
                 </div>
@@ -249,7 +260,7 @@
             </div>
 
             <!-- MAESTRO IA PANEL REFINADO -->
-            <div class="master-panel" id="master-coach-panel" style="margin-top:12px;">
+            <div class="master-panel" id="master-coach-panel" style="margin-top:12px; display:none;">
                 <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
                     <div class="master-avatar">👴</div>
                     <div style="font-size:0.55rem; color:var(--accent); font-weight:800;">MASTER</div>
@@ -284,6 +295,9 @@
                         style="position:absolute; top:-25px; right:0; color:#aaa; font-size:0.7rem; font-weight:bold;">
                     </div>
                     <div id="myBoard" class="board-3d-effect"></div>
+                    <!-- Capa para flechas del Maestro -->
+                    <canvas id="arrowCanvas"
+                        style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:100;"></canvas>
                     <div id="game-overlay"
                         style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:999; border-radius:4px; transition:0.3s;">
                         <h2 id="overlay-msg"
@@ -337,27 +351,33 @@
                     <div class="quality-stat brilliance"
                         style="display:flex; align-items:center; gap:8px; background:rgba(167, 139, 250, 0.1); padding:8px; border-radius:6px; border:1px solid rgba(167, 139, 250, 0.2);">
                         <span class="q-icon" style="color:#a78bfa; font-weight:900;">!!</span> <span id="stat-brilliant"
-                            style="font-weight:700;">0</span></div>
+                            style="font-weight:700;">0</span>
+                    </div>
                     <div class="quality-stat great"
                         style="display:flex; align-items:center; gap:8px; background:rgba(56, 189, 248, 0.1); padding:8px; border-radius:6px; border:1px solid rgba(56, 189, 248, 0.2);">
                         <span class="q-icon" style="color:var(--accent); font-weight:900;">!</span> <span
-                            id="stat-great" style="font-weight:700;">0</span></div>
+                            id="stat-great" style="font-weight:700;">0</span>
+                    </div>
                     <div class="quality-stat best"
                         style="display:flex; align-items:center; gap:8px; background:rgba(16, 185, 129, 0.1); padding:8px; border-radius:6px; border:1px solid rgba(16, 185, 129, 0.2);">
                         <span class="q-icon" style="color:#10b981; font-weight:900;">⭐</span> <span id="stat-best"
-                            style="font-weight:700;">0</span></div>
+                            style="font-weight:700;">0</span>
+                    </div>
                     <div class="quality-stat inaccuracy"
                         style="display:flex; align-items:center; gap:8px; background:rgba(251, 191, 36, 0.1); padding:8px; border-radius:6px; border:1px solid rgba(251, 191, 36, 0.2);">
                         <span class="q-icon" style="color:#fbbf24; font-weight:900;">?!</span> <span
-                            id="stat-inaccuracy" style="font-weight:700;">0</span></div>
+                            id="stat-inaccuracy" style="font-weight:700;">0</span>
+                    </div>
                     <div class="quality-stat mistake"
                         style="display:flex; align-items:center; gap:8px; background:rgba(249, 115, 22, 0.1); padding:8px; border-radius:6px; border:1px solid rgba(249, 115, 22, 0.2);">
                         <span class="q-icon" style="color:#f97316; font-weight:900;">?</span> <span id="stat-mistake"
-                            style="font-weight:700;">0</span></div>
+                            style="font-weight:700;">0</span>
+                    </div>
                     <div class="quality-stat blunder"
                         style="display:flex; align-items:center; gap:8px; background:rgba(239, 68, 68, 0.1); padding:8px; border-radius:6px; border:1px solid rgba(239, 68, 68, 0.2);">
                         <span class="q-icon" style="color:#ef4444; font-weight:900;">??</span> <span id="stat-blunder"
-                            style="font-weight:700;">0</span></div>
+                            style="font-weight:700;">0</span>
+                    </div>
                 </div>
 
                 <div id="analysis-progress-bar"
@@ -462,6 +482,12 @@
                         <option value="15">Nivel 15 (ELO 2100)</option>
                         <option value="20">Nivel 20 (ELO 2500+)</option>
                     </select>
+
+                    <label class="label-tiny">PRACTICAR APERTURA ESPECÍFICA</label>
+                    <select class="btn-control" id="ai-opening-practice" style="margin-bottom:10px;">
+                        <option value="">-- Juego Libre --</option>
+                    </select>
+
                     <button class="btn-primary" id="btn-start-ai">EMPEZAR PARTIDA</button>
                     <button class="btn-danger" id="btn-resign-ai" style="margin-top:5px;">RENDIRSE</button>
                     <button class="btn-tool" id="btn-ai-hint" style="width:100%; margin-top:8px;">💡 ACTIVAR
