@@ -4,26 +4,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Chess Tricks | Maestro IA & Puzzles</title>
+    <title>Chess Tricks | Maestro IA & Puzzles - Optimizado</title>
 
-    <!-- LIBRERÍAS (CDN para que funcione en internet sin líos de archivos si faltan) -->
+    <!-- LIBRERÍAS (CDN) -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <link rel="manifest" href="manifest.json">
-    <script src="puzzles_data.js"></script>
-    <script src="openings_enhanced.js"></script>
     <meta name="theme-color" content="#22c55e">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <!-- iOS TOUCH FIX -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+
+    <!-- PRELOAD CRÍTICO PARA STOCKFISH -->
+    <link rel="preload" href="stockfish.js" as="script">
+
+    <style>
+        /* OPTIMIZACIÓN: Añadir animación de pulse para thinking */
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .ai-thinking {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        /* iOS Safari fix para viewport height */
+        @supports (-webkit-touch-callout: none) {
+            body {
+                min-height: -webkit-fill-available;
+            }
+        }
+
+        /* Prevenir zoom accidental en iOS */
+        input,
+        select,
+        textarea {
+            font-size: 16px !important;
+        }
+    </style>
 </head>
 
 <body>
+    <!-- INDICADOR DE VERSIÓN (DEBUGGING) -->
+    <div style="position:fixed; bottom:5px; right:5px; font-size:0.6rem; color:#666; z-index:999999; opacity:0.5;">
+        v2.5-OPT
+    </div>
+
     <div id="toast-container"></div>
     <div class="app-header">
         <div style="display:flex; align-items:center; gap:12px;">
@@ -85,7 +130,16 @@
             <p id="auth-switch"
                 style="font-size:0.7rem; text-align:center; margin-top:15px; cursor:pointer; color:var(--text-muted);">
                 ¿No tienes cuenta? <span style="color:var(--accent)">Regístrate</span></p>
-            <button class="btn-tool" id="btn-auth-close" style="width:100%; margin-top:10px;">CERRAR</button>
+            <button class="btn-tool" id="btn-auth-close" style="width:100%; margin-top:10px;">INICIAR SESIÓN
+                LUEGO</button>
+            <button class="btn-tool" onclick="$('#auth-modal').hide();"
+                style="width:100%; margin-top:10px; border-color:transparent; background:none; font-size:0.75rem; color:var(--text-muted);">Continuar
+                como invitado</button>
+            <div id="auth-delete-area" style="margin-top:20px; text-align:center; display:none;">
+                <button onclick="confirmDeleteAccount()"
+                    style="background:none; border:none; color:#ef4444; font-size:0.6rem; text-decoration:underline; cursor:pointer; opacity:0.6;">Darse
+                    de baja (Cerrar cuenta permanentemente)</button>
+            </div>
         </div>
     </div>
 
@@ -153,6 +207,9 @@
             <a href="privacy.html" style="color:var(--text-muted); font-size:0.65rem; text-decoration:none;"
                 target="_blank">📜 Política de Privacidad</a>
         </div>
+        <div class="drawer-item" id="btn-delete-account" onclick="confirmDeleteAccount()"
+            style="cursor:pointer; padding:10px 0; border-top:1px solid rgba(239, 68, 68, 0.1); color:#ef4444; font-size:0.7rem; opacity:0.8; display:none;">
+            🗑️ Eliminar mi cuenta permanentemente</div>
         <div style="margin-top:auto; font-size:0.6rem; color:var(--text-muted);">V 2.5 - Cloud Edition</div>
     </div>
 
@@ -178,22 +235,24 @@
                 <!-- MENU PRINCIPAL (LEVEL 1) -->
                 <div class="menu-step active" id="menu-root">
                     <div class="btn-menu" onclick="showSubMenu('lobby')"><span>🌐</span><span>Jugar Online</span></div>
-                    <div class="btn-menu" onclick="showSubMenu('jugar')"><span>🤖</span><span>Vs IA / Local</span></div>
-                    <div class="btn-menu" onclick="showSubMenu('estudio')"><span>📚</span><span>Estudiar</span></div>
-                    <div class="btn-menu" onclick="showSubMenu('puzzles')"><span>🧩</span><span>Puzzles</span></div>
+                    <div class="btn-menu" onclick="showSubMenu('jugar')"><span>🤖</span><span>Jugar vs IA / Local</span>
+                    </div>
+                    <div class="btn-menu" onclick="showSubMenu('estudio')"><span>📚</span><span>Estudiar y
+                            Analizar</span></div>
+                    <div class="btn-menu" onclick="showSubMenu('puzzles')"><span>🧩</span><span>Puzzles Tácticos</span>
+                    </div>
                 </div>
 
                 <!-- SUBMENU: JUGAR -->
                 <div class="menu-step" id="menu-jugar">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <button class="btn-back" onclick="showSubMenu('root')" style="margin:0;">⬅️ Atras</button>
+                        <button class="btn-back" onclick="showSubMenu('root')" style="margin:0;">⬅️ VOLVER</button>
                     </div>
 
-                    <!-- OPCIONES RÁPIDAS -->
                     <div class="btn-menu" onclick="showSubMenu('maestro-setup')"><span>👴</span><span>Entrenamiento
-                            Maestro</span></div>
-                    <div class="btn-menu" onclick="setMode('pass-and-play')"><span>👥</span><span>Juego Local</span>
-                    </div>
+                            Maestro IA</span></div>
+                    <div class="btn-menu" onclick="setMode('pass-and-play')"><span>👥</span><span>Duelo Local (2
+                            Jugadores)</span></div>
                 </div>
 
                 <!-- SUBMENU: MAESTRO SETUP -->
@@ -240,13 +299,6 @@
                             </select>
                         </div>
 
-                        <div>
-                            <label class="label-tiny">PRACTICAR APERTURA (OPCIONAL)</label>
-                            <select class="btn-control" id="maestro-opening-sel" style="width:100%;">
-                                <option value="">-- Juego Libre --</option>
-                            </select>
-                        </div>
-
                         <button class="btn-primary" onclick="startMaestroModeReal()" style="margin-top:10px;">🚀 EMPEZAR
                             ENTRENAMIENTO</button>
                     </div>
@@ -255,17 +307,17 @@
                 <!-- SUBMENU: LOBBY (SALA ONLINE) -->
                 <div class="menu-step" id="menu-lobby">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                        <button class="btn-back" onclick="showSubMenu('root')" style="margin:0;">🏠 Volver
-                            Inicio</button>
+                        <button class="btn-back" onclick="showSubMenu('root')" style="margin:0;">🏠 VOLVER AL
+                            INICIO</button>
                         <div style="font-size:0.8rem; font-weight:bold; color:var(--accent);">SALA ONLINE 🌐</div>
                     </div>
 
-                    <!-- PESTAÑAS LOBBY -->
+                    <!-- PESTAÑAS LOBBY - SEPARACIÓN TOTAL DE CATEGORÍAS -->
                     <div style="display:flex; gap:5px; margin-bottom:15px;">
                         <button class="btn-tool active" onclick="filterLobby('live')" id="tab-lobby-live"
-                            style="flex:1;">⚡ EN VIVO</button>
-                        <button class="btn-tool" onclick="filterLobby('daily')" id="tab-lobby-daily" style="flex:1;">📅
-                            DIARIAS</button>
+                            style="flex:1; font-size: 0.65rem;">⚡ PARTIDAS CORTAS (-30m)</button>
+                        <button class="btn-tool" onclick="filterLobby('daily')" id="tab-lobby-daily"
+                            style="flex:1; font-size: 0.65rem;">📅 DIARIAS (24h)</button>
                     </div>
 
                     <!-- LISTA DE PARTIDAS ACTIVAS -->
@@ -313,70 +365,87 @@
                 <!-- SUBMENU: ESTUDIO -->
                 <div class="menu-step" id="menu-estudio">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <button class="btn-back" onclick="showSubMenu('root')" style="margin:0;">⬅️ Atras</button>
+                        <button class="btn-back" onclick="showSubMenu('root')" style="margin:0;">⬅️ VOLVER</button>
                     </div>
                     <div style="display:flex; flex-direction:column; gap:12px;">
-                        <div class="menu-btn" onclick="$('#btn-toggle-openings').click();">
-                            <span>📖</span><span>Aperturas</span>
+                        <div class="btn-menu" onclick="showSubMenu('menu-estudio-aperturas')">
+                            <span>📖</span><span>Aperturas Teoría y Entrenamiento</span>
                         </div>
-
-                        <div id="opening-sel-container"
-                            style="display:none; background:rgba(0,0,0,0.25); padding:18px; border-radius:15px; border: 1px solid rgba(255,255,255,0.08); margin-top:15px; box-shadow: inset 0 0 20px rgba(0,0,0,0.2);">
-
-                            <div style="display:grid; grid-template-columns: 1fr; gap:15px;">
-                                <button class="btn-tool"
-                                    onclick="setMode('study'); showToast('Modo Teoría activado', '📖');"
-                                    style="background:rgba(56, 189, 248, 0.15); color:#38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); font-weight:800; padding:20px; border-radius:10px; transition:0.3s; cursor:pointer;">
-                                    <span style="font-size:1.5rem; display:block; margin-bottom:8px;">📖</span>
-                                    <div style="font-size:1rem; margin-bottom:4px;">TEORÍA</div>
-                                    <div style="font-size:0.65rem; opacity:0.8;">Estudia aperturas paso a paso</div>
-                                </button>
-
-                                <button class="btn-tool"
-                                    onclick="setMode('ai'); showToast('Configura tu entrenamiento en el panel lateral', '⚔️');"
-                                    style="background:rgba(139, 92, 246, 0.15); color:#a78bfa; border: 1px solid rgba(139, 92, 246, 0.4); font-weight:800; padding:20px; border-radius:10px; transition:0.3s; cursor:pointer;">
-                                    <span style="font-size:1.5rem; display:block; margin-bottom:8px;">⚔️</span>
-                                    <div style="font-size:1rem; margin-bottom:4px;">ENTRENAMIENTO</div>
-                                    <div style="font-size:0.65rem; opacity:0.8;">Practica contra la IA</div>
-                                </button>
-
-                                <button class="btn-tool"
-                                    onclick="setMode('exercises'); showToast('Resuelve puzzles tácticos', '🧩');"
-                                    style="background:rgba(16, 185, 129, 0.15); color:#10b981; border: 1px solid rgba(16, 185, 129, 0.4); font-weight:800; padding:20px; border-radius:10px; transition:0.3s; cursor:pointer;">
-                                    <span style="font-size:1.5rem; display:block; margin-bottom:8px;">🧩</span>
-                                    <div style="font-size:1rem; margin-bottom:4px;">PROBLEMAS</div>
-                                    <div style="font-size:0.65rem; opacity:0.8;">Ejercicios tácticos</div>
-                                </button>
-                            </div>
-
-                            <p
-                                style="font-size:0.55rem; color:var(--text-muted); margin-top:12px; font-style:italic; text-align:center;">
-                                * En modo <b>Entrenar</b>, el Maestro jugará contra ti siguiendo la línea.
-                            </p>
-                        </div>
-
-                        <div class="btn-menu" onclick="showSubMenu('analisis')">
-                            <span>🔍</span><span>Análisis</span>
+                        <div class="btn-menu" onclick="showSubMenu('menu-estudio-analisis')">
+                            <span>🔍</span><span>Análisis y Herramientas</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- SUBMENU: ANÁLISIS -->
-                <div class="menu-step" id="menu-analisis">
+                <!-- SUBMENU: APERTURAS (ESTUDIO) -->
+                <div class="menu-step" id="menu-estudio-aperturas">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <button class="btn-back" onclick="showSubMenu('estudio')" style="margin:0;">⬅️ Atras</button>
-                        <button class="btn-back" onclick="showSubMenu('root')"
-                            style="margin:0; font-size:0.6rem; color:var(--accent);">🏠 Menu</button>
+                        <button class="btn-back" onclick="showSubMenu('estudio')" style="margin:0;">⬅️ ATRÁS</button>
                     </div>
-                    <div style="display:flex; flex-direction:column; gap:12px;">
-                        <div class="btn-menu" id="btn-editor-main">
-                            <span>⛏️</span><span>Editor de Tablero</span>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <div class="btn-menu" onclick="showOpeningLibrary('theory')">
+                            <span>📚</span><span>Modo Teoría (Explicaciones IA)</span>
                         </div>
+                        <div class="btn-menu" onclick="showOpeningLibrary('training')">
+                            <span>⚔️</span><span>Entrenamiento IA Maestro</span>
+                        </div>
+                        <div class="btn-menu" onclick="showOpeningLibrary('exercises')">
+                            <span>🧩</span><span>Ejercicios de Apertura</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUBMENU: SELECTOR DE APERTURA ESPECIFICA -->
+                <div class="menu-step" id="menu-apertura-selector">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <button class="btn-back" onclick="showSubMenu('estudio-aperturas')" style="margin:0;">⬅️
+                            ATRÁS</button>
+                        <button class="btn-back" onclick="showSubMenu('root')"
+                            style="margin:0; font-size:0.6rem; color:var(--accent);">🏠 MENÚ</button>
+                    </div>
+                    <div
+                        style="background:var(--glass-bg); padding:15px; border-radius:12px; border:var(--border-glass);">
+                        <label id="ap-sel-label"
+                            style="display:block; margin-bottom:10px; font-size:0.7rem; color:var(--accent); font-weight:800;">SELECCIONA
+                            APERTURA</label>
+                        <select id="opening-sel-universal" class="input-main" style="margin-bottom:15px;"></select>
+
+                        <div id="training-color-choice" style="display:none; margin-bottom:15px;">
+                            <label
+                                style="display:block; margin-bottom:10px; font-size:0.7rem; color:var(--text-muted); font-weight:800;">TU
+                                COLOR</label>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                                <button class="btn-tool color-btn active" data-color="white" style="padding:10px;">⚪
+                                    Blancas</button>
+                                <button class="btn-tool color-btn" data-color="black" style="padding:10px;">⚫
+                                    Negras</button>
+                            </div>
+                        </div>
+
+                        <button class="btn-primary" onclick="startOpeningModeFromSelector()"
+                            style="width:100%;">COMENZAR</button>
+                    </div>
+                </div>
+
+                <!-- SUBMENU: ANALISIS (ESTUDIO) -->
+                <div class="menu-step" id="menu-estudio-analisis">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <button class="btn-back" onclick="showSubMenu('estudio')" style="margin:0;">⬅️ ATRÁS</button>
+                        <button class="btn-back" onclick="showSubMenu('root')"
+                            style="margin:0; font-size:0.6rem; color:var(--accent);">🏠 MENÚ</button>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
                         <div class="btn-menu" onclick="setMode('study')">
                             <span>📈</span><span>Análisis de Tablero</span>
                         </div>
+                        <div class="btn-menu" id="btn-editor-main">
+                            <span>⛏️</span><span>Editor de Posiciones</span>
+                        </div>
+                        <div class="btn-menu" onclick="resetGamePosition()">
+                            <span>🧹</span><span>Reiniciar Tablero</span>
+                        </div>
                         <div class="btn-menu" id="btn-pgn-main">
-                            <span>📄</span><span>Importar PGN / Otros</span>
+                            <span>📄</span><span>Importar PGN</span>
                         </div>
                     </div>
                 </div>
@@ -384,7 +453,9 @@
                 <!-- SUBMENU: PUZZLES -->
                 <div class="menu-step" id="menu-puzzles">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <button class="btn-back" onclick="showSubMenu('root')" style="margin:0;">⬅️ Atras</button>
+                        <button class="btn-back" onclick="showSubMenu('root')" style="margin:0;">⬅️ ATRÁS</button>
+                        <button class="btn-back" onclick="showSubMenu('root')"
+                            style="margin:0; font-size:0.6rem; color:var(--accent);">🏠 MENÚ</button>
                     </div>
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                         <button class="btn-menu" onclick="setPuzzleCat('mixed')"
@@ -431,7 +502,8 @@
                 </div>
             </div>
 
-            <div id="game-sidebar-controls" style="display:none; flex-direction:column; gap:10px; margin-top:15px;">
+            <div id="puzzles-setup-controls" class="game-sidebar-controls"
+                style="display:none; flex-direction:column; gap:10px; margin-top:15px;">
                 <button class="btn-primary" id="btn-flip"
                     style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-muted); padding:10px;">🔄
                     GIRAR TABLERO</button>
@@ -473,25 +545,7 @@
                 </div>
             </div>
 
-            <!-- MAESTRO IA PANEL REFINADO -->
-            <div class="master-panel" id="master-coach-panel"
-                style="margin-top:12px; display:none; flex-direction:column;">
-                <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
-                    <div class="master-avatar">👴</div>
-                    <div style="font-size:0.55rem; color:var(--accent); font-weight:800;">MASTER</div>
-                </div>
-                <div class="master-content" style="border-left: 1px solid rgba(255,255,255,0.1); padding-left:15px;">
-                    <div id="coach-txt" class="master-text" style="text-align:left; font-style:italic;">
-                        Inicia un reto para empezar tu entrenamiento...
-                    </div>
-                    <div id="coach-actions-pc" style="margin-top:10px; display:none; gap:5px;">
-                        <button class="btn-tool btn-only-girar" id="btn-flip-pc"
-                            style="flex:1; padding:8px; font-size:0.75rem; font-weight:700;">🔄
-                            GIRAR TABLERO</button>
-                    </div>
-                    <div id="best-move-display" class="best-move-box"></div>
-                </div>
-            </div>
+
         </aside>
 
         <div class="game-zone">
@@ -515,6 +569,10 @@
                         style="position:absolute; top:-25px; right:0; color:#aaa; font-size:0.7rem; font-weight:bold;">
                     </div>
                     <div id="myBoard" class="board-3d-effect"></div>
+                    <!-- Punto de Peligro IA -->
+                    <div id="danger-dot" class="danger-dot" style="display:none;" onclick="showDangerExplanation()">
+                    </div>
+
                     <!-- Capa para flechas del Maestro -->
                     <canvas id="arrowCanvas"
                         style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1000;"></canvas>
@@ -658,17 +716,64 @@
 
         <aside class="sidebar-right">
             <!-- CONTROLES SUPERIORES (PC) - Visible solo en modos de juego -->
-            <div id="game-sidebar-controls"
+            <div id="sidebar-game-controls" class="game-sidebar-controls"
                 style="display:none; flex-direction:column; gap:8px; margin-bottom:15px; padding-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.05);">
                 <button class="btn-primary" id="btn-back-menu-pc" onclick="goBackToMenu()"
                     style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px;">
                     🏠 VOLVER AL MENÚ
                 </button>
                 <div style="display:flex; gap:5px;">
-                    <button class="btn-tool" onclick="board.flip()"
+                    <button class="btn-tool" id="btn-flip-pc-sidebar"
                         style="flex:1; background:rgba(255,255,255,0.05);">🔄 Girar</button>
                     <button class="btn-tool" id="btn-reset-board-pc"
                         style="flex:1; background:rgba(255,255,255,0.05);">🧹 Reiniciar</button>
+                    <button class="btn-tool" onclick="game.undo(); board.position(game.fen()); updateUI();"
+                        style="flex:1; background:rgba(255,255,255,0.05); color:var(--accent);">⏪ Anterior</button>
+                </div>
+            </div>
+
+            <!-- MAESTRO IA PANEL REFINADO (PC) -->
+            <div class="master-panel" id="master-coach-panel"
+                style="margin-top:5px; display:none; flex-direction:column; border-radius:12px 12px 0 0; background:rgba(0,0,0,0.3); border-bottom:none;">
+                <div class="master-content" style="padding:15px;">
+                    <div id="coach-txt" class="master-text"
+                        style="text-align:left; font-style:italic; font-size:0.75rem; min-height:60px;">
+                        Inicia un reto para empezar tu entrenamiento...
+                    </div>
+                    <div id="best-move-display" class="best-move-box"></div>
+                </div>
+            </div>
+
+            <!-- HISTORIAL DE MOVIMIENTOS EN VIVO -->
+            <div id="current-moves-sidebar"
+                style="display:none; flex-direction:column; background:rgba(0,0,0,0.25); padding:10px; border-radius:0 0 12px 12px; margin-bottom:15px; border:1px solid rgba(255,255,255,0.05); border-top:none;">
+                <label class="label-tiny" style="margin-bottom:8px; opacity:0.7;">HISTORIAL DE LA PARTIDA</label>
+                <div class="live-moves-grid" id="game-moves-list">
+                    <!-- Se llena con client.js -->
+                </div>
+
+                <!-- CONTROLES ESPECÍFICOS DE ANÁLISIS/ESTUDIO -->
+                <div id="study-extra-controls"
+                    style="margin-top:8px; display:none; flex-direction:column; gap:8px; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:0.6rem; color:var(--text-muted); font-weight:800;">AUTO-MOVIMIENTO</span>
+                        <div class="toggle-switch" onclick="toggleOpponentAutoMode()">
+                            <div id="opp-move-toggle" class="toggle-btn"
+                                style="background:#475569; width:70px; height:22px; border-radius:11px; position:relative; cursor:pointer; display:flex; align-items:center; padding:0 5px; font-size:0.5rem; font-weight:800; color:white;">
+                                <span id="opp-mode-label" style="margin:auto;">MANUAL</span>
+                                <div id="opp-mode-dot"
+                                    style="position:absolute; left:2px; height:18px; width:18px; background:white; border-radius:50%; transition:0.3s;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px;">
+                        <button class="btn-tool" onclick="toggleHints()" id="btn-toggle-hints-study"
+                            style="font-size:0.6rem; padding:6px;">💡 PISTAS</button>
+                        <button class="btn-tool" id="btn-reset-board-pc-action" onclick="resetGamePosition()"
+                            style="font-size:0.6rem; padding:6px;">🧹 REINICIAR</button>
+                    </div>
                 </div>
             </div>
 
@@ -687,7 +792,7 @@
                     <div class="desktop-only"
                         style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:5px; margin-bottom:15px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.05);">
                         <button class="btn-tool" onclick="goBackToMenu()" style="font-size:0.7rem;">🏠 Menú</button>
-                        <button class="btn-tool" onclick="board.flip()" style="font-size:0.7rem;">🔄 Girar</button>
+                        <button class="btn-tool" id="btn-flip-pc-local" style="font-size:0.7rem;">🔄 Girar</button>
                         <button class="btn-danger" id="btn-resign-local-pc" style="font-size:0.7rem;">🏳️
                             Rendirse</button>
                     </div>
@@ -711,13 +816,20 @@
 
                     <!-- CONTROLES MÓVIL -->
                     <div class="mobile-only" style="display:flex; gap:5px; margin-top:5px;">
-                        <button class="btn-danger" id="btn-abort" style="flex:1;">ABORTAR</button>
+                        <button class="btn-tool" onclick="game.undo(); board.position(game.fen()); updateUI();"
+                            style="flex:1;">⏪ ATRÁS</button>
                         <button class="btn-danger" id="btn-resign-local" style="flex:1;">RENDIRSE</button>
                     </div>
+                    <button class="btn-tool" onclick="goBackToMenu()" style="width:100%; margin-top:5px;">🏠 VOLVER AL
+                        MENÚ</button>
                 </div>
 
                 <!-- MODO IA -->
                 <div class="mode-section" id="sec-ai">
+                    <button class="btn-tool" onclick="goBackToMenu()"
+                        style="width:100%; margin-bottom:15px; border-color:rgba(255,255,255,0.1);">🏠 VOLVER AL
+                        MENÚ</button>
+
                     <label class="label-tiny">TIEMPO DE JUEGO</label>
                     <div class="time-selector-grid" id="ai-time-selector">
                         <button class="time-btn" data-time="1">1 min</button>
@@ -741,20 +853,6 @@
                         <option value="20">Nivel 20 (ELO 2500+)</option>
                     </select>
 
-                    <div
-                        style="background:rgba(255,255,255,0.03); padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.05); margin-bottom:15px;">
-                        <label class="label-tiny" style="color:var(--accent); letter-spacing:1px;">⚙️ ENTRENAMIENTO DE
-                            APERTURAS</label>
-                        <select class="btn-control" id="ai-opening-practice"
-                            style="margin-bottom:12px; border-color:rgba(139, 92, 246, 0.3); background:rgba(139, 92, 246, 0.05);">
-                            <option value="">-- JUEGO LIBRE (Sin apertura fija) --</option>
-                        </select>
-                        <div style="font-size:0.55rem; color:var(--text-muted); line-height:1.3;">
-                            Selecciona una apertura para que la IA siga la línea teórica principal. Si te desvías, el
-                            motor tomará el control.
-                        </div>
-                    </div>
-
                     <button class="btn-primary" id="btn-start-ai">EMPEZAR PARTIDA</button>
                     <div style="display:flex; gap:5px; margin-top:5px;">
                         <button class="btn-danger" id="btn-resign-ai" style="flex:1;">RENDIRSE</button>
@@ -767,6 +865,10 @@
 
                 <!-- MODO ESTUDIO -->
                 <div class="mode-section" id="sec-study">
+                    <button class="btn-tool" onclick="goBackToMenu()"
+                        style="width:100%; margin-bottom:15px; border-color:rgba(255,255,255,0.1);">🏠 VOLVER AL
+                        MENÚ</button>
+
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                         <label class="label-tiny" style="margin:0;">BIBLIOTECA DE APERTURAS</label>
                         <button class="btn-tool" id="btn-openings-study"
@@ -790,13 +892,8 @@
                     </div>
 
                     <div
-                        style="margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px; display:none;">
+                        style="margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px; display:block;">
                         <label class="label-tiny">HERRAMIENTAS</label>
-                        <button class="btn-tool" id="btn-suggest-move"
-                            style="width:100%; margin-bottom:5px; color:var(--accent);">💡 Sugerir Mejor Jugada</button>
-                        <div id="suggest-msg"
-                            style="font-size:0.75rem; text-align:center; min-height:15px; margin-bottom:10px;"></div>
-
                         <div class="tool-grid">
                             <button class="btn-tool"
                                 onclick="game.reset(); board.start(); updateUI(); $('#study-controls').hide();">🔄
@@ -810,6 +907,10 @@
 
                 <!-- MODO PUZZLES -->
                 <div class="mode-section" id="sec-exercises">
+                    <button class="btn-tool" onclick="goBackToMenu()"
+                        style="width:100%; margin-bottom:15px; border-color:rgba(255,255,255,0.1);">🏠 VOLVER AL
+                        MENÚ</button>
+
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                         <label class="label-tiny" style="margin:0;">CATEGORÍA</label>
                         <div id="puz-timer"
@@ -837,7 +938,8 @@
                         <button class="btn-primary" id="btn-next-puz" style="padding:10px;">SALTAR</button>
                         <button class="btn-tool" id="btn-puz-hint" style="color:var(--accent);">Pista 💡</button>
                         <button class="btn-tool" id="btn-show-sol"
-                            style="grid-column: span 2; border-color:#3b82f6;">Ver Solución 👀</button>
+                            style="grid-column: span 2; border-color:#3b82f6;">Ver
+                            Solución 👀</button>
                     </div>
                 </div>
             </div>
@@ -887,9 +989,84 @@
         </aside>
     </div>
 
+    <!-- SCRIPTS EN ORDEN CORRECTO -->
+    <script src="puzzles_data.js"></script>
     <script src="openings_enhanced.js"></script>
-    <script src="study_mode_enhancements.js"></script>
     <script src="client.js"></script>
+
+    <!-- ⚡ OPTIMIZACIONES - CARGAR AL FINAL -->
+    <script src="client_optimized.js"></script>
+
+    <!-- ESTUDIO DE MODO - CARGAR DESPUÉS DE OPTIMIZACIONES -->
+    <script src="study_mode_enhancements.js"></script>
+
+    <script>
+        // INICIALIZACIÓN FINAL Y VERIFICACIONES
+        window.addEventListener('load', function () {
+            console.log('✅ Aplicación cargada con optimizaciones');
+
+            // Verificar que las optimizaciones se cargaron
+            if (window.chessOptimizations) {
+                console.log('✅ Optimizaciones activas:', window.chessOptimizations.version);
+            }
+
+            // Touch events para móvil (prevenir zoom accidental)
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function (e) {
+                const now = Date.now();
+                if (now - lastTouchEnd <= 300) {
+                    e.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, { passive: false });
+
+            // Prevenir zoom con gestos
+            document.addEventListener('gesturestart', function (e) {
+                e.preventDefault();
+            });
+
+            // Forzar resize del tablero después de carga completa
+            setTimeout(() => {
+                if (typeof board !== 'undefined' && board && board.resize) {
+                    board.resize();
+                    console.log('📐 Board resized');
+                }
+            }, 1000);
+        });
+
+        // Manejo de errores global
+        window.addEventListener('error', function (e) {
+            console.error('❌ Error capturado:', e.message);
+            // Mostrar errores solo si son críticos para la funcionalidad
+            if (e.message && (e.message.includes('Stockfish') || e.message.includes('socket'))) {
+                if (typeof showToast === 'function') {
+                    showToast('Error de conexión, intentando reconectar...', '⚠️');
+                }
+            }
+        });
+
+        <!-- Modal de Alerta de Maestro -->
+        <div id="danger-alert-box" class="glass-modal"
+            style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:10000; width:90%; max-width:320px; padding:25px; text-align:center;">
+            <div style="font-size:2rem; margin-bottom:15px;">⚠️</div>
+            <div id="danger-title" style="color:#ef4444; font-weight:800; font-size:1.1rem; margin-bottom:10px;">¡AMENAZA
+                DETECTADA!</div>
+            <div id="danger-desc" style="font-size:0.85rem; line-height:1.6; margin-bottom:20px; color:var(--text-main);">
+            </div>
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:20px; font-style:italic;">Busca una
+                jugada de defensa o un contraataque inmediato.</div>
+            <button class="btn-primary" onclick="$('#danger-alert-box').fadeOut()" style="width:100%;">ENTENDIDO</button>
+        </div>
+
+        // Service Worker para PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('✅ SW registrado'))
+                    .catch(err => console.log('SW error:', err));
+            });
+        }
+    </script>
 </body>
 
 </html>

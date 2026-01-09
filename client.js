@@ -1,4 +1,12 @@
-﻿// --- PASSWORD TOGGLE ---
+﻿// --- DANGER DETECTION GLOBAL ---
+var currentDangerMsg = "";
+function showDangerExplanation() {
+    if (!currentDangerMsg) return;
+    $('#danger-desc').html(currentDangerMsg);
+    $('#danger-alert-box').fadeIn();
+}
+
+// --- PASSWORD TOGGLE ---
 $('#btn-show-pass').off('click').on('click', function () {
     const input = $('#auth-pass');
     const type = input.attr('type') === 'password' ? 'text' : 'password';
@@ -150,6 +158,7 @@ var isJ = false;
 var lastEv = 0; // Legacy var, prefer window.lastEval
 window.lastEval = undefined;
 window.currentEval = undefined;
+var opponentAutoMode = false; // Manuel por defecto en Estudio
 var stockfish = null;
 var myColor = 'w';
 var userEloBullet = 500;
@@ -266,6 +275,8 @@ window.resetGamePosition = function () {
     studyIndex = 0;
     historyPositions = ['start'];
     currentHistoryIndex = 0;
+    moveData = []; // Reset visual history
+    updateHistory();
     updateUI(true);
     showToast("Posición inicial restaurada", "🧹");
     if (currentMode === 'study') $('#study-controls').fadeOut();
@@ -278,19 +289,18 @@ function getAiElo() {
 
 function getQualityMsg(diff, isMate, isBookMove = false) {
     const t = LANGS[currentLang];
-    if (isBookMove) return { text: "📖 " + (t.book || "Teoría / Libro"), class: 'quality-book', symbol: '📖' };
-    if (isMate) return { text: "!! " + t.mate, class: 'quality-excellent', symbol: '!!' };
+    if (isBookMove) return { text: "📖 " + (t.book || "Teoría / Libro"), class: 'q-book', symbol: '📖' };
+    if (isMate) return { text: "!! " + t.mate, class: 'q-excellent', symbol: '!!' };
 
-    // Safety check for null/undefined diff
     if (diff === null || diff === undefined) diff = 0;
 
-    if (diff < 0.1) return { text: "!! " + (t.brilliant || "Jugada Maestra"), class: 'quality-excellent', symbol: '!!' };
-    if (diff < 0.25) return { text: "! " + t.best, class: 'quality-excellent', symbol: '!' };
-    if (diff < 0.5) return { text: "⭐ " + (t.great || "Muy buena"), class: 'quality-excellent', symbol: '⭐' };
-    if (diff < 0.8) return { text: t.good, class: 'quality-excellent', symbol: '' };
-    if (diff < 1.4) return { text: "?! " + t.inaccuracy, class: 'quality-dubious', symbol: '?!' };
-    if (diff < 2.5) return { text: "? " + t.mistake, class: 'quality-dubious', symbol: '?' };
-    return { text: "?? " + t.blunder, class: 'quality-blunder', symbol: '??' };
+    if (diff < 0.1) return { text: "!! " + (t.brilliant || "Jugada Maestra"), class: 'q-excellent', symbol: '!!' };
+    if (diff < 0.25) return { text: "! " + t.best || "Óptima", class: 'q-best', symbol: '!' };
+    if (diff < 0.45) return { text: "⭐ " + (t.excellent || "Excelente"), class: 'q-excellent', symbol: '⭐' };
+    if (diff < 0.7) return { text: t.good || "Buena", class: 'q-good', symbol: '' };
+    if (diff < 1.3) return { text: "?! " + t.inaccuracy, class: 'q-inaccuracy', symbol: '?!' };
+    if (diff < 2.5) return { text: "? " + t.mistake, class: 'q-mistake', symbol: '?' };
+    return { text: "?? " + t.blunder, class: 'q-blunder', symbol: '??' };
 }
 
 function setLanguage(l) {
@@ -534,6 +544,8 @@ async function loadRandomPuzzle(retryCount = 0, forcedCat = null) {
 }
 
 // --- STOCKFISH INITIALIZATION ---
+// --- STOCKFISH INITIALIZATION ---
+// --- STOCKFISH INITIALIZATION ---
 try {
     console.log("♟️ Iniciando Stockfish...");
     stockfish = new Worker('stockfish.js');
@@ -544,196 +556,165 @@ try {
         if (l === 'uciok') console.log("✅ Stockfish UCI OK");
         if (l === 'readyok') console.log("✅ Stockfish Ready");
 
-        // EVALUATION BAR
-        if (l.includes('score cp')) {
-            var match = l.match(/score cp (-?\d+)/);
-            if (!match) return;
-            var cp = parseInt(match[1]) / 100;
-            var ev = (game.turn() === 'w' ? cp : -cp);
-            var h = Math.max(0, Math.min(100, 50 + (ev * 15)));
+        // 1. ANÁLISIS EN TIEMPO REAL (Info: Score, PV, Coach, Flechas)
+        if (l.includes('score')) {
+            // Parse Score
+            let score = 0;
+            let isMate = l.includes('mate');
+            if (isMate) {
+                let match = l.match(/score mate (-?\d+)/);
+                score = match ? parseInt(match[1]) * 1000 : 9999;
+            } else {
+                let match = l.match(/score cp (-?\d+)/);
+                if (match) score = parseInt(match[1]) / 100;
+            }
 
+            // Adjust perspective
+            let ev = (game.turn() === 'w' ? score : -score);
+            let h = Math.max(0, Math.min(100, 50 + (ev * 15)));
+
+            // Update Eval Bar
             if (!analysisActive) $('#eval-fill-master').css('height', h + '%');
+            window.currentEval = ev; // Store for logic
 
+            // Parse Best Move (PV) for Comments & Hints
             var pvFull = l.split(' pv ')[1] ? l.split(' pv ')[1].split(' ') : [];
             if (pvFull.length > 0) {
                 var bestMoveLAN = pvFull[0];
-                if (hintsActive || analysisActive) {
+
+                // --- COACH & QUALITY LOGIC (Updates continuously) ---
+                const lastMove = fullHistory.length > 0 ? fullHistory[fullHistory.length - 1] : null;
+                let diffVal = 0;
+                if (window.lastEval !== undefined) {
+                    // Logic to determine quality based on eval shift
+                    if (game.turn() === 'b') diffVal = ev - window.lastEval;
+                    else diffVal = window.lastEval - ev;
+                }
+
+                let evalLoss = 0;
+                if (game.turn() === 'b') evalLoss = (window.lastEval || ev) - ev;
+                else evalLoss = ev - (window.lastEval || ev);
+
+                // Update Quality (only if recent move exists)
+                const isBook = isBookMove(lastMove ? lastMove.san : '');
+                var q = getQualityMsg(Math.max(0, evalLoss), isMate, isBook);
+
+                if (fullHistory.length > 0) {
+                    moveData[fullHistory.length - 1] = { san: lastMove.san, quality: q };
+                    updateHistory();
+                }
+
+                // Generate Coach Explanation
+                let explanation = getHumanExplanation(ev, evalLoss, isMate, '', isBook, isOpening);
+                let moveQualityHtml = `<div class="${q.class}" style="font-size:1.1rem; margin-bottom:5px;">${q.text}</div>`;
+
+                let openingName = ''
+                if (isOpening && fullHistory.length >= 2) {
+                    const detected = detectOpening();
+                    if (detected.name) openingName = '🎯 ' + detected.name;
+                }
+                let openingMsg = openingName ? `<div style="color:var(--accent); font-size:0.75rem; margin-bottom:10px; font-weight:800; background:rgba(139,92,246,0.1); padding:5px 10px; border-radius:6px; border-left:3px solid var(--accent);">${openingName}</div>` : '';
+
+                // Render Coach Text
+                $('#coach-txt').html(`
+                    ${openingMsg}
+                    ${moveQualityHtml}
+                    <div style="display:flex; gap:10px; margin-bottom:8px;">
+                        <div style="font-size:0.65rem; color:var(--text-muted);">Eval: <b style="color:var(--text-main)">${ev > 0 ? '+' : ''}${isMate ? 'M' : ev.toFixed(1)}</b></div>
+                    </div>
+                    <div style="font-size:0.78rem; line-height:1.5; color:var(--text-main); background:rgba(255,255,255,0.03); padding:12px; border-radius:10px;">${explanation}</div>
+                `);
+
+                // --- HINTS (Visual Arrows) for Player Turn ---
+                // Only show hints if it is NOT the AI's turn to auto-move
+                const isAiTurn = (game.turn() !== myColor && (currentMode === 'ai' || currentMode === 'maestro' || (currentMode === 'study' && opponentAutoMode)));
+
+                if (!isAiTurn && (hintsActive || analysisActive)) {
                     $('#best-move-display').html("💡 Sugerencia: <b style='color:white'>" + lanToSan(bestMoveLAN) + "</b>").show();
+                    // Click to move functionality for hint
+                    $('#best-move-display').off('click').on('click', function () {
+                        game.move({ from: bestMoveLAN.substring(0, 2), to: bestMoveLAN.substring(2, 4), promotion: 'q' });
+                        board.position(game.fen());
+                        updateUI(true);
+                        checkGameOver();
+                    });
+
                     drawBestMoveArrow(bestMoveLAN);
-                    $('.square-55d63').removeClass('highlight-hint');
-                    $('[data-square="' + bestMoveLAN.substring(0, 2) + '"]').addClass('highlight-hint');
-                    $('[data-square="' + bestMoveLAN.substring(2, 4) + '"]').addClass('highlight-hint');
-                } else {
-                    drawBestMoveArrow(null);
-                    $('.square-55d63').removeClass('highlight-hint');
-                    $('#best-move-display').hide();
-                }
-
-                if (currentMode === 'ai' || isJ || analysisActive || hintsActive || currentMode === 'study') {
-                    const fullHistory = game.history({ verbose: true });
-                    const lastMove = fullHistory.length > 0 ? fullHistory[fullHistory.length - 1] : null;
-
-                    var diffVal = 0;
-                    if (window.lastEval !== undefined) {
-                        const gameTurn = game.turn();
-                        const prevE = window.lastEval;
-                        const currE = ev;
-                        if (gameTurn === 'w') diffVal = currE - prevE;
-                        else diffVal = prevE - currE;
-                    }
-
-                    const evalMag = Math.abs(diffVal);
-                    const isBook = isBookMove(lastMove ? lastMove.san : '');
-                    var q = getQualityMsg(evalMag, l.includes('mate'), isBook);
-                    var acc = isBook ? 100 : Math.max(0, Math.min(100, 100 - (evalMag * 20)));
-
-                    let explanation = '';
-                    let tacticalInfo = '';
-                    const isOpening = fullHistory.length <= 15;
-                    const isEndgame = game.board().flat().filter(p => p && p.type !== 'p').length <= 8;
-
-                    function getStrategicAdvice() {
-                        if (isOpening) return "🎯 Desarrolla tus piezas menores y controla el centro.";
-                        if (isEndgame) return "👑 Activa tu rey y busca promocionar peones.";
-                        return "🧩 Busca debilidades tácticas o mejora la posición de tu peor pieza.";
-                    }
-
-                    let openingName = '';
-                    let openingComment = '';
-                    if (isOpening && fullHistory.length >= 2) {
-                        const detected = detectOpening();
-                        if (detected.name) {
-                            openingName = '🎯 ' + detected.name;
-                            // Check if our history matches the detected line length correctly
-                            if (isBook && detected.comments) {
-                                // Try to find comment for this specific move index
-                                // History length is 1-based, so for move 1 (e4), length is 1. Comment is at index 0.
-                                const moveIdx = fullHistory.length - 1;
-                                if (detected.comments[moveIdx]) {
-                                    openingComment = detected.comments[moveIdx];
-                                }
-                            }
-                        }
-                    }
-
-                    if (isBook) {
-                        explanation = `<div style="color:var(--accent); font-weight:bold;">📖 JUGADA DE TEORÍA:</div><div style="margin-top:5px; font-style:italic;">${openingComment || ('Siguiendo las líneas maestras de ' + (openingName || 'la apertura'))}.</div>`;
-                        $('#book-move-indicator').fadeIn();
-                        // Force display in Maestro mode even if hints are off
-                        if (currentMode === 'maestro' || currentMode === 'ai') {
-                            $('#coach-txt').show();
-                        }
-                    } else {
-                        $('#book-move-indicator').fadeOut();
-                        if (diffVal > 2.0) explanation = `<div style="color:#ef4444; font-weight:bold;">💥 ERROR GRAVE:</div> Perdiste mucha ventaja.`;
-                        else if (diffVal > 0.8) explanation = `<div style="color:#f59e0b; font-weight:bold;">⚠️ IMPRECISIÓN:</div> Hay una jugada mejor.`;
-                        else if (diffVal < -0.5) explanation = `<div style="color:#22c55e; font-weight:bold;">✨ ¡EXCELENTE!:</div> Jugada muy fuerte.`;
-                        else explanation = `<div style="color:var(--text-muted);">${getStrategicAdvice()}</div>`;
-                    }
-
-                    if (lastMove) {
-                        if (game.in_check()) tacticalInfo += '⚔️ ¡Jaque! ';
-                        if (lastMove.captured) tacticalInfo += `📍 Captura de ${lastMove.captured.toUpperCase()}. `;
-                    }
-
-                    let moveQuality = `<div class="${q.class}" style="font-size:1.1rem; margin-bottom:5px;">${q.text}</div>`;
-                    let precisionMsg = `<div style="font-size:0.7rem; color:var(--text-muted);">Precisión: ${acc.toFixed(0)}%</div>`;
-                    let openingMsg = openingName ? `<div style="color:var(--accent); font-size:0.75rem; margin-bottom:10px; font-weight:800; background:rgba(139,92,246,0.1); padding:5px 10px; border-radius:6px; border-left:3px solid var(--accent);">${openingName}</div>` : '';
-
-                    if (pvFull.length > 2) {
-                        tacticalInfo += `<br>Línea recomendada: ${pvFull.slice(0, 3).map(m => lanToSan(m)).join(' ')}...`;
-                    }
-
-                    // MULTI-PV Support: If we have multiple best moves, show them
-                    let multiPvHtml = "";
-                    if (window.pvList && window.pvList.length > 1 && hintsActive) {
-                        multiPvHtml = `<div style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
-                            <div style="font-size:0.6rem; color:var(--accent); margin-bottom:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase;">Mejores Continuaciones:</div>
-                            ${window.pvList.slice(0, 3).map((p, idx) => `
-                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; margin-bottom:5px; background:rgba(255,255,255,0.04); padding:6px 10px; border-radius:6px;">
-                                    <span>${idx === 0 ? '⭐' : '🔹'} <b style="color:var(--accent)">${p.move}</b></span>
-                                    <div style="display:flex; flex-direction:column; align-items:flex-end;">
-                                        <span style="font-weight:700; color:${p.eval >= 0 ? '#22c55e' : '#ef4444'};">${p.eval > 0 ? '+' : ''}${p.eval.toFixed(1)}</span>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>`;
-                    }
-
-                    $('#coach-txt').html(`
-                        ${openingMsg}
-                        ${moveQuality}
-                        <div style="display:flex; gap:10px; margin-bottom:8px;">
-                            <div style="font-size:0.65rem; color:var(--text-muted);">Eval: <b style="color:var(--text-main)">${ev > 0 ? '+' : ''}${ev.toFixed(1)}</b></div>
-                            ${precisionMsg}
-                        </div>
-                        <div style="font-size:0.78rem; line-height:1.5; color:var(--text-main); background:rgba(255,255,255,0.03); padding:12px; border-radius:10px;">${explanation}</div>
-                        ${multiPvHtml}
-                        <div style="font-size:0.7rem; color:#3b82f6; margin-top:10px; font-weight:600; background:rgba(59,130,246,0.05); padding:5px; border-radius:4px;">${tacticalInfo}</div>
-                    `);
-                    isJ = false;
-                }
-            }
-            window.currentEval = ev;
-        }
-
-        // Catch individual PVs for multi-PV display
-        if (l.includes('multipv')) {
-            const mv = l.match(/multipv (\d+)/);
-            const pvIdx = mv ? parseInt(mv[1]) : 1;
-            const scoreMatch = l.match(/score cp (-?\d+)/);
-            const pvMoves = l.split(' pv ')[1];
-            if (scoreMatch && pvMoves) {
-                const move = pvMoves.split(' ')[0];
-                const score = parseInt(scoreMatch[1]) / 100 * (game.turn() === 'w' ? 1 : -1);
-
-                if (!window.pvList || pvIdx === 1) window.pvList = [];
-                window.pvList[pvIdx - 1] = { move: lanToSan(move), eval: score };
-            }
-        }
-
-        function lanToSan(lan) {
-            if (!lan) return "";
-            const from = lan.substring(0, 2);
-            const to = lan.substring(2, 4);
-            const promo = lan.length > 4 ? lan[4] : '';
-            const temp = new Chess(game.fen());
-            const m = temp.move({ from, to, promotion: promo });
-            return m ? m.san : lan;
-        }
-
-        if (l.startsWith('bestmove') && (currentMode === 'ai' || currentMode === 'maestro') && game.turn() !== myColor) {
-            // BLOQUEO ABSOLUTO: Si hay una línea teórica activa, ignorar por completo al motor
-            if (aiPracticeLine && aiPracticeIndex < aiPracticeLine.length) {
-                console.log("🛑 Motor bloqueado: Siguiendo teoría.");
-                return;
-            }
-
-            var bestMove = l.split(' ')[1];
-            // Use the correct selector based on mode
-            const diffSel = (currentMode === 'maestro') ? '#maestro-diff-sel' : '#diff-sel';
-            const diffLvl = parseInt($(diffSel).val()) || 10;
-            let blunderChance = 0;
-            if (diffLvl === 1) blunderChance = 0.5;
-            else if (diffLvl === 3) blunderChance = 0.35;
-            else if (diffLvl === 5) blunderChance = 0.20;
-
-            if (Math.random() < blunderChance) {
-                const legalMoves = game.moves({ verbose: true });
-                if (legalMoves.length > 0) {
-                    const randomM = legalMoves[Math.floor(Math.random() * legalMoves.length)];
-                    bestMove = randomM.from + randomM.to + (randomM.promotion || '');
                 }
             }
 
-            game.move({ from: bestMove.substring(0, 2), to: bestMove.substring(2, 4), promotion: 'q' });
-            board.position(game.fen());
-            updateUI(true);
-            checkGameOver();
+            // Capture MultiPV
+            if (l.includes('multipv')) {
+                const mv = l.match(/multipv (\d+)/);
+                const pvIdx = mv ? parseInt(mv[1]) : 1;
+                let pvScore = score; // Use parsed score
+                const pvMoves = l.split(' pv ')[1];
+                if (pvMoves) {
+                    const move = pvMoves.split(' ')[0];
+                    if (!window.pvList || pvIdx === 1) window.pvList = [];
+                    window.pvList[pvIdx - 1] = { move: lanToSan(move), eval: pvScore };
+                }
+            }
+        }
+
+        // 2. EJECUCIÓN DE MOVIMIENTO (Best Move) - SOLO AQUÍ MUEVE LA IA
+        if (l.startsWith('bestmove')) {
+            const bestMoveParts = l.split(' ');
+            const bestMoveLAN = bestMoveParts[1];
+
+            // Check if AI should move
+            const isAiTurn = game.turn() !== myColor;
+            const shouldAiMove = (currentMode === 'ai' || currentMode === 'maestro' || (currentMode === 'study' && opponentAutoMode));
+
+            if (isAiTurn && shouldAiMove && bestMoveLAN && bestMoveLAN !== '(none)') {
+                // Prevent double moves if aiThinking flag was weird, but here we trust the engine finish
+
+                setTimeout(() => {
+                    game.move({ from: bestMoveLAN.substring(0, 2), to: bestMoveLAN.substring(2, 4), promotion: 'q' });
+                    board.position(game.fen());
+                    aiThinking = false; // Reset flag
+                    updateUI(true); // Loops back to analyze new position
+                    checkGameOver();
+                }, 500); // Small delay for realism
+            } else {
+                aiThinking = false; // Reset flag anyway
+            }
         }
     };
 } catch (e) {
     console.error("❌ Error cargando Stockfish:", e);
+    alert("Error crítico cargando IA. Recarga la página.");
+}
+
+// Helpers outside to avoid nesting issues
+function lanToSan(lan) {
+    if (!lan) return "";
+    const from = lan.substring(0, 2);
+    const to = lan.substring(2, 4);
+    const promo = lan.length > 4 ? lan[4] : '';
+    const temp = new Chess(game.fen());
+    const m = temp.move({ from, to, promotion: promo });
+    return m ? m.san : lan;
+}
+
+function getHumanExplanation(evVal, diff, isMate, tact, isBook, isOp) {
+    if (isBook) return "Estás siguiendo las líneas principales de la teoría. Esta posición es bien conocida y equilibrada.";
+    if (isMate) return "¡Hay un mate forzado en el tablero! La tensión es máxima y un solo error decidirá el destino de la partida.";
+
+    // Evaluar la jugada recién hecha
+    if (diff > 2.5) return "Ese movimiento ha sido un error crítico (blunder). Has permitido que la posición se desmorone por completo.";
+    if (diff > 1.2) return "Esta jugada es un error importante. Has perdido una ventaja significativa o has permitido una amenaza seria.";
+    if (diff > 0.6) return "Imprecisión detectada. Había continuaciones mucho más sólidas para mantener el control posicional.";
+
+    if (diff < -0.5) return "¡Excelente jugada! Has encontrado una respuesta muy fuerte que pone en aprietos al oponente.";
+
+    // Evaluar situación general si la jugada fue normal
+    if (Math.abs(evVal) < 0.5) return "La batalla está muy igualada. Ambos bandos tienen recursos y el equilibrio se mantiene por ahora.";
+    if (evVal > 1.5) return "Tienes una ventaja clara. Tus piezas están mejor coordinadas y dominas el centro del tablero.";
+    if (evVal < -1.5) return "Tu posición es difícil. El rival tiene mucha presión; necesitas reagrupar tus piezas y buscar defensa.";
+
+    if (isOp) return "Fase de apertura: Prioriza el desarrollo de piezas menores (alfiles y caballos) y pon a tu rey a salvo pronto.";
+    return "La posición requiere paciencia. Busca mejorar la ubicación de tu pieza menos activa y vigila las debilidades del rival.";
 }
 
 function makeAIMove() {
@@ -936,10 +917,53 @@ function abortGame() {
     }
 }
 
+var moveData = []; // [{san: 'e4', color: 'w', quality: null}]
+
 function updateHistory() {
+    const history = game.history({ verbose: true });
     historyPositions.push(game.fen());
     currentHistoryIndex = historyPositions.length - 1;
+
+    const list = $('#game-moves-list');
+    if (!list.length) return;
+    list.empty();
+
+    let html = "";
+    for (let i = 0; i < history.length; i += 2) {
+        const moveNum = Math.floor(i / 2) + 1;
+        const wMove = history[i];
+        const bMove = history[i + 1];
+
+        const wQuality = (moveData[i] && moveData[i].quality) ? moveData[i].quality : { class: '', symbol: '' };
+        const bQuality = (moveData[i + 1] && moveData[i + 1].quality) ? moveData[i + 1].quality : { class: '', symbol: '' };
+
+        html += `<div class="move-number">${moveNum}.</div>`;
+        html += `<div class="move-item ${wQuality.class} ${i === currentHistoryIndex - 1 ? 'active' : ''}" onclick="navigateHistoryIndex(${i})">
+                    ${wMove.san} <span class="move-symbol">${wQuality.symbol}</span>
+                 </div>`;
+        if (bMove) {
+            html += `<div class="move-item ${bQuality.class} ${i + 1 === currentHistoryIndex - 1 ? 'active' : ''}" onclick="navigateHistoryIndex(${i + 1})">
+                        ${bMove.san} <span class="move-symbol">${bQuality.symbol}</span>
+                     </div>`;
+        } else {
+            html += `<div></div>`;
+        }
+    }
+    list.append(html);
+
+    // Auto-scroll to bottom
+    list.scrollTop(list[0].scrollHeight);
 }
+
+window.navigateHistoryIndex = function (idx) {
+    currentHistoryIndex = idx + 1;
+    board.position(historyPositions[currentHistoryIndex]);
+    game.load(historyPositions[currentHistoryIndex]);
+    updateUI(false);
+    // Highlight the active move in list
+    $('#game-moves-list .move-item').removeClass('active');
+    $('#game-moves-list .move-item').eq(idx).addClass('active');
+};
 
 function navigateHistory(dir) {
     if (dir === 'first') currentHistoryIndex = 0;
@@ -1018,11 +1042,18 @@ function updateUI(moved = false) {
             window.lastEval = window.currentEval;
         }
         if (stockfish && currentMode !== 'local' && (currentMode === 'ai' || currentMode === 'maestro' || hintsActive || currentMode === 'study')) {
-            if ((currentMode === 'ai' || currentMode === 'maestro') && game.turn() !== myColor) {
+            // Decidir si la IA debe mover (SÓLO si el modo automático está activado)
+            const isOurTurn = (game.turn() === myColor);
+
+            // Si es modo AI o MAESTRO, auto-activar el modo si no se ha tocado
+            const shouldAIMove = (currentMode === 'ai' || currentMode === 'maestro' || currentMode === 'study') && opponentAutoMode;
+
+            if (shouldAIMove && !isOurTurn) {
                 makeAIMove();
             } else {
+                // Solo analizar
                 stockfish.postMessage('stop');
-                stockfish.postMessage('setoption name MultiPV value 3'); // Show top 3 moves
+                stockfish.postMessage('setoption name MultiPV value 3');
                 stockfish.postMessage('position fen ' + game.fen());
                 stockfish.postMessage('go depth 15');
             }
@@ -1068,10 +1099,17 @@ function onDrop(source, target) {
             return 'snapback';
         }
 
-        // En modo AI, solo puedes mover cuando es tu turno (Maestro permite intervención)
-        if (currentMode === 'ai' && game.turn() !== myColor) {
-            return 'snapback';
+        // En modo AI/Maestro, si el modo automático está activo, NO puedes mover por el rival
+        // Salvo que sea tu turno, claro.
+        if ((currentMode === 'ai' || currentMode === 'maestro') && opponentAutoMode) {
+            if (game.turn() !== myColor) return 'snapback';
         }
+    }
+
+    // En modo ESTUDIO, si el oponente está en AUTO, bloquear movimientos manuales del rival
+    if (currentMode === 'study' && opponentAutoMode) {
+        const piece = game.get(source);
+        if (piece && piece.color !== myColor) return 'snapback';
     }
 
     var move = game.move({
@@ -1105,10 +1143,10 @@ function onDrop(source, target) {
             showToast("¡Teórico!: " + move.san, "📖");
             $('#coach-txt').html(`
                     <div style="color:var(--accent); font-size:0.7rem; font-weight:800; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px; margin-bottom:10px;">
-                        📖 ENTRENANDO: ${currentOpeningName || 'Teoría'}
+                        ${currentOpeningName || 'Línea de Apertura'}
                     </div>
-                    <div class="quality-book" style="color:var(--accent); font-weight:800; font-size:1.1rem; margin-bottom:5px;">JUGADA DE LIBRO: ${move.san}</div>
-                    <div style="font-size:0.8rem; line-height:1.4; color:var(--text-main); background:rgba(255,255,255,0.03); padding:10px; border-radius:8px;">
+                    <div style="font-size:1rem; font-weight:700; color:var(--text-main); margin-bottom:8px;">Has jugado: ${move.san}</div>
+                    <div style="font-size:0.85rem; line-height:1.5; color:var(--text-main); background:rgba(255,255,255,0.03); padding:10px; border-radius:8px;">
                         ${comm}
                     </div>
                 `);
@@ -1235,10 +1273,10 @@ function onSquareClick(sq) {
                     showToast("¡Teórico!: " + move.san, "📖");
                     $('#coach-txt').html(`
                         <div style="color:var(--accent); font-size:0.7rem; font-weight:800; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px; margin-bottom:10px;">
-                            📖 APERTURA: ${currentOpeningName || 'Teoría'}
+                            ${currentOpeningName || 'Línea de Apertura'}
                         </div>
-                        <div class="quality-book" style="color:var(--accent); font-weight:800; font-size:1.1rem; margin-bottom:5px;">JUGADA DE LIBRO: ${move.san}</div>
-                        <div style="font-size:0.8rem; line-height:1.4; color:var(--text-main); background:rgba(255,255,255,0.03); padding:10px; border-radius:8px;">
+                        <div style="font-size:1rem; font-weight:700; color:var(--text-main); margin-bottom:8px;">Has jugado: ${move.san}</div>
+                        <div style="font-size:0.85rem; line-height:1.5; color:var(--text-main); background:rgba(255,255,255,0.03); padding:10px; border-radius:8px;">
                             ${comm}
                         </div>
                     `);
@@ -1282,11 +1320,53 @@ function onSquareClick(sq) {
     }
 }
 
+// --- RESTRICCIÓN DE MOVIMIENTO (onDragStart) ---
+function onDragStart(source, piece, position, orientation) {
+    if (game.game_over()) return false;
+
+    // 1. Bloquear si la IA está pensando
+    if (typeof aiThinking !== 'undefined' && aiThinking) return false;
+
+    // 2. Modo ESTUDIO: Libertad total (salvo que sea turno auto del rival)
+    if (currentMode === 'study') {
+        if (opponentAutoMode && game.turn() !== myColor) return false;
+        return true;
+    }
+    // 3. Pass-and-Play: Mover todo
+    if (currentMode === 'pass-and-play') return true;
+
+    // 4. Modos Estrictos (Online/Local, AI, Maestro)
+    if (['local', 'ai', 'maestro'].includes(currentMode)) {
+        // En estos modos, mi color es fijo.
+        // Si es Online (local) pero NO hay gameId, quizas es Local puro? 
+        // No, 'pass-and-play' es el local puro. 'local' es el default que actúa como Online.
+
+        // Verificar Turno
+        if (game.turn() !== myColor) {
+            // showToast("Espera tu turno", "⏳"); // Opcional, puede ser molesto si spameas
+            return false;
+        }
+
+        // Verificar Color de Pieza
+        const pColor = piece.charAt(0); // 'w' o 'b'
+        if (pColor !== myColor) {
+            showToast("No puedes mover las piezas del rival", "🚫");
+            return false;
+        }
+    }
+
+    // Restricción General de Turno (Puzzles, etc)
+    if (piece.charAt(0) !== game.turn()) return false;
+
+    return true;
+}
+
 $(document).ready(() => {
     board = Chessboard('myBoard', {
         draggable: true,
         position: 'start',
         pieceTheme: getPieceTheme,
+        onDragStart: onDragStart,
         onDrop, onSnapEnd
     });
 
@@ -1338,7 +1418,7 @@ $(document).ready(() => {
     $('#side-drawer-overlay').off('click').click(() => { $('#side-drawer').removeClass('open'); $('#side-drawer-overlay').fadeOut(); });
 
     // Flip Handler
-    $('#btn-flip, #btn-flip-mobile, #btn-flip-board, #btn-flip-small').off('click').on('click', function () {
+    $('#btn-flip, #btn-flip-mobile, #btn-flip-board, #btn-flip-small, #btn-flip-pc-sidebar, #btn-flip-pc-local').off('click').on('click', function () {
         if (typeof board !== 'undefined' && board.flip) {
             board.flip();
             showToast("Tablero girado", "🔄");
@@ -1387,6 +1467,7 @@ $(document).ready(() => {
             draggable: true,
             position: board.position(),
             pieceTheme: getPieceTheme,
+            onDragStart: onDragStart,
             onDrop, onSnapEnd
         });
         $('#board-theme-sel').trigger('change');
@@ -1676,37 +1757,42 @@ window.joinGame = (id, oppName, time) => {
 };
 
 window.getEloTypeFromTime = function (mins) {
-    if (mins <= 1) return 'elo1';
-    if (mins <= 3) return 'elo3';
-    if (mins >= 1440) return 'eloDaily';
-    return 'elo10';
+    if (mins <= 1) return 'elo1';      // Bullet
+    if (mins <= 5) return 'elo3';      // Blitz (incluye 3 y 5)
+    if (mins <= 30) return 'elo10';    // Rapid (hasta 30m)
+    if (mins >= 1440) return 'eloDaily'; // Daily / Correspondence
+    return 'elo'; // Standard fallback
 };
 
 window.updateElo = function (oppElo, result, isPuzzle = false) {
     if (!isAuth) return;
 
     let type = 'elo';
-    let currentRating = userEloRapid; // default
+    let currentRating = userElo;
 
     if (isPuzzle) {
         type = 'puz';
         currentRating = userPuzzleElo;
     } else {
-        const activeSelector = currentMode === 'ai' || currentMode === 'maestro' ? '#ai-time-selector' : '#local-time-selector';
-        const mins = parseInt($(activeSelector + ' .time-btn.active').data('time')) || 10;
+        // Obtener el tiempo de la partida actual para determinar categoría
+        let mins = 10; // default
+        const activeSelector = (currentMode === 'ai' || currentMode === 'maestro') ? '#maestro-time-sel' : '#online-time-sel-lobby';
+        mins = parseInt($(activeSelector).val()) || 10;
+
         type = getEloTypeFromTime(mins);
 
         if (type === 'elo1') currentRating = userEloBullet;
         else if (type === 'elo3') currentRating = userEloBlitz;
         else if (type === 'eloDaily') currentRating = userEloDaily;
-        else currentRating = userEloRapid;
+        else if (type === 'elo10') currentRating = userEloRapid;
+        else currentRating = userElo;
     }
 
     const K = 32;
     const expected = 1 / (1 + Math.pow(10, (oppElo - currentRating) / 400));
     const newElo = Math.round(currentRating + K * (result - expected));
 
-    // Update locally
+    // Actualizar localmente y persistir
     if (type === 'puz') {
         userPuzzleElo = newElo;
         localStorage.setItem('chess_puz_elo', newElo);
@@ -1714,11 +1800,27 @@ window.updateElo = function (oppElo, result, isPuzzle = false) {
         if (type === 'elo1') { userEloBullet = newElo; localStorage.setItem('chess_elo_1', newElo); }
         else if (type === 'elo3') { userEloBlitz = newElo; localStorage.setItem('chess_elo_3', newElo); }
         else if (type === 'eloDaily') { userEloDaily = newElo; localStorage.setItem('chess_elo_daily', newElo); }
-        else { userEloRapid = newElo; localStorage.setItem('chess_elo_10', newElo); }
+        else if (type === 'elo10') { userEloRapid = newElo; localStorage.setItem('chess_elo_10', newElo); }
+        else { userElo = newElo; localStorage.setItem('chess_user_elo', newElo); }
     }
 
-    if (socket) socket.emit('update_elo', { user: userName, elo: newElo, type: type });
+    // Informar al servidor
+    if (socket) {
+        socket.emit('update_elo', {
+            user: userName,
+            elo: newElo,
+            type: type
+        });
+    }
+
     updateAuthUI();
+
+    // Feedback visual en el panel del coach
+    const catName = type === 'puz' ? 'Puzzle' : (type === 'elo1' ? 'Bullet' : (type === 'elo3' ? 'Blitz' : (type === 'elo10' ? 'Rapid' : (type === 'eloDaily' ? 'Daily' : 'ELO'))));
+    $('#coach-txt').append(`<div style="margin-top:10px; padding:5px; background:rgba(34,197,94,0.1); border-radius:5px; border-left:3px solid #22c55e;">
+        <b style="color:#22c55e">NUEVO ELO ${catName}: ${newElo}</b> 
+        <span style="font-size:0.7rem; color:var(--text-muted)">(${result === 1 ? '+' + (newElo - currentRating) : (newElo - currentRating)})</span>
+    </div>`);
 };
 
 socket.on('game_start', function (data) {
@@ -1937,7 +2039,7 @@ $('#btn-start-ai').click(() => {
         currentOpeningName = null;
         currentOpeningComments = [];
         console.log("🆓 Juego libre activado.");
-        $('#coach-txt').html("<b>Modo Maestro Activo.</b><br>Juega contra Stockfish y recibe consejos.");
+        $('#coach-txt').html("<b>Modo Maestro Activo.</b><br>Juega contra la IA y recibe consejos en tiempo real.");
     }
 
     currentMode = 'ai';
@@ -2094,62 +2196,11 @@ function calculateAccuracy(prevEval, currentEval, turn) {
 // --- ARROW DRAWING LOGIC ---
 function drawBestMoveArrow(move) {
     const canvas = document.getElementById('arrowCanvas');
-    if (!canvas || !$(canvas).is(':visible')) return;
-    const ctx = canvas.getContext('2d');
-
-    // Adjust canvas size to actual pixel size of its element
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    if (!move) return;
-
-    const from = move.substring(0, 2);
-    const to = move.substring(2, 4);
-
-    // Helper to get square pixel center
-    function getSqPos(sq) {
-        const file = sq.charCodeAt(0) - 97; // a=0, b=1...
-        const rank = 8 - parseInt(sq[1]);   // 8=0, 7=1...
-
-        // Adjust for board orientation
-        const isFlipped = $('.chessboard-63f37').hasClass('orientation-black');
-        let f = isFlipped ? (7 - file) : file;
-        let r = isFlipped ? (7 - rank) : rank;
-
-        const sqW = canvas.width / 8;
-        const sqH = canvas.height / 8;
-
-        return {
-            x: f * sqW + sqW / 2,
-            y: r * sqH + sqH / 2
-        };
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
-
-    const p1 = getSqPos(from);
-    const p2 = getSqPos(to);
-
-    // Draw Arrow
-    const headLen = 15;
-    const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.7)'; // Accent sky blue
-    ctx.lineWidth = 8;
-    ctx.lineCap = 'round';
-
-    // Line part
-    ctx.beginPath();
-    ctx.moveTo(p1.x, p1.y);
-    ctx.lineTo(p2.x, p2.y);
-    ctx.stroke();
-
-    // Head part
-    ctx.beginPath();
-    ctx.moveTo(p2.x, p2.y);
-    ctx.lineTo(p2.x - headLen * Math.cos(angle - Math.PI / 6), p2.y - headLen * Math.sin(angle - Math.PI / 6));
-    ctx.moveTo(p2.x, p2.y);
-    ctx.lineTo(p2.x - headLen * Math.cos(angle + Math.PI / 6), p2.y - headLen * Math.sin(angle + Math.PI / 6));
-    ctx.stroke();
+    return; // Desactivado por petición del usuario
 }
 
 function isBookMove(moveSan) {
@@ -2378,11 +2429,13 @@ window.updateAuthUI = function () {
             <div style="margin-top:5px; color:#3b82f6">Puzzles: ${userPuzzleElo}</div>
         `);
 
+        $('#btn-delete-account, #auth-delete-area').show();
         $('#guest-access-section').hide();
     } else {
         $('#btn-auth-trigger').show();
         $('#btn-auth-drawer').show();
         $('#btn-logout-drawer').hide();
+        $('#btn-delete-account, #auth-delete-area').hide();
 
         $('#drawer-user-name').text("Invitado");
         $('#my-name-display').text("Invitado");
@@ -2533,7 +2586,7 @@ const opHtml = ACTIVE_OPENINGS.map((group, groupIdx) => {
     return optgroup + `</optgroup>`;
 }).join('');
 
-$('#opening-sel, #opening-sel-main, #ai-opening-practice, #maestro-opening-sel').append(opHtml);
+$('#opening-sel, #opening-sel-main, #ai-opening-practice, #maestro-opening-sel, #opening-sel-universal').append(opHtml);
 
 var studyMoves = [];
 var studyIndex = 0;
@@ -2591,17 +2644,32 @@ const toggleHints = (btn) => {
     if (currentMode === 'exercises') return; // No hints in puzzles
     hintsActive = !hintsActive;
     const txt = hintsActive ? "💡 PISTAS: ON" : "💡 ACTIVAR PISTAS";
-    $('#btn-ai-hint, #btn-suggest-move').text(txt).toggleClass('active', hintsActive);
+
+    // Actualizar todos los botones de pistas posibles
+    $('#btn-ai-hint, #btn-suggest-move, #btn-toggle-hints-study, #btn-hint-main, #btn-hint-mobile-bar').text(txt).toggleClass('active', hintsActive);
 
     if (hintsActive) {
-        $('#coach-txt').text("Analizando posición...");
+        if (!window.currentEval) $('#coach-txt').text("Analizando posición...");
         if (stockfish) {
-            updateUI(true); // Force re-analysis
+            updateUI(false); // No, don't move, just analyze
+            // Actually updateUI triggers analysis. But updateUI(true) triggers sounds and stuff.
+            // We need a way to just trigger analysis.
+            // But updateUI call stockfish go.
+
+            // Let's just force a re-analysis
+            stockfish.postMessage('stop');
+            stockfish.postMessage('position fen ' + game.fen());
+            stockfish.postMessage('go depth 15');
         }
     } else {
         $('.square-55d63').removeClass('highlight-hint');
         $('#best-move-display').hide();
-        if (!analysisActive) $('#coach-txt').text("Bienvenido. Juega una partida o analiza una posición para recibir mis consejos.");
+        drawBestMoveArrow(null); // Clear arrow
+
+        // Solo restaurar texto si no estamos en un modo que genera comentarios automáticos
+        if (!analysisActive && currentMode !== 'ai' && currentMode !== 'maestro' && currentMode !== 'study') {
+            $('#coach-txt').text("Bienvenido. Juega una partida o analiza una posición para recibir mis consejos.");
+        }
     }
 };
 
@@ -2622,12 +2690,19 @@ $('#btn-hint-main').click(function () {
 
 // NEW MENU LOGIC
 window.showSubMenu = function (id, addToHistory = true) {
+    console.log("Showing submenu:", id);
     $('.menu-step').removeClass('active');
-    $('#menu-' + id).addClass('active');
 
-    // Manage History
+    // Si el id ya tiene 'menu-', usarlo tal cual, si no, prepender 'menu-'
+    const finalId = id.startsWith('menu-') ? id : 'menu-' + id;
+    $('#' + finalId).addClass('active');
+
     if (addToHistory) {
-        history.pushState({ view: 'menu', id: id }, '', '#menu-' + id);
+        history.pushState({ view: 'menu', id: id }, '', '#' + id);
+    }
+
+    if (id === 'root' || id === 'menu-root') {
+        exitGameView();
     }
 
     if (id === 'lobby') {
@@ -2639,15 +2714,22 @@ window.showSubMenu = function (id, addToHistory = true) {
 };
 
 window.exitGameView = function () {
+    console.log("Exiting game view, returning to menu...");
     $('body').removeClass('board-active');
-    $('#game-sidebar-controls').hide();
+    $('.game-sidebar-controls').hide();
     $('#master-coach-panel').hide();
     $('#analysis-report-container').hide();
-    $('#main-menu-container').show();
+    $('#study-extra-controls').hide();
+    $('.tab-content').removeClass('active');
 
-    // Al salir, resetear el tablero para que la próxima vez esté limpio
+    // Asegurar que el contenedor del menú principal se vea
+    $('#main-menu-container').fadeIn();
+
+    if (board) {
+        board.resize();
+        board.start();
+    }
     game.reset();
-    board.start();
     aiPracticeLine = null;
     studyMoves = null;
 };
@@ -2657,6 +2739,13 @@ window.setMode = function (mode, addToHistory = true) {
 
     if (addToHistory) {
         history.pushState({ view: 'game', mode: mode }, '', '#game-' + mode);
+    }
+
+    // Mostrar/Ocultar controles extra de estudio (ahora también en modo AI)
+    if (mode === 'study' || mode === 'maestro' || mode === 'ai') {
+        $('#study-extra-controls').css('display', 'flex');
+    } else {
+        $('#study-extra-controls').hide();
     }
 
     // UI Mode Classes for CSS targeting
@@ -2673,7 +2762,7 @@ window.setMode = function (mode, addToHistory = true) {
     $('#main-menu-container').hide();
 
     // Activar controles laterales (PC) - SOLO botones de control
-    $('#game-sidebar-controls').fadeIn().css('display', 'flex');
+    $('.game-sidebar-controls').fadeIn().css('display', 'flex');
     $('body').addClass('board-active');
 
     // PC transition: Ensure board is visible and properly sized
@@ -2729,33 +2818,46 @@ window.setMode = function (mode, addToHistory = true) {
     } else if (mode === 'pass-and-play') {
         $('#opp-name').text('Oponente Local');
     } else {
-        $('#opp-name').text('Oponente (Estudio)');
+        $('#opp-name').text('Estudio Teórico');
+    }
+
+    // Gestionar visibilidad de tiempos (Ocultar en modo estudio)
+    if (mode === 'study') {
+        $('#my-timer, #opp-timer').fadeOut();
+    } else {
+        $('#my-timer, #opp-timer').fadeIn();
     }
 
     if (mode === 'ai' || mode === 'study' || mode === 'exercises' || mode === 'maestro') {
-        $('#master-coach-panel').css('display', 'flex').hide().fadeIn();
+        $('#master-coach-panel, #current-moves-sidebar').css('display', 'flex').hide().fadeIn();
         $('#btn-hint-main').css('display', 'flex').fadeIn();
         $('#btn-hint-mobile-bar').show();
 
-        // Ensure analysis starts immediately
-        setTimeout(() => {
-            isJ = true;
-            if (stockfish) {
-                stockfish.postMessage('stop');
-                stockfish.postMessage('position fen ' + game.fen());
-                stockfish.postMessage('go depth 15');
-            }
-        }, 300);
+        // Auto-activar modo automático si entramos en AI o Maestro
+        if (mode === 'ai' || mode === 'maestro') {
+            opponentAutoMode = true;
+            syncOpponentModeUI();
+        }
 
         if (mode === 'study' || mode === 'maestro') {
             hintsActive = true;
-            $('#btn-hint-main, #btn-ai-hint, #btn-suggest-move').addClass('active').text("💡 PISTAS: ON");
+            $('#btn-hint-main, #btn-ai-hint, #btn-toggle-hints-study, #btn-hint-mobile-bar').addClass('active').text("💡 PISTAS: ON");
         }
     } else {
         $('#master-coach-panel').hide();
         $('#btn-hint-main').hide();
         $('#btn-hint-mobile-bar').hide();
     }
+
+    // Ensure analysis starts immediately
+    setTimeout(() => {
+        isJ = true;
+        if (stockfish) {
+            stockfish.postMessage('stop');
+            stockfish.postMessage('position fen ' + game.fen());
+            stockfish.postMessage('go depth 15');
+        }
+    }, 300);
 
     // ADJUST MOBILE ACTIONS BAR BASED ON MODE
     if (mode === 'maestro' || mode === 'study') {
@@ -3255,9 +3357,53 @@ $('#btn-logout-drawer').click(() => {
     location.reload();
 });
 
+// La función showSubMenu y exitGameView duplicada ha sido eliminada. Se usan las de arriba.
+
+window.syncOpponentModeUI = function () {
+    const $dot = $('#opp-mode-dot');
+    const $btn = $('#opp-move-toggle');
+    const $label = $('#opp-mode-label');
+    if (!$dot.length) return;
+
+    if (opponentAutoMode) {
+        $dot.css('left', 'calc(100% - 20px)');
+        $btn.css('background', 'var(--accent)');
+        $label.text('IA');
+    } else {
+        $dot.css('left', '2px');
+        $btn.css('background', '#475569');
+        $label.text('MANUAL');
+    }
+};
+
+window.toggleOpponentAutoMode = function () {
+    opponentAutoMode = !opponentAutoMode;
+    syncOpponentModeUI();
+
+    if (opponentAutoMode) {
+        showToast("El rival ahora moverá automáticamente", "🤖");
+        // Si es el turno de la IA, que mueva ya
+        if (game.turn() !== myColor) {
+            console.log("🤖 Triggering AI move from toggle");
+            setTimeout(makeAIMove, 300);
+        }
+    } else {
+        showToast("Mueve tú mismo por el rival", "👤");
+    }
+};
+
+window.resetGamePosition = function () {
+    if (confirm("¿Reiniciar tablero a la posición inicial?")) {
+        game.reset();
+        board.start();
+        historyPositions = ['start'];
+        currentHistoryIndex = 0;
+        updateUI();
+        showToast("Tablero reseteado", "🧹");
+    }
+};
+
 window.goBackToMenu = () => {
-    // If we have history, we might want to go back, but "Home" button usually means force root.
-    // We will push root state to be safe and clear view.
     exitGameView();
     showSubMenu('root');
 };
@@ -3267,13 +3413,11 @@ window.onpopstate = function (event) {
     if (event.state) {
         if (event.state.view === 'menu') {
             exitGameView();
-            showSubMenu(event.state.id, false); // false = don't push again
+            showSubMenu(event.state.id, false);
         } else if (event.state.view === 'game') {
-            // Restore game view if user goes forward to it
             setMode(event.state.mode, false);
         }
     } else {
-        // Root state (or initial)
         exitGameView();
         showSubMenu('root', false);
     }
@@ -3282,7 +3426,6 @@ window.onpopstate = function (event) {
 $('#btn-mobile-menu-back').click(function () {
     goBackToMenu();
 });
-
 
 // Helper para cambiar pestañas desde el drawer
 window.setTab = function (tabId) {
@@ -3296,6 +3439,98 @@ window.setTab = function (tabId) {
     }
 };
 
+// --- APERTURAS: TEORIA, ENTRENAMIENTO, EJERCICIOS ---
+let currentOpeningSubMode = 'theory';
+
+window.showOpeningLibrary = function (mode) {
+    currentOpeningSubMode = mode;
+    showSubMenu('menu-apertura-selector');
+
+    // Configurar UI del selector
+    const labels = {
+        theory: "📖 MODO TEORÍA: APRENDE LAS LÍNEAS",
+        training: "⚔️ ENTRENAMIENTO: JUEGA CONTRA IA",
+        exercises: "🧩 EJERCICIOS: TÁCTICA DE APERTURA"
+    };
+    $('#ap-sel-label').text(labels[mode]);
+
+    if (mode === 'training') {
+        $('#training-color-choice').show();
+    } else {
+        $('#training-color-choice').hide();
+    }
+};
+
+// Manejo de botones de color en el selector
+$(document).on('click', '.color-btn', function () {
+    $('.color-btn').removeClass('active');
+    $(this).addClass('active');
+});
+
+window.startOpeningModeFromSelector = function () {
+    const val = $('#opening-sel-universal').val();
+    if (!val) return alert("Selecciona una apertura.");
+
+    const [gIdx, iIdx] = val.split('-');
+    const opening = ACTIVE_OPENINGS[gIdx].items[iIdx];
+
+    if (currentOpeningSubMode === 'theory') {
+        // Modo Teoría: Cargar y pasar a estudio
+        game.reset();
+        board.start();
+        studyMoves = opening.moves || opening.m;
+        studyIndex = 0;
+        currentOpeningName = opening.name;
+        currentOpeningComments = opening.comments || [];
+
+        setMode('study');
+
+        $('#coach-txt').html(`
+            <div style="font-size:1rem; font-weight:700; color:var(--accent); margin-bottom:8px;">${opening.name}</div>
+            <div style="font-size:0.85rem; line-height:1.5;">Usa las flechas (▶) para explorar la teoría. Te iré explicando cada jugada según avancemos.</div>
+        `);
+        showToast("Estudiando teoría", "📖");
+
+    } else if (currentOpeningSubMode === 'training') {
+        // Modo Entrenamiento: Configurar IA y color
+        const color = $('.color-btn.active').data('color') === 'white' ? 'w' : 'b';
+        myColor = color;
+
+        aiPracticeLine = opening.moves || opening.m;
+        aiPracticeIndex = 0;
+        currentOpeningName = opening.name;
+        currentOpeningComments = opening.comments || [];
+
+        game.reset();
+        board.orientation(color === 'w' ? 'white' : 'black');
+        board.start();
+
+        setMode('maestro');
+
+        $('#opp-name').text('Entrenamiento: ' + opening.name);
+        $('#coach-txt').html(`
+            <div style="font-size:0.9rem; font-weight:700; color:var(--accent); margin-bottom:10px;">CONFIGURACIÓN COMPLETADA</div>
+            <div style="font-size:0.85rem; line-height:1.5;">Estamos entrenando <b>${opening.name}</b>. Yo jugaré por mi bando siguiendo la teoría, ¡intenta recordarla!</div>
+        `);
+
+        if (color === 'b') {
+            setTimeout(makeAIMove, 600);
+        }
+        showToast("Entrenamiento iniciado", "⚔️");
+
+    } else if (currentOpeningSubMode === 'exercises') {
+        // Modo Ejercicios: Puzzles filtrados
+        const mappedTag = OPENING_TAG_MAP[opening.name] || opening.name.replace(/ /g, '_');
+        drillCategory = mappedTag;
+        setMode('exercises');
+        loadRandomPuzzle(0, mappedTag);
+        showToast("Retos de: " + opening.name, "🧩");
+    }
+
+    // Ya no llamamos a exitGameView() aquí porque queremos quedarnos en la partida.
+    // setMode ya ocultó el menú principal.
+};
+
 // PWA Service Worker Registration
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -3306,3 +3541,26 @@ if ('serviceWorker' in navigator) {
         });
     });
 }
+// --- DARSE DE BAJA ---
+window.confirmDeleteAccount = async function () {
+    if (confirm("🚨 ¿ESTÁS SEGURO? Esta acción es IRREVERSIBLE y borrará todos tus datos, partidas y ELO de forma permanente.")) {
+        const pass = prompt("Por favor, confirma tu contraseña para proceder con la baja:");
+        if (pass) {
+            // Usar la función de hash disponible en client_optimized.js
+            const hashed = (typeof hashPassword === 'function') ? await hashPassword(pass) : pass;
+            socket.emit('delete_account', { pass: hashed });
+        }
+    }
+};
+
+socket.on('account_deleted', (data) => {
+    alert(data.message);
+    localStorage.clear();
+    location.reload();
+});
+
+socket.on('auth_error', (data) => {
+    if (data.message.includes('borrar')) {
+        alert(data.message);
+    }
+});

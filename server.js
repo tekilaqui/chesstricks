@@ -439,6 +439,35 @@ io.on('connection', (socket) => {
     socket.emit('leaderboard_data', top10);
   });
 
+  socket.on('delete_account', (data) => {
+    if (!socket.authenticated || !socket.username) {
+      return socket.emit('auth_error', { message: "Debes estar identificado para borrar la cuenta." });
+    }
+
+    const username = socket.username;
+    const u = users[username];
+
+    if (!u) {
+      return socket.emit('auth_error', { message: "Usuario no encontrado." });
+    }
+
+    // Verificar contraseña si se proporciona
+    if (!data || !data.pass) {
+      return socket.emit('auth_error', { message: "Se requiere la contraseña para borrar la cuenta por seguridad." });
+    }
+
+    const inputHash = hashPassword(data.pass, u.salt);
+    if (inputHash !== u.hash) {
+      return socket.emit('auth_error', { message: "Contraseña incorrecta. No se ha podido eliminar la cuenta." });
+    }
+
+    console.log(`🗑️ Eliminando cuenta del usuario: ${username}`);
+    delete users[username];
+    saveUsers();
+    socket.emit('account_deleted', { message: "Cuenta eliminada correctamente." });
+    socket.disconnect();
+  });
+
   socket.on('disconnect', () => {
     console.log('Usuario desconectado:', socket.id);
     connectedUsers.delete(socket.id);
