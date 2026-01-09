@@ -605,7 +605,7 @@ try {
                 }
 
                 // Generate Coach Explanation
-                let explanation = getHumanExplanation(ev, evalLoss, isMate, '', isBook, isOpening);
+                let explanation = getHumanExplanation(ev, evalLoss, isMate, isBook, isOpening);
                 let moveQualityHtml = `<div class="${q.class}" style="font-size:1.1rem; margin-bottom:5px;">${q.text}</div>`;
 
                 let openingName = ''
@@ -639,7 +639,9 @@ try {
                         checkGameOver();
                     });
 
-                    drawBestMoveArrow(bestMoveLAN);
+                    if (hintsActive) drawBestMoveArrow(bestMoveLAN);
+
+                    window.pvList = [{ moveLAN: bestMoveLAN }]; // Save for redraw
                 }
             }
 
@@ -697,24 +699,30 @@ function lanToSan(lan) {
     return m ? m.san : lan;
 }
 
-function getHumanExplanation(evVal, diff, isMate, tact, isBook, isOp) {
-    if (isBook) return "Estás siguiendo las líneas principales de la teoría. Esta posición es bien conocida y equilibrada.";
-    if (isMate) return "¡Hay un mate forzado en el tablero! La tensión es máxima y un solo error decidirá el destino de la partida.";
+// Humanized Explanation Logic (Updated)
+function getHumanExplanation(ev, diff, isMate, isBook, isOp) {
+    if (isBook) return `📖 <b class="q-book">TEORÍA</b>: Línea principal ${currentOpeningName || 'estándar'}. Posición equilibrada.`;
 
-    // Evaluar la jugada recién hecha
-    if (diff > 2.5) return "Ese movimiento ha sido un error crítico (blunder). Has permitido que la posición se desmorone por completo.";
-    if (diff > 1.2) return "Esta jugada es un error importante. Has perdido una ventaja significativa o has permitido una amenaza seria.";
-    if (diff > 0.6) return "Imprecisión detectada. Había continuaciones mucho más sólidas para mantener el control posicional.";
+    if (isMate) return `♛ <b class="q-excellent">MATE FORZADO</b>: ¡Salta la partida! Un desenlace inevitable está en el tablero.`;
 
-    if (diff < -0.5) return "¡Excelente jugada! Has encontrado una respuesta muy fuerte que pone en aprietos al oponente.";
+    // Evaluar la jugada recién hecha (diff)
+    // Nota: diff positivo significa perdida para quien movió si no se ajusta, 
+    // pero aquí asumimos diff como "pérdida de centipawns" (absoluto).
 
-    // Evaluar situación general si la jugada fue normal
-    if (Math.abs(evVal) < 0.5) return "La batalla está muy igualada. Ambos bandos tienen recursos y el equilibrio se mantiene por ahora.";
-    if (evVal > 1.5) return "Tienes una ventaja clara. Tus piezas están mejor coordinadas y dominas el centro del tablero.";
-    if (evVal < -1.5) return "Tu posición es difícil. El rival tiene mucha presión; necesitas reagrupar tus piezas y buscar defensa.";
+    if (diff > 3) return `💥 <b class="q-blunder">ERROR GRAVE</b>: Blunder catastrófico. Has regalado material o permitido mate.`;
+    if (diff > 1.5) return `🔥 <b class="q-mistake">ERROR</b>: Mistake serio. El oponente gana una ventaja posicional clara.`;
+    if (diff > 0.8) return `⚠️ <b class="q-inaccuracy">IMPRECISIÓN</b>: ?! Había una jugada mejor para mantener el control.`;
 
-    if (isOp) return "Fase de apertura: Prioriza el desarrollo de piezas menores (alfiles y caballos) y pon a tu rey a salvo pronto.";
-    return "La posición requiere paciencia. Busca mejorar la ubicación de tu pieza menos activa y vigila las debilidades del rival.";
+    if (diff < -1) return `⭐ <b class="q-best">BUENA</b>: ¡Excelente hallazgo! Presionas fuerte al rival.`; // Negative diff might mean gain in some contexts
+
+    // Evaluar situación general
+    if (Math.abs(ev) < 0.5) return `⚖️ <b class="q-good">NORMAL</b>: Posición igualada. Desarrolla tus piezas activas.`;
+    if (ev > 1.5) return `🚀 <b class="q-best">VENTAJA</b>: Llevas la iniciativa. Busca simplificar o atacar debilidades.`;
+    if (ev < -1.5) return `🛡️ <b class="q-mistake">DEFENSA</b>: Estás bajo presión. Reagrupa y evita errores tácticos.`;
+
+    if (isOp) return "🧩 Fase de apertura: Controla el centro y enroca rápido.";
+
+    return "🧠 La posición es compleja. Calcula con cuidado las respuestas del rival.";
 }
 
 function makeAIMove() {
@@ -1327,39 +1335,111 @@ function onDragStart(source, piece, position, orientation) {
     // 1. Bloquear si la IA está pensando
     if (typeof aiThinking !== 'undefined' && aiThinking) return false;
 
-    // 2. Modo ESTUDIO: Libertad total (salvo que sea turno auto del rival)
-    if (currentMode === 'study') {
-        if (opponentAutoMode && game.turn() !== myColor) return false;
+    // 2. Modos de análisis/entrenamiento: Permitir mover piezas del turno actual
+    if (currentMode === 'study' || currentMode === 'ai' || currentMode === 'maestro' || currentMode === 'exercises') {
+        // En Study con auto-oponente, bloquear turno del oponente
+        if (currentMode === 'study' && opponentAutoMode && game.turn() !== myColor) return false;
+
+        // En AI/Maestro, bloquear si es turno de la IA (no del jugador)
+        if ((currentMode === 'ai' || currentMode === 'maestro') && game.turn() !== myColor) return false;
+
+        // Permitir mover cualquier pieza del color del turno actual
+        if (piece.charAt(0) !== game.turn()) return false;
         return true;
     }
-    // 3. Pass-and-Play: Mover todo
-    if (currentMode === 'pass-and-play') return true;
 
-    // 4. Modos Estrictos (Online/Local, AI, Maestro)
-    if (['local', 'ai', 'maestro'].includes(currentMode)) {
-        // En estos modos, mi color es fijo.
-        // Si es Online (local) pero NO hay gameId, quizas es Local puro? 
-        // No, 'pass-and-play' es el local puro. 'local' es el default que actúa como Online.
+    // 3. Modo Local Puro (pass-and-play): Permitir todo
+    if (currentMode === 'pass-and-play') {
+        if (piece.charAt(0) !== game.turn()) return false;
+        return true;
+    }
 
-        // Verificar Turno
+    // 4. Modo Online (local): Restricción ESTRICTA
+    if (currentMode === 'local') {
+        // Verificar turno
         if (game.turn() !== myColor) {
-            // showToast("Espera tu turno", "⏳"); // Opcional, puede ser molesto si spameas
             return false;
         }
 
-        // Verificar Color de Pieza
-        const pColor = piece.charAt(0); // 'w' o 'b'
+        // Verificar propiedad de la pieza
+        const pColor = piece.charAt(0);
         if (pColor !== myColor) {
-            showToast("No puedes mover las piezas del rival", "🚫");
+            showToast("¡No muevas rivales en online!", "⚠️");
             return false;
         }
     }
 
-    // Restricción General de Turno (Puzzles, etc)
+    // Restricción general de turno (fallback)
     if (piece.charAt(0) !== game.turn()) return false;
-
     return true;
 }
+
+// ARROW DRAWING UTILS (Required for hints)
+function clearArrowCanvas() {
+    const cvs = document.getElementById('arrowCanvas');
+    if (!cvs) return;
+    const ctx = cvs.getContext('2d');
+    ctx.clearRect(0, 0, cvs.width, cvs.height);
+}
+
+function drawBestMoveArrow(moveLAN) {
+    // Note: hintsActive is defined globally
+    if (!hintsActive && !moveLAN) return;
+    // If moveLAN is null (clear), we just return (after clearing above if called separately, but here logic paints)
+
+    const cvs = document.getElementById('arrowCanvas');
+    if (!cvs) return;
+
+    const ctx = cvs.getContext('2d');
+
+    // Clear first to avoid trails
+    ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+    if (!moveLAN || !hintsActive) return;
+
+    // Ajustar canvas al tamaño real
+    const r = cvs.getBoundingClientRect();
+    cvs.width = r.width;
+    cvs.height = r.height;
+
+    const sqSize = cvs.width / 8;
+
+    const from = moveLAN.substring(0, 2);
+    const to = moveLAN.substring(2, 4);
+
+    const cols = 'abcdefgh';
+    const rows = '87654321';
+
+    const isWhite = board.orientation() === 'white';
+
+    const colIdx = (c) => isWhite ? cols.indexOf(c) : 7 - cols.indexOf(c);
+    const rowIdx = (r) => isWhite ? rows.indexOf(r) : 7 - rows.indexOf(r);
+
+    const x1 = colIdx(from[0]) * sqSize + sqSize / 2;
+    const y1 = rowIdx(from[1]) * sqSize + sqSize / 2;
+    const x2 = colIdx(to[0]) * sqSize + sqSize / 2;
+    const y2 = rowIdx(to[1]) * sqSize + sqSize / 2;
+
+    // Draw Arrow
+    ctx.beginPath();
+    ctx.strokeStyle = '#fbbf24'; // Amber-400
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.globalAlpha = 0.7;
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+
+    // Arrowhead
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    ctx.beginPath();
+    ctx.fillStyle = '#fbbf24';
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - 15 * Math.cos(angle - Math.PI / 6), y2 - 15 * Math.sin(angle - Math.PI / 6));
+    ctx.lineTo(x2 - 15 * Math.cos(angle + Math.PI / 6), y2 - 15 * Math.sin(angle + Math.PI / 6));
+    ctx.fill();
+}
+
 
 $(document).ready(() => {
     board = Chessboard('myBoard', {
@@ -1500,7 +1580,8 @@ $(document).ready(() => {
         updateUI();
     }, 1500);
 
-    // Ensure tab-btn click also resizes board
+    // Button Bindings
+    $('#btn-toggle-hints-study').click(toggleHints);
     $('.tab-btn').on('click', function () {
         setTimeout(() => { if (board) board.resize(); }, 100);
     });
