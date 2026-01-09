@@ -15,6 +15,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="manifest" href="manifest.json">
     <script src="puzzles_data.js"></script>
+    <script src="openings_enhanced.js"></script>
     <meta name="theme-color" content="#22c55e">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -315,72 +316,39 @@
                         <button class="btn-back" onclick="showSubMenu('root')" style="margin:0;">⬅️ Atras</button>
                     </div>
                     <div style="display:flex; flex-direction:column; gap:12px;">
-                        <div class="btn-menu" id="btn-toggle-openings" style="cursor:pointer;">
+                        <div class="menu-btn" onclick="$('#btn-toggle-openings').click();">
                             <span>📖</span><span>Aperturas</span>
                         </div>
 
                         <div id="opening-sel-container"
                             style="display:none; background:rgba(0,0,0,0.25); padding:18px; border-radius:15px; border: 1px solid rgba(255,255,255,0.08); margin-top:15px; box-shadow: inset 0 0 20px rgba(0,0,0,0.2);">
 
-                            <div style="margin-bottom:15px;">
-                                <label class="label-tiny"
-                                    style="color:var(--accent); display:block; margin-bottom:8px;">❶ ELIGE TU
-                                    APERTURA</label>
-                                <select class="btn-control" id="opening-sel-main" style="width:100%; font-weight:600;">
-                                    <option value="">-- Seleccionar Apertura --</option>
-                                </select>
-                            </div>
-
-                            <div style="margin-bottom:20px;">
-                                <label class="label-tiny"
-                                    style="color:var(--accent); display:block; margin-bottom:8px;">❷ NIVEL DEL MAESTRO
-                                    (ELO)</label>
-                                <select class="btn-control" id="opening-elo-sel" style="width:100%;">
-                                    <option value="1">♟️ Principiante (600)</option>
-                                    <option value="5" selected>♝ Intermedio (1200)</option>
-                                    <option value="10">♜ Avanzado (1800)</option>
-                                    <option value="15">♛ Experto (2200)</option>
-                                    <option value="20">♚ Maestro (2500+)</option>
-                                </select>
-                            </div>
-
-                            <div style="margin-bottom:20px;">
-                                <label class="label-tiny"
-                                    style="color:var(--accent); display:block; margin-bottom:8px;">❹ TIEMPO</label>
-                                <select class="btn-control" id="ai-time-sel-opening" style="width:100%;">
-                                    <option value="1">1 Minuto</option>
-                                    <option value="3" selected>3 Minutos</option>
-                                    <option value="10">10 Minutos</option>
-                                    <option value="30">30 Minutos</option>
-                                    <option value="1440">24 Horas (Daily)</option>
-                                </select>
-                            </div>
-
-                            <div style="margin-bottom:20px;">
-                                <label class="label-tiny"
-                                    style="color:var(--accent); display:block; margin-bottom:8px;">❸ TU BANDO</label>
-                                <select class="btn-control" id="opening-side-sel" style="width:100%;">
-                                    <option value="auto">🤖 Auto (Sugerido)</option>
-                                    <option value="w">⚪ Jugar con Blancas</option>
-                                    <option value="b">⚫ Jugar con Negras</option>
-                                </select>
-                            </div>
-
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                                <button class="btn-tool" onclick="startTheoreticalStudy()"
-                                    style="background:rgba(56, 189, 248, 0.15); color:#38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); font-weight:800; padding:15px; border-radius:10px; transition:0.3s; cursor:pointer;">
-                                    <span style="font-size:1.2rem; display:block; margin-bottom:4px;">📖</span> TEORÍA
+                            <div style="display:grid; grid-template-columns: 1fr; gap:15px;">
+                                <button class="btn-tool"
+                                    onclick="setMode('study'); showToast('Modo Teoría activado', '📖');"
+                                    style="background:rgba(56, 189, 248, 0.15); color:#38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); font-weight:800; padding:20px; border-radius:10px; transition:0.3s; cursor:pointer;">
+                                    <span style="font-size:1.5rem; display:block; margin-bottom:8px;">📖</span>
+                                    <div style="font-size:1rem; margin-bottom:4px;">TEORÍA</div>
+                                    <div style="font-size:0.65rem; opacity:0.8;">Estudia aperturas paso a paso</div>
                                 </button>
-                                <button class="btn-tool" onclick="startOpeningPracticeManual()"
-                                    style="background:rgba(139, 92, 246, 0.15); color:#a78bfa; border: 1px solid rgba(139, 92, 246, 0.4); font-weight:800; padding:15px; border-radius:10px; transition:0.3s; cursor:pointer;">
-                                    <span style="font-size:1.2rem; display:block; margin-bottom:4px;">⚔️</span> ENTRENAR
+
+                                <button class="btn-tool"
+                                    onclick="setMode('ai'); showToast('Configura tu entrenamiento en el panel lateral', '⚔️');"
+                                    style="background:rgba(139, 92, 246, 0.15); color:#a78bfa; border: 1px solid rgba(139, 92, 246, 0.4); font-weight:800; padding:20px; border-radius:10px; transition:0.3s; cursor:pointer;">
+                                    <span style="font-size:1.5rem; display:block; margin-bottom:8px;">⚔️</span>
+                                    <div style="font-size:1rem; margin-bottom:4px;">ENTRENAMIENTO</div>
+                                    <div style="font-size:0.65rem; opacity:0.8;">Practica contra la IA</div>
                                 </button>
-                                <button class="btn-tool" onclick="startOpeningDrillsManual()"
-                                    style="background:rgba(16, 185, 129, 0.15); color:#10b981; border: 1px solid rgba(16, 185, 129, 0.4); font-weight:800; padding:15px; border-radius:10px; transition:0.3s; cursor:pointer; grid-column: span 2;">
-                                    <span style="font-size:1.2rem; display:block; margin-bottom:4px;">🧪</span>
-                                    EJERCICIOS TÁCTICOS
+
+                                <button class="btn-tool"
+                                    onclick="setMode('exercises'); showToast('Resuelve puzzles tácticos', '🧩');"
+                                    style="background:rgba(16, 185, 129, 0.15); color:#10b981; border: 1px solid rgba(16, 185, 129, 0.4); font-weight:800; padding:20px; border-radius:10px; transition:0.3s; cursor:pointer;">
+                                    <span style="font-size:1.5rem; display:block; margin-bottom:8px;">🧩</span>
+                                    <div style="font-size:1rem; margin-bottom:4px;">PROBLEMAS</div>
+                                    <div style="font-size:0.65rem; opacity:0.8;">Ejercicios tácticos</div>
                                 </button>
                             </div>
+
                             <p
                                 style="font-size:0.55rem; color:var(--text-muted); margin-top:12px; font-style:italic; text-align:center;">
                                 * En modo <b>Entrenar</b>, el Maestro jugará contra ti siguiendo la línea.
@@ -691,11 +659,17 @@
         <aside class="sidebar-right">
             <!-- CONTROLES SUPERIORES (PC) - Visible solo en modos de juego -->
             <div id="game-sidebar-controls"
-                style="display:none; gap:5px; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.05);">
-                <button class="btn-tool" onclick="goBackToMenu()" style="flex:1; background:rgba(255,255,255,0.05);">🏠
-                    Menú</button>
-                <button class="btn-tool" onclick="board.flip()" style="flex:1; background:rgba(255,255,255,0.05);">🔄
-                    Girar</button>
+                style="display:none; flex-direction:column; gap:8px; margin-bottom:15px; padding-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.05);">
+                <button class="btn-primary" id="btn-back-menu-pc" onclick="goBackToMenu()"
+                    style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px;">
+                    🏠 VOLVER AL MENÚ
+                </button>
+                <div style="display:flex; gap:5px;">
+                    <button class="btn-tool" onclick="board.flip()"
+                        style="flex:1; background:rgba(255,255,255,0.05);">🔄 Girar</button>
+                    <button class="btn-tool" id="btn-reset-board-pc"
+                        style="flex:1; background:rgba(255,255,255,0.05);">🧹 Reiniciar</button>
+                </div>
             </div>
 
             <div class="sidebar-tabs">
@@ -782,14 +756,24 @@
                     </div>
 
                     <button class="btn-primary" id="btn-start-ai">EMPEZAR PARTIDA</button>
-                    <button class="btn-danger" id="btn-resign-ai" style="margin-top:5px;">RENDIRSE</button>
+                    <div style="display:flex; gap:5px; margin-top:5px;">
+                        <button class="btn-danger" id="btn-resign-ai" style="flex:1;">RENDIRSE</button>
+                        <button class="btn-tool" id="btn-reset-ai" onclick="resetGamePosition()" style="flex:1;">🧹
+                            REINICIAR</button>
+                    </div>
                     <button class="btn-tool" id="btn-ai-hint" style="width:100%; margin-top:8px;">💡 ACTIVAR
                         PISTAS</button>
                 </div>
 
                 <!-- MODO ESTUDIO -->
                 <div class="mode-section" id="sec-study">
-                    <label class="label-tiny">BIBLIOTECA DE APERTURAS</label>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <label class="label-tiny" style="margin:0;">BIBLIOTECA DE APERTURAS</label>
+                        <button class="btn-tool" id="btn-openings-study"
+                            style="font-size:0.55rem; padding:4px 8px; border-radius:6px; color:var(--accent); border-color:var(--accent);">📖
+                            BIBLIOTECA</button>
+                    </div>
+
                     <select class="btn-control" id="opening-sel">
                         <option value="">-- Seleccionar --</option>
                     </select>
@@ -798,7 +782,11 @@
                         style="display:none; margin-top:10px; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;">
                         <button class="btn-primary" id="btn-study-next" style="width:100%; margin-bottom:5px;">⏩
                             Siguiente Jugada</button>
-                        <button class="btn-tool" id="btn-study-prev" style="width:100%">⏪ Anterior</button>
+                        <div style="display:flex; gap:5px;">
+                            <button class="btn-tool" id="btn-study-prev" style="flex:2;">⏪ Anterior</button>
+                            <button class="btn-tool" onclick="resetGamePosition()" style="flex:1;"
+                                title="Reiniciar Posición">🧹</button>
+                        </div>
                     </div>
 
                     <div
@@ -900,6 +888,7 @@
     </div>
 
     <script src="openings_enhanced.js"></script>
+    <script src="study_mode_enhancements.js"></script>
     <script src="client.js"></script>
 </body>
 

@@ -419,13 +419,26 @@
 
         .btn-control {
             background: #1e293b;
-            color: #fff;
-            border: 1px solid #334155;
+            color: #f8fafc;
+            border: 1px solid #475569;
             padding: 10px;
             border-radius: 8px;
             width: 100%;
             font-size: 0.75rem;
             margin-bottom: 5px;
+        }
+
+        /* Mejorar visibilidad de las opciones del select */
+        .btn-control option {
+            background: #1e293b;
+            color: #f8fafc;
+            padding: 8px;
+        }
+
+        .btn-control optgroup {
+            background: #0f172a;
+            color: #38bdf8;
+            font-weight: 700;
         }
 
         .game-info {
