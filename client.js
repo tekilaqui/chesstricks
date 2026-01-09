@@ -699,30 +699,80 @@ function lanToSan(lan) {
     return m ? m.san : lan;
 }
 
-// Humanized Explanation Logic (Updated)
+// Helper to categorize move quality
+function getQualityMsg(diff, isMate, isBook) {
+    if (isBook) return { text: "📖 TEORÍA", class: 'q-book', symbol: '📖' };
+    if (isMate) return { text: "🏁 JUGADA DECISIVA", class: 'q-excellent', symbol: '#' };
+
+    // diff is absolute loss in centipawns/pawns
+    if (diff <= 0.2) return { text: "⭐ EXCELENTE", class: 'q-best', symbol: '!!' };
+    if (diff <= 0.5) return { text: "✅ BUENA", class: 'q-good', symbol: '!' };
+    if (diff <= 1.0) return { text: "⚠️ IMPRECISIÓN", class: 'q-inaccuracy', symbol: '?!' };
+    if (diff <= 2.0) return { text: "❌ ERROR", class: 'q-mistake', symbol: '?' };
+
+    return { text: "💥 BLUNDER", class: 'q-blunder', symbol: "??" };
+}
+
+// Humanized Explanation Logic (Updated & Enhanced)
 function getHumanExplanation(ev, diff, isMate, isBook, isOp) {
-    if (isBook) return `📖 <b class="q-book">TEORÍA</b>: Línea principal ${currentOpeningName || 'estándar'}. Posición equilibrada.`;
+    // 1. APERTURAS Y TEORÍA
+    if (isBook) {
+        let opName = currentOpeningName || 'Apertura Estándar';
+        let tip = "Sigue el desarrollo lógico de piezas.";
 
-    if (isMate) return `♛ <b class="q-excellent">MATE FORZADO</b>: ¡Salta la partida! Un desenlace inevitable está en el tablero.`;
+        // Comentarios específicos por apertura (Flavor Text)
+        if (opName.includes('Española') || opName.includes('Ruy Lopez'))
+            tip = "Clásica Ruy Lopez. Bb5 presiona el caballo, pero a6 suele obligar a decidir. ¡Controla el centro!";
+        else if (opName.includes('Siciliana'))
+            tip = "Lucha asimétrica (combate). Las negras buscan contrajuego dinámico en c5.";
+        else if (opName.includes('Francesa'))
+            tip = "Sólida pero pasiva al inicio. Cuidado con el alfil de casillas blancas bloqueado.";
+        else if (opName.includes('Caro-Kann'))
+            tip = "Estructura de peones muy sólida. Finales favorables si sobrevives al medio juego.";
+        else if (opName.includes('Italiana'))
+            tip = "Desarrollo rápido de Bc4 apuntando a f7. Un clásico del juego abierto.";
 
-    // Evaluar la jugada recién hecha (diff)
-    // Nota: diff positivo significa perdida para quien movió si no se ajusta, 
-    // pero aquí asumimos diff como "pérdida de centipawns" (absoluto).
+        return `📖 <b class="q-book">TEORÍA DE LIBRO</b><br><span style="font-size:0.9em; opacity:0.9">${opName}: ${tip}</span>`;
+    }
 
-    if (diff > 3) return `💥 <b class="q-blunder">ERROR GRAVE</b>: Blunder catastrófico. Has regalado material o permitido mate.`;
-    if (diff > 1.5) return `🔥 <b class="q-mistake">ERROR</b>: Mistake serio. El oponente gana una ventaja posicional clara.`;
-    if (diff > 0.8) return `⚠️ <b class="q-inaccuracy">IMPRECISIÓN</b>: ?! Había una jugada mejor para mantener el control.`;
+    // 2. FINALES Y MATES
+    if (isMate) return `♛ <b class="q-excellent">¡JUGADA DE MATE!</b><br>El desenlace es inevitable. ¡Calcula con precisión!`;
 
-    if (diff < -1) return `⭐ <b class="q-best">BUENA</b>: ¡Excelente hallazgo! Presionas fuerte al rival.`; // Negative diff might mean gain in some contexts
+    // 3. CALIDAD DE LA JUGADA (Basado en 'diff' - pérdida de ventaja)
+    // diff representa cuánto peor es tu jugada respecto a la mejor (en peones)
 
-    // Evaluar situación general
-    if (Math.abs(ev) < 0.5) return `⚖️ <b class="q-good">NORMAL</b>: Posición igualada. Desarrolla tus piezas activas.`;
-    if (ev > 1.5) return `🚀 <b class="q-best">VENTAJA</b>: Llevas la iniciativa. Busca simplificar o atacar debilidades.`;
-    if (ev < -1.5) return `🛡️ <b class="q-mistake">DEFENSA</b>: Estás bajo presión. Reagrupa y evita errores tácticos.`;
+    // ERROR GRAVE (Blunder): > 2.5 peones
+    if (diff > 2.5) {
+        return `💥 <b class="q-blunder">ERROR GRAVE (Colgada)</b><br>Has regalado una pieza o un mate. ¡Esta jugada cambia el resultado!`;
+    }
 
-    if (isOp) return "🧩 Fase de apertura: Controla el centro y enroca rápido.";
+    // ERROR (Mistake): > 1.2 peones
+    if (diff > 1.2) {
+        return `🔥 <b class="q-mistake">ERROR TÁCTICO</b><br>Pierdes una ventaja clara o permites un fuerte contraataque.`;
+    }
 
-    return "🧠 La posición es compleja. Calcula con cuidado las respuestas del rival.";
+    // IMPRECISIÓN (Inaccuracy): > 0.6 peones
+    if (diff > 0.6) {
+        return `⚠️ <b class="q-inaccuracy">IMPRECISIÓN</b><br>Jugada pasiva. Había una continuación más fuerte o activa.`;
+    }
+
+    // JUGADA MAESTRA/BUENA (diff muy bajo o ganancia)
+    if (diff < 0.1) {
+        // Si además cambia la evaluación mucho a nuestro favor (rival se equivocó antes)
+        return `⭐ <b class="q-best">¡JUGADA ÓPTIMA!</b><br>La mejor respuesta posible. Mantienes la presión máxima.`;
+    }
+    if (diff < 0.35) {
+        return `✅ <b class="q-good">BUEN MOVIMIENTO</b><br>Sólido y lógico. Mejoras tu posición paso a paso.`;
+    }
+
+    // 4. CONTEXTO GENERAL
+    let evalText = "La posición está igualada.";
+    if (ev > 1.5) evalText = "Las blancas tienen ventaja clara.";
+    if (ev < -1.5) evalText = "Las negras dominan la posición.";
+
+    if (isOp) return `🧩 <b class="q-good">FASE DE APERTURA</b><br>${evalText} Recuerda: Control central, desarrollo y seguridad del rey.`;
+
+    return `🧠 <b class="q-good">POSICIÓN COMPLEJA</b><br>${evalText} Busca planes a largo plazo y debilidades estructurales.`;
 }
 
 function makeAIMove() {
@@ -1335,42 +1385,40 @@ function onDragStart(source, piece, position, orientation) {
     // 1. Bloquear si la IA está pensando
     if (typeof aiThinking !== 'undefined' && aiThinking) return false;
 
-    // 2. Modos de análisis/entrenamiento: Permitir mover piezas del turno actual
+    // 2. Definir modo "Local Puro" (Pass & Play)
+    // Si estamos en pass-and-play, O si es local sin gameId (modo offline legacy)
+    const isLocalPure = currentMode === 'pass-and-play' || (!gameId && currentMode === 'local');
+
+    // 3. RESTRICCIÓN RIGUROSA:
+    // Si NO es local puro, y la pieza no es de MI color, BLOQUEAR.
+    if (!isLocalPure && piece.charAt(0) !== myColor) {
+        // Feedback visual crítico
+        showToast('¡No muevas rivales en online!', '⚠️');
+        return false;
+    }
+
+    // 4. Modos de análisis/entrenamiento (AI, Maestro, Study, Exercises)
     if (currentMode === 'study' || currentMode === 'ai' || currentMode === 'maestro' || currentMode === 'exercises') {
-        // En Study con auto-oponente, bloquear turno del oponente
+        // En Study con auto-oponente, bloquear turno del oponente si toca a la IA
         if (currentMode === 'study' && opponentAutoMode && game.turn() !== myColor) return false;
 
-        // En AI/Maestro, bloquear si es turno de la IA (no del jugador)
+        // En AI/Maestro, bloquear si es turno de la IA
         if ((currentMode === 'ai' || currentMode === 'maestro') && game.turn() !== myColor) return false;
 
-        // Permitir mover cualquier pieza del color del turno actual
-        if (piece.charAt(0) !== game.turn()) return false;
+        // Validar turno correcto del juego
+        if (game.turn() !== piece.charAt(0)) return false;
+
         return true;
     }
 
-    // 3. Modo Local Puro (pass-and-play): Permitir todo
-    if (currentMode === 'pass-and-play') {
-        if (piece.charAt(0) !== game.turn()) return false;
-        return true;
+    // 5. Validación genérica de turno (para pass-and-play o fallback)
+    if (game.turn() !== piece.charAt(0)) return false;
+
+    // 6. Online estricto (Redundancia de seguridad)
+    if (currentMode === 'local' && gameId) {
+        if (game.turn() !== myColor) return false;
     }
 
-    // 4. Modo Online (local): Restricción ESTRICTA
-    if (currentMode === 'local') {
-        // Verificar turno
-        if (game.turn() !== myColor) {
-            return false;
-        }
-
-        // Verificar propiedad de la pieza
-        const pColor = piece.charAt(0);
-        if (pColor !== myColor) {
-            showToast("¡No muevas rivales en online!", "⚠️");
-            return false;
-        }
-    }
-
-    // Restricción general de turno (fallback)
-    if (piece.charAt(0) !== game.turn()) return false;
     return true;
 }
 

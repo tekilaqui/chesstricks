@@ -1800,14 +1800,52 @@
         }
 
         /* Colores de calidad de jugada (REFINED PROFESSIONAL PALETTE) */
-        .q-good { color: var(--success); font-weight: 700; }
-        .q-inaccuracy { color: #facc15; font-weight: 800; } /* Yellow 400 */
-        .q-mistake { color: #fb923c; font-weight: 800; } /* Orange 400 */
-        .q-blunder { color: var(--trap-color); font-weight: 900; text-shadow: 0 0 10px rgba(244, 63, 94, 0.4); }
-        .q-excellent { color: #34d399; font-weight: 800; } /* Emerald 400 */
-        .q-best { color: var(--accent-gold); font-weight: 800; text-shadow: 0 0 10px rgba(251, 191, 36, 0.4); }
-        .q-book { color: #a78bfa; font-weight: 700; } /* Violet 400 */
-        
+        /* Colores de calidad de jugada (REFINED PROFESSIONAL PALETTE) */
+        .q-good {
+            color: #4ade80;
+            font-weight: 700;
+        }
+
+        /* Verde suave */
+        .q-inaccuracy {
+            color: #fbbf24;
+            font-weight: 800;
+        }
+
+        /* Amarillo */
+        .q-mistake {
+            color: #f59e0b;
+            font-weight: 800;
+        }
+
+        /* Naranja */
+        .q-blunder {
+            color: #f87171;
+            font-weight: 900;
+            text-shadow: 0 0 10px rgba(248, 113, 113, 0.4);
+        }
+
+        /* Rojo claro */
+        .q-excellent {
+            color: #2dd4bf;
+            font-weight: 800;
+        }
+
+        /* Teal/Cyan */
+        .q-best {
+            color: #3b82f6;
+            font-weight: 800;
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+        }
+
+        /* Azul Intenso */
+        .q-book {
+            color: #ffffff;
+            font-weight: 700;
+        }
+
+        /* Blanco Puro */
+
         /* Highlighting for best move hints */
         .highlight-hint {
             box-shadow: inset 0 0 0 4px var(--accent-gold) !important;
