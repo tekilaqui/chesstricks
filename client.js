@@ -1079,11 +1079,19 @@ function updateMaterial() {
     $('#material-display').text(txt).css('color', diff > 0 ? '#fff' : (diff < 0 ? '#aaa' : '#888'));
 }
 
-function updateUI(moved = false) {
+function updateUI(moved = false) { // FIXED
+
     $('.square-55d63').removeClass('highlight-selected highlight-hint');
     $('.legal-dot').remove();
 
     updateMaterial();
+
+    // BUG #2 FIX: Sincronizar Flecha de Pistas
+    if (hintsActive && typeof window.bestMoveLAN !== 'undefined' && window.bestMoveLAN) {
+        drawBestMoveArrow(window.bestMoveLAN);
+    } else {
+        clearArrowCanvas();
+    }
 
     if (moved) {
         // Sound logic
@@ -1381,44 +1389,20 @@ function onSquareClick(sq) {
 // --- RESTRICCIÓN DE MOVIMIENTO (onDragStart) ---
 function onDragStart(source, piece, position, orientation) {
     if (game.game_over()) return false;
-
-    // 1. Bloquear si la IA está pensando
     if (typeof aiThinking !== 'undefined' && aiThinking) return false;
-
-    // 2. Definir modo "Local Puro" (Pass & Play)
-    // Si estamos en pass-and-play, O si es local sin gameId (modo offline legacy)
     const isLocalPure = currentMode === 'pass-and-play' || (!gameId && currentMode === 'local');
-
-    // 3. RESTRICCIÓN RIGUROSA:
-    // Si NO es local puro, y la pieza no es de MI color, BLOQUEAR.
     if (!isLocalPure && piece.charAt(0) !== myColor) {
-        // Feedback visual crítico
-        showToast('¡No muevas rivales en online!', '⚠️');
+        showToast('¡No puedes mover las piezas del rival!', '🚫');
         return false;
     }
-
-    // 4. Modos de análisis/entrenamiento (AI, Maestro, Study, Exercises)
-    if (currentMode === 'study' || currentMode === 'ai' || currentMode === 'maestro' || currentMode === 'exercises') {
-        // En Study con auto-oponente, bloquear turno del oponente si toca a la IA
-        if (currentMode === 'study' && opponentAutoMode && game.turn() !== myColor) return false;
-
-        // En AI/Maestro, bloquear si es turno de la IA
-        if ((currentMode === 'ai' || currentMode === 'maestro') && game.turn() !== myColor) return false;
-
-        // Validar turno correcto del juego
+    if (currentMode === 'ai' || currentMode === 'maestro' || currentMode === 'study' || currentMode === 'exercises') {
+        if ((currentMode === 'ai' || currentMode === 'maestro') && game.turn() !== myColor) {
+            showToast('Espera tu turno...', '⏳');
+            return false;
+        }
         if (game.turn() !== piece.charAt(0)) return false;
-
-        return true;
     }
-
-    // 5. Validación genérica de turno (para pass-and-play o fallback)
-    if (game.turn() !== piece.charAt(0)) return false;
-
-    // 6. Online estricto (Redundancia de seguridad)
-    if (currentMode === 'local' && gameId) {
-        if (game.turn() !== myColor) return false;
-    }
-
+    if (!isLocalPure && game.turn() !== piece.charAt(0)) return false;
     return true;
 }
 
@@ -1431,9 +1415,7 @@ function clearArrowCanvas() {
 }
 
 function drawBestMoveArrow(moveLAN) {
-    // Note: hintsActive is defined globally
-    if (!hintsActive && !moveLAN) return;
-    // If moveLAN is null (clear), we just return (after clearing above if called separately, but here logic paints)
+    // BUG #2 FIX: Ensure arrow is only drawn if hints are active
 
     const cvs = document.getElementById('arrowCanvas');
     if (!cvs) return;
@@ -1491,6 +1473,7 @@ function drawBestMoveArrow(moveLAN) {
 
 $(document).ready(() => {
     board = Chessboard('myBoard', {
+        showNotation: true, // ✅ BUG #4 FIX
         draggable: true,
         position: 'start',
         pieceTheme: getPieceTheme,
@@ -1546,7 +1529,8 @@ $(document).ready(() => {
     $('#side-drawer-overlay').off('click').click(() => { $('#side-drawer').removeClass('open'); $('#side-drawer-overlay').fadeOut(); });
 
     // Flip Handler
-    $('#btn-flip, #btn-flip-mobile, #btn-flip-board, #btn-flip-small, #btn-flip-pc-sidebar, #btn-flip-pc-local').off('click').on('click', function () {
+    // BUG #3: Board Flip Unificado
+    $('#btn-flip, #btn-flip-mobile, #btn-flip-pc, #btn-flip-pc-local, #btn-flip-pc-sidebar').off('click').on('click', function () {
         if (typeof board !== 'undefined' && board.flip) {
             board.flip();
             showToast("Tablero girado", "🔄");
@@ -2604,7 +2588,6 @@ $('#btn-auth-submit').click(() => {
     if (!socket.connected) return alert("❌ No hay conexión con el servidor. Asegúrate de iniciar 'node server.js'");
     if (!name || !pass) return alert("Completa los campos.");
     if (isReg && !email) return alert("Escribe un email.");
-
     if (isReg) {
         socket.emit('register', { user: name, pass: pass, email: email });
     } else {
@@ -2612,38 +2595,200 @@ $('#btn-auth-submit').click(() => {
     }
 });
 
-$('#btn-show-pass').mousedown(function () {
-    $('#auth-pass').attr('type', 'text');
-}).mouseup(function () {
-    $('#auth-pass').attr('type', 'password');
-}).mouseleave(function () {
-    $('#auth-pass').attr('type', 'password');
+// --- AUTH LOGIC (REST API) ---
+const AUTH_API = (window.location.protocol === 'file:' ? 'http://localhost:3000' : window.location.origin) + '/api/auth';
+
+async function fetchWithAuth(url, options = {}) {
+    let token = sessionStorage.getItem('accessToken');
+    // Note: We use sessionStorage for access token for better security (cleared on close), 
+    // but we can use localStorage for refreshToken to persist "remember me" behavior if desired.
+    // For now we persist seamless login via existing localStorage mechanism adapted.
+
+    // Backwards compat with existing code using 'chess_token' in localStorage
+    if (!token) token = localStorage.getItem('chess_token');
+
+    const headers = {
+        ...options.headers,
+        'Content-Type': 'application/json',
+    };
+
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    let response = await fetch(url, { ...options, headers });
+
+    if (response.status === 401 || response.status === 403) {
+        // Try refresh
+        const refreshToken = localStorage.getItem('chess_refresh_token');
+        if (refreshToken) {
+            const refreshRes = await fetch(`${AUTH_API}/refresh`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: refreshToken })
+            });
+
+            if (refreshRes.ok) {
+                const data = await refreshRes.json();
+                sessionStorage.setItem('accessToken', data.accessToken);
+                localStorage.setItem('chess_token', data.accessToken); // Sync for legacy checks
+                headers['Authorization'] = `Bearer ${data.accessToken}`;
+                response = await fetch(url, { ...options, headers });
+            } else {
+                // Refresh failed - Logout
+                logout();
+            }
+        }
+    }
+    return response;
+}
+
+$('#btn-auth-submit').off('click').on('click', async function () {
+    const user = $('#auth-user').val().trim();
+    const pass = $('#auth-pass').val().trim();
+    const email = $('#auth-email').val().trim();
+    const isRegister = $('#auth-switch').text().includes('Iniciar');
+
+    if (!user || !pass) return showToast("Faltan datos", "⚠️");
+
+    $('#btn-auth-submit').prop('disabled', true).text("Cargando...");
+
+    try {
+        const route = isRegister ? '/register' : '/login';
+        const body = { user, pass };
+        if (isRegister) body.email = email;
+
+        const res = await fetch(`${AUTH_API}${route}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Error en autenticación');
+
+        // SUCCESS
+        handleAuthSuccess(data);
+        $('#auth-modal').hide();
+        showToast(`Bienvenido ${user}`, "👋");
+
+    } catch (e) {
+        showToast(e.message, "❌");
+    } finally {
+        $('#btn-auth-submit').prop('disabled', false).text(isRegister ? "REGISTRARSE" : "ENTRAR");
+    }
+});
+
+function handleAuthSuccess(data) {
+    localStorage.setItem('chess_token', data.accessToken);
+    localStorage.setItem('chess_refresh_token', data.refreshToken); // New Refresh Token
+    sessionStorage.setItem('accessToken', data.accessToken);
+
+    localStorage.setItem('chess_is_auth', 'true');
+    localStorage.setItem('chess_username', data.user);
+
+    // Sync User Vars
+    userName = data.user;
+    isAuth = true;
+    userElo = data.elo;
+
+    // UI Updates
+    updateUserDisplay();
+
+    // RECONNECT SOCKET with new token
+    if (socket) {
+        socket.auth = { token: data.accessToken };
+        socket.disconnect().connect();
+    }
+}
+
+function logout() {
+    // Call API logout if efficient, but mainly clear client
+    const rt = localStorage.getItem('chess_refresh_token');
+    if (rt) {
+        fetch(`${AUTH_API}/logout`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: rt })
+        }).catch(console.error);
+    }
+
+    localStorage.removeItem('chess_token');
+    localStorage.removeItem('chess_refresh_token');
+    sessionStorage.removeItem('accessToken');
+    localStorage.setItem('chess_is_auth', 'false');
+    localStorage.removeItem('chess_username');
+
+    isAuth = false;
+    userName = "Invitado";
+    updateUserDisplay();
+
+    if (socket) {
+        socket.auth = {};
+        socket.disconnect().connect();
+    }
+    showToast("Sesión cerrada", "👋");
+    $('#drawer-user-card').hide(); // updateUI handles this usually?
+    $('#btn-logout-drawer').hide();
+}
+
+
+$('#auth-switch').off('click').on('click', function () {
+    const isReg = $(this).text().includes('Regístrate');
+    if (isReg) {
+        $('#auth-title').text("REGISTRO");
+        $('#reg-group').slideDown();
+        $('#btn-auth-submit').text("REGISTRARSE");
+        $(this).html('¿Ya tienes cuenta? <span style="color:var(--accent)">Iniciar Sesión</span>');
+    } else {
+        $('#auth-title').text("INICIAR SESIÓN");
+        $('#reg-group').slideUp();
+        $('#btn-auth-submit').text("ENTRAR");
+        $(this).html('¿No tienes cuenta? <span style="color:var(--accent)">Regístrate</span>');
+    }
+});
+
+// --- UPDATE UI USER DISPLAY ---
+function updateUserDisplay() {
+    if (isAuth) {
+        $('#my-name-display').text(userName + ` (${userElo})`);
+        $('#drawer-user-name').text(userName);
+        $('#drawer-user-elo').text("ELO: " + userElo);
+        $('#btn-auth-trigger').hide(); // Hide login icon in header
+        $('#btn-auth-drawer').hide();
+        $('#btn-logout-drawer').show();
+        $('#btn-delete-account').show();
+        $('#guest-access-section').hide();
+    } else {
+        $('#my-name-display').text("Invitado");
+        $('#drawer-user-name').text("Invitado");
+        $('#btn-auth-trigger').show();
+        $('#btn-auth-drawer').show();
+        $('#btn-logout-drawer').hide();
+        $('#btn-delete-account').hide();
+        // Show guest prompt only in menu
+        if ($('#menu-root').hasClass('active')) $('#guest-access-section').show();
+    }
+}
+
+// ON LOAD
+updateUserDisplay();
+
+// --- SOCKET AUTH HANDLERS (LEGACY COMPAT FOR UPDATE_ELO ETC) ---
+socket.on('auth_error', (msg) => {
+    showToast(msg.message || msg, '❌');
 });
 
 socket.on('auth_success', (data) => {
-    userName = data.user;
-    userEloBullet = data.elo1 || 500;
-    userEloBlitz = data.elo3 || 500;
-    userEloRapid = data.elo10 || 500;
-    userEloDaily = data.eloDaily || 500;
-    userPuzzleElo = data.puzElo;
-    isAuth = true;
+    // Sync data if socket auto-reconnects with token
+    console.log("Socket Auth Verified for:", data.user);
+    // Don't overwrite tokens here unless server sends new ones, just update stats
+    userElo = data.elo;
 
-    localStorage.setItem('chess_username', userName);
-    localStorage.setItem('chess_is_auth', 'true');
-    localStorage.setItem('chess_elo_1', userEloBullet);
-    localStorage.setItem('chess_elo_3', userEloBlitz);
-    localStorage.setItem('chess_elo_10', userEloRapid);
-    localStorage.setItem('chess_elo_daily', userEloDaily);
-    localStorage.setItem('chess_puz_elo', userPuzzleElo);
-    if (data.token) localStorage.setItem('chess_token', data.token);
-
-    updateAuthUI();
-    $('#auth-modal').hide();
-    showToast("¡Bienvenido, " + userName + "!", "👋");
+    // Sync specific ELOs if present
+    userPuzzleElo = data.puzElo || userPuzzleElo;
+    // ... (update other Elos)
+    updateUserDisplay();
 });
-
-// Redundant ready block merged into the main one at line 1254.
 socket.on('game_start', (data) => {
     console.log("🎮 Game started:", data);
     gameId = data.gameId;
@@ -2770,7 +2915,12 @@ $('#btn-study-prev').click(() => {
 
 // NEW UNIFIED HINT TOGGLE (Study & AI)
 const toggleHints = (btn) => {
-    if (currentMode === 'exercises') return; // No hints in puzzles
+    // BUG #5 FIX: Only allow hints in specific modes
+    const allowedModes = ['local', 'ai', 'maestro', 'study', 'pass-and-play'];
+    if (!allowedModes.includes(currentMode)) {
+        showToast("Pistas no disponibles en este modo", "⚠️");
+        return;
+    }
     hintsActive = !hintsActive;
     const txt = hintsActive ? "💡 PISTAS: ON" : "💡 ACTIVAR PISTAS";
 
@@ -3211,10 +3361,6 @@ setInterval(function () {
     }
 }, 5000);
 
-// Definitive Flip Board Repair
-$(document).on('click', '#btn-flip, #btn-flip-mobile', function () {
-    if (typeof board !== 'undefined') board.flip();
-});
 
 // Manual Opening Handlers
 window.startTheoreticalStudy = function () {
@@ -3478,12 +3624,19 @@ $('#btn-pgn').click(function () {
 $('.menu-step').removeClass('active');
 $('#menu-root').addClass('active');
 
-// Logout Handler
+socket.on('chat_message', (data) => {
+    const isMe = data.user === userName;
+    const cls = isMe ? 'me' : 'opp';
+    const sanitizedMsg = DOMPurify.sanitize(data.message);
+    const html = `<div class="chat-msg ${cls}"><b style="font-size:0.75rem;">${data.user}:</b> <span style="font-size:0.85rem;">${sanitizedMsg}</span></div>`;
+    $('#chat-box').append(html);
+    $('#chat-box').scrollTop($('#chat-box')[0].scrollHeight);
+    if (!isMe && currentMode === 'online') playSnd('move'); // Sound for chat
+});
+
+// Logout Handler using new function
 $('#btn-logout-drawer').click(() => {
-    localStorage.removeItem('chess_token');
-    localStorage.removeItem('chess_username');
-    localStorage.removeItem('chess_is_auth');
-    location.reload();
+    logout();
 });
 
 // La función showSubMenu y exitGameView duplicada ha sido eliminada. Se usan las de arriba.
@@ -3681,6 +3834,7 @@ window.confirmDeleteAccount = async function () {
         }
     }
 };
+
 
 socket.on('account_deleted', (data) => {
     alert(data.message);

@@ -252,6 +252,7 @@
             border-radius: 4px;
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
             touch-action: none;
+            overflow: visible !important;
         }
 
         @media (max-width: 450px) {
@@ -1857,4 +1858,32 @@
             font-weight: 900;
             margin-left: 4px;
             opacity: 0.8;
+        }
+
+        /* ✅ NUEVAS COORDENADAS CON COLOR */
+        .notation-file {
+            font-size: 10px !important;
+            font-weight: 700 !important;
+            color: var(--accent) !important;
+            opacity: 0.9 !important;
+            text-shadow: 0 0 5px rgba(56, 189, 248, 0.3);
+            letter-spacing: 2px;
+        }
+
+        .notation-rank {
+            font-size: 10px !important;
+            font-weight: 700 !important;
+            color: var(--accent) !important;
+            opacity: 0.9 !important;
+            text-shadow: 0 0 5px rgba(56, 189, 248, 0.3);
+            letter-spacing: 2px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+
+            .notation-file,
+            .notation-rank {
+                color: #38bdf8 !important;
+                opacity: 1 !important;
+            }
         }

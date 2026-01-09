@@ -13,6 +13,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
 
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#22c55e">
@@ -1045,19 +1046,22 @@
             }
         });
 
-        <!-- Modal de Alerta de Maestro -->
-        <div id="danger-alert-box" class="glass-modal"
-            style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:10000; width:90%; max-width:320px; padding:25px; text-align:center;">
-            <div style="font-size:2rem; margin-bottom:15px;">⚠️</div>
-            <div id="danger-title" style="color:#ef4444; font-weight:800; font-size:1.1rem; margin-bottom:10px;">¡AMENAZA
-                DETECTADA!</div>
-            <div id="danger-desc" style="font-size:0.85rem; line-height:1.6; margin-bottom:20px; color:var(--text-main);">
-            </div>
-            <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:20px; font-style:italic;">Busca una
-                jugada de defensa o un contraataque inmediato.</div>
-            <button class="btn-primary" onclick="$('#danger-alert-box').fadeOut()" style="width:100%;">ENTENDIDO</button>
-        </div>
+    </script>
 
+    <!-- Modal de Alerta de Maestro -->
+    <div id="danger-alert-box" class="glass-modal"
+        style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:10000; width:90%; max-width:320px; padding:25px; text-align:center;">
+        <div style="font-size:2rem; margin-bottom:15px;">⚠️</div>
+        <div id="danger-title" style="color:#ef4444; font-weight:800; font-size:1.1rem; margin-bottom:10px;">¡AMENAZA
+            DETECTADA!</div>
+        <div id="danger-desc" style="font-size:0.85rem; line-height:1.6; margin-bottom:20px; color:var(--text-main);">
+        </div>
+        <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:20px; font-style:italic;">Busca una
+            jugada de defensa o un contraataque inmediato.</div>
+        <button class="btn-primary" onclick="$('#danger-alert-box').fadeOut()" style="width:100%;">ENTENDIDO</button>
+    </div>
+
+    <script>
         // Service Worker para PWA
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

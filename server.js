@@ -172,6 +172,109 @@ io.use((socket, next) => {
   next();
 });
 
+const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh-secret-change-this';
+
+// STORE REFRESH TOKENS (In production use Redis/DB)
+let refreshTokens = [];
+
+function generateTokens(username) {
+  const accessToken = jwt.sign(
+    { username },
+    process.env.JWT_SECRET || 'secret-change-this',
+    { expiresIn: '15m' } // Short lived access token
+  );
+  const refreshToken = jwt.sign(
+    { username },
+    REFRESH_SECRET,
+    { expiresIn: '7d' }
+  );
+  refreshTokens.push(refreshToken);
+  return { accessToken, refreshToken };
+}
+
+// REST API AUTH ENDPOINTS (Fixing Rate Limit & Standardizing)
+app.post('/api/auth/register', authLimiter, (req, res) => {
+  try {
+    const { user, pass, email } = req.body;
+    if (!validateUsername(user)) return res.status(400).json({ error: 'Usuario inválido (3-20 caracteres alfanuméricos)' });
+    if (!validatePassword(pass)) return res.status(400).json({ error: 'Contraseña débil (min 6 caracteres)' });
+    if (!validateEmail(email)) return res.status(400).json({ error: 'Email inválido' });
+    if (users[user]) return res.status(409).json({ error: 'El usuario ya existe' });
+
+    const salt = crypto.randomBytes(32).toString('hex');
+    const hash = hashPassword(pass, salt);
+
+    users[user] = {
+      hash, salt, email,
+      elo: 500, elo1: 500, elo3: 500, elo10: 500, eloDaily: 500, puzElo: 500,
+      createdAt: new Date().toISOString(),
+      stats: { wins: 0, losses: 0, draws: 0 }
+    };
+    saveUsers();
+
+    const tokens = generateTokens(user);
+    res.status(201).json({
+      user,
+      ...tokens,
+      elo: 500, stats: users[user].stats
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.post('/api/auth/login', authLimiter, (req, res) => {
+  try {
+    const { user, pass } = req.body;
+    if (!validateUsername(user) || !validatePassword(pass)) return res.status(400).json({ error: 'Credenciales inválidas' });
+
+    const u = users[user];
+    if (!u) return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+
+    const inputHash = hashPassword(pass, u.salt);
+    if (inputHash !== u.hash) return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+
+    const tokens = generateTokens(user);
+    res.json({
+      user,
+      ...tokens,
+      elo: u.elo || 500,
+      elo1: u.elo1 || 500,
+      elo3: u.elo3 || 500,
+      elo10: u.elo10 || 500,
+      eloDaily: u.eloDaily || 500,
+      puzElo: u.puzElo || 500,
+      stats: u.stats || {}
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.post('/api/auth/refresh', (req, res) => {
+  const { token } = req.body;
+  if (!token) return res.sendStatus(401);
+  if (!refreshTokens.includes(token)) return res.sendStatus(403); // Invalid refresh token
+
+  jwt.verify(token, REFRESH_SECRET, (err, user) => {
+    if (err) return res.sendStatus(403);
+    const accessToken = jwt.sign(
+      { username: user.username },
+      process.env.JWT_SECRET || 'secret-change-this',
+      { expiresIn: '15m' }
+    );
+    res.json({ accessToken });
+  });
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  const { token } = req.body;
+  refreshTokens = refreshTokens.filter(t => t !== token);
+  res.sendStatus(204);
+});
+
 io.on('connection', (socket) => {
   console.log('Usuario conectado:', socket.id);
 
@@ -193,66 +296,10 @@ io.on('connection', (socket) => {
 
   socket.emit('lobby_update', Array.from(activeChallenges.values()));
 
-  socket.on('register', (data) => {
-    try {
-      if (!validateUsername(data.user)) return socket.emit('auth_error', 'Usuario inválido');
-      if (!validatePassword(data.pass)) return socket.emit('auth_error', 'Contraseña inválida');
-      if (!validateEmail(data.email)) return socket.emit('auth_error', 'Email inválido');
-      if (users[data.user]) return socket.emit('auth_error', 'El usuario ya existe');
 
-      const salt = crypto.randomBytes(32).toString('hex');
-      const hash = hashPassword(data.pass, salt);
-
-      users[data.user] = {
-        hash, salt, email: data.email,
-        elo: 500, elo1: 500, elo3: 500, elo10: 500, eloDaily: 500, puzElo: 500,
-        createdAt: new Date().toISOString(),
-        stats: { wins: 0, losses: 0, draws: 0 }
-      };
-
-      saveUsers();
-      const token = generateToken(data.user);
-      socket.username = data.user;
-      socket.authenticated = true;
-      connectedUsers.set(socket.id, data.user);
-
-      socket.emit('auth_success', { user: data.user, elo: 500, elo1: 500, elo3: 500, elo10: 500, eloDaily: 500, puzElo: 500, token });
-    } catch (error) {
-      console.error('Error en registro:', error);
-      socket.emit('auth_error', 'Error en el servidor');
-    }
-  });
-
-  socket.on('login', (data) => {
-    try {
-      if (!validateUsername(data.user) || !validatePassword(data.pass)) return socket.emit('auth_error', 'Credenciales inválidas');
-      const u = users[data.user];
-      if (!u) return socket.emit('auth_error', 'Usuario no encontrado');
-
-      const inputHash = hashPassword(data.pass, u.salt);
-      if (inputHash === u.hash) {
-        const token = generateToken(data.user);
-        socket.username = data.user;
-        socket.authenticated = true;
-        connectedUsers.set(socket.id, data.user);
-        socket.emit('auth_success', {
-          user: data.user,
-          elo: u.elo || 500,
-          elo1: u.elo1 || 500,
-          elo3: u.elo3 || 500,
-          elo10: u.elo10 || 500,
-          eloDaily: u.eloDaily || 500,
-          puzElo: u.puzElo || 500,
-          token, stats: u.stats || {}
-        });
-      } else {
-        socket.emit('auth_error', 'Credenciales incorrectas');
-      }
-    } catch (error) {
-      console.error('Error en login:', error);
-      socket.emit('auth_error', 'Error en el servidor');
-    }
-  });
+  // Legacy Socket Auth Events (Deprecated but kept for backward compatibility if needed, though client will switch to API)
+  /* socket.on('register', ... ) REMOVED to force API usage for security */
+  /* socket.on('login', ... ) REMOVED to force API usage for security */
 
   socket.on('update_elo', (data) => {
     if (!socket.authenticated || socket.username !== data.user) return;
