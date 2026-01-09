@@ -1079,7 +1079,8 @@ function updateMaterial() {
     $('#material-display').text(txt).css('color', diff > 0 ? '#fff' : (diff < 0 ? '#aaa' : '#888'));
 }
 
-function updateUI(moved = false) { // FIXED
+function updateUI(moved) {
+    if (moved === undefined) moved = false;
 
     $('.square-55d63').removeClass('highlight-selected highlight-hint');
     $('.legal-dot').remove();
@@ -1478,7 +1479,8 @@ $(document).ready(() => {
         position: 'start',
         pieceTheme: getPieceTheme,
         onDragStart: onDragStart,
-        onDrop, onSnapEnd
+        onDrop: onDrop,
+        onSnapEnd: onSnapEnd
     });
 
     // Population now handled globally at line 2495
@@ -1534,6 +1536,7 @@ $(document).ready(() => {
         if (typeof board !== 'undefined' && board.flip) {
             board.flip();
             showToast("Tablero girado", "🔄");
+            if ($('#mobile-actions-menu').is(':visible')) $('#mobile-actions-menu').fadeOut();
         }
     });
 
@@ -2607,10 +2610,9 @@ async function fetchWithAuth(url, options = {}) {
     // Backwards compat with existing code using 'chess_token' in localStorage
     if (!token) token = localStorage.getItem('chess_token');
 
-    const headers = {
-        ...options.headers,
-        'Content-Type': 'application/json',
-    };
+    const headers = Object.assign({}, options.headers, {
+        'Content-Type': 'application/json'
+    });
 
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -2955,10 +2957,7 @@ const toggleHints = (btn) => {
 // Unbind old handlers and bind new one
 $('#btn-suggest-move, #btn-ai-hint, #btn-hint-main, #btn-hint-mobile-bar').off('click').on('click', function () { toggleHints(this); });
 
-$('#btn-flip, #btn-flip-mobile, #btn-flip-pc').off('click').on('click', function () {
-    board.flip();
-    if ($('#mobile-actions-menu').is(':visible')) $('#mobile-actions-menu').fadeOut();
-});
+
 
 
 // El manejador antiguo de .mode-pill ha sido eliminado porque ahora usamos setMode() y showSubMenu()
@@ -2968,7 +2967,8 @@ $('#btn-hint-main').click(function () {
 });
 
 // NEW MENU LOGIC
-window.showSubMenu = function (id, addToHistory = true) {
+window.showSubMenu = function (id, addToHistory) {
+    if (addToHistory === undefined) addToHistory = true;
     console.log("Showing submenu:", id);
     $('.menu-step').removeClass('active');
 
@@ -3753,7 +3753,9 @@ window.startOpeningModeFromSelector = function () {
     const val = $('#opening-sel-universal').val();
     if (!val) return alert("Selecciona una apertura.");
 
-    const [gIdx, iIdx] = val.split('-');
+    const parts = val.split('-');
+    const gIdx = parts[0];
+    const iIdx = parts[1];
     const opening = ACTIVE_OPENINGS[gIdx].items[iIdx];
 
     if (currentOpeningSubMode === 'theory') {

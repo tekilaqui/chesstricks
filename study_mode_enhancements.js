@@ -1,19 +1,20 @@
-// AJUSTES PARA MODO TEORÍA Y ESTUDIO
+// AJUSTES PARA MODO TEORÍA Y ENTRENAMIENTO - CON BOTÓN MANUAL MÓVIL
 // Este archivo añade funcionalidad adicional sin modificar el client.js principal
 
 (function () {
     'use strict';
 
-    console.log('📚 Study Mode Enhancements cargado');
+    console.log('📚 Study & Training Mode Enhancements cargado');
 
     // Esperar a que el DOM esté listo
     $(document).ready(function () {
 
         // DETECTAR SI ES MÓVIL
-        const isMobile = window.innerWidth < 768;
+        const isMobile = () => window.innerWidth < 768;
 
-        // 1. SELECTOR DE COLOR EN MODO TEORÍA
-        // Crear el selector de color para modo teoría
+        console.log('📱 ¿Es móvil?', isMobile());
+
+        // 1. SELECTOR DE COLOR EN MODO TEORÍA (PC)
         function addStudyColorSelector() {
             if ($('#study-color-selector').length === 0) {
                 const colorSelector = `
@@ -26,13 +27,11 @@
                     </div>
                 `;
 
-                // Insertar después del selector de aperturas
-                const $openingSel = $('#opening-sel');
+                const $openingSel = $('select[id*="opening"]').first();
                 if ($openingSel.length > 0) {
                     $openingSel.closest('div').after(colorSelector);
-                    console.log('✅ Selector de color añadido al modo teoría');
+                    console.log('✅ Selector de color añadido');
 
-                    // Aplicar el color cuando cambie
                     $('#study-color-sel').on('change', function () {
                         const selectedColor = $(this).val();
                         if (typeof board !== 'undefined' && board) {
@@ -44,116 +43,280 @@
             }
         }
 
-        // 2. MODAL PARA MÓVIL - Selector de Apertura en Primer Plano
-        function createMobileOpeningModal() {
-            if (isMobile && $('#mobile-opening-modal').length === 0) {
-                const modalHTML = `
-                    <div id="mobile-opening-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:9999; overflow-y:auto; padding:20px;">
-                        <div style="max-width:500px; margin:0 auto;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                                <h2 style="color:#38bdf8; font-size:1.2rem; margin:0;">📖 Selecciona Apertura</h2>
-                                <button id="close-opening-modal" style="background:none; border:none; color:#ef4444; font-size:1.5rem; cursor:pointer;">✕</button>
-                            </div>
-                            
-                            <div id="modal-opening-selector" style="margin-bottom:20px;">
-                                <!-- El selector se clonará aquí -->
-                            </div>
-                            
-                            <div id="modal-color-selector" style="margin-bottom:20px;">
-                                <!-- El selector de color se clonará aquí -->
-                            </div>
-                            
-                            <button id="confirm-opening-selection" class="btn-primary" style="width:100%; padding:15px; font-size:1rem; background:#38bdf8; border:none; border-radius:8px; color:#fff; font-weight:700; cursor:pointer;">
-                                ✅ CONFIRMAR Y VER TABLERO
-                            </button>
+        // 2. MODAL PARA MÓVIL (TEORÍA Y ENTRENAMIENTO)
+        function createAndShowMobileModal(mode) {
+            console.log('📱 Creando modal móvil para modo:', mode);
+
+            $('#mobile-opening-modal').remove();
+
+            const isTraining = mode === 'ai';
+            const title = isTraining ? '⚔️ Configurar Entrenamiento' : '📖 Configurar Estudio';
+            const confirmText = isTraining ? '⚔️ Iniciar Entrenamiento' : '✅ Iniciar Estudio';
+
+            const modalHTML = `
+                <div id="mobile-opening-modal" style="
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(2, 6, 23, 0.98);
+                    z-index: 99999;
+                    overflow-y: auto;
+                    padding: 20px;
+                    display: flex;
+                    flex-direction: column;
+                ">
+                    <div style="max-width: 500px; margin: 0 auto; width: 100%;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                            <h2 style="color: #38bdf8; font-size: 1.3rem; margin: 0; font-weight: 800;">
+                                ${title}
+                            </h2>
+                            <button id="close-opening-modal" style="
+                                background: rgba(239, 68, 68, 0.2);
+                                border: 1px solid #ef4444;
+                                color: #ef4444;
+                                font-size: 1.5rem;
+                                cursor: pointer;
+                                width: 40px;
+                                height: 40px;
+                                border-radius: 8px;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                            ">✕</button>
                         </div>
+                        
+                        <div style="margin-bottom: 20px; background: rgba(30, 41, 59, 0.5); padding: 15px; border-radius: 10px; border: 1px solid rgba(56, 189, 248, 0.3);">
+                            <label style="color: #38bdf8; display: block; margin-bottom: 10px; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;">
+                                📚 Selecciona Apertura
+                            </label>
+                            <select id="modal-opening-sel" class="btn-control" style="width: 100%; font-size: 0.9rem; padding: 12px;">
+                                <option value="">-- ${isTraining ? 'Juego Libre' : 'Elige una apertura'} --</option>
+                            </select>
+                        </div>
+                        
+                        <div style="margin-bottom: 20px; background: rgba(30, 41, 59, 0.5); padding: 15px; border-radius: 10px; border: 1px solid rgba(56, 189, 248, 0.3);">
+                            <label style="color: #38bdf8; display: block; margin-bottom: 10px; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;">
+                                🎨 Tu Color
+                            </label>
+                            <select id="modal-color-sel" class="btn-control" style="width: 100%; font-size: 0.9rem; padding: 12px;">
+                                <option value="w">⚪ Blancas</option>
+                                <option value="b">⚫ Negras</option>
+                                ${isTraining ? '<option value="random">🎲 Aleatorio</option>' : ''}
+                            </select>
+                        </div>
+                        
+                        ${isTraining ? `
+                        <div style="margin-bottom: 25px; background: rgba(30, 41, 59, 0.5); padding: 15px; border-radius: 10px; border: 1px solid rgba(56, 189, 248, 0.3);">
+                            <label style="color: #38bdf8; display: block; margin-bottom: 10px; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;">
+                                🎯 Nivel de Dificultad
+                            </label>
+                            <select id="modal-difficulty-sel" class="btn-control" style="width: 100%; font-size: 0.9rem; padding: 12px;">
+                                <option value="1">♟️ Principiante (600)</option>
+                                <option value="5" selected>♝ Intermedio (1200)</option>
+                                <option value="10">♜ Avanzado (1800)</option>
+                                <option value="15">♛ Experto (2200)</option>
+                                <option value="20">♚ Maestro (2500+)</option>
+                            </select>
+                        </div>
+                        ` : ''}
+                        
+                        <button id="confirm-opening-selection" style="
+                            width: 100%;
+                            padding: 18px;
+                            font-size: 1.1rem;
+                            background: linear-gradient(135deg, ${isTraining ? '#a78bfa, #8b5cf6' : '#38bdf8, #0ea5e9'});
+                            border: none;
+                            border-radius: 10px;
+                            color: #fff;
+                            font-weight: 800;
+                            cursor: pointer;
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                            box-shadow: 0 4px 15px rgba(${isTraining ? '139, 92, 246' : '56, 189, 248'}, 0.4);
+                        ">
+                            ${confirmText}
+                        </button>
                     </div>
-                `;
+                </div>
+            `;
 
-                $('body').append(modalHTML);
+            $('body').append(modalHTML);
+            console.log('✅ Modal añadido al DOM');
 
-                // Cerrar modal
-                $('#close-opening-modal, #confirm-opening-selection').on('click', function () {
-                    $('#mobile-opening-modal').fadeOut(300);
-                });
-
-                console.log('📱 Modal móvil creado');
+            // Copiar opciones de aperturas
+            const $originalSelect = isTraining ? $('#ai-opening-practice') : $('select[id*="opening"]').first();
+            if ($originalSelect.length > 0) {
+                $('#modal-opening-sel').html($originalSelect.html());
+                console.log('✅ Opciones copiadas');
             }
-        }
 
-        // Mostrar modal en móvil cuando se selecciona modo teoría
-        function showMobileOpeningModal() {
-            if (isMobile) {
-                // Clonar selectores al modal
-                const $openingSel = $('#opening-sel').clone().attr('id', 'modal-opening-sel');
-                const $colorSel = $('#study-color-sel').clone().attr('id', 'modal-color-sel');
+            // Cerrar modal
+            $('#close-opening-modal').on('click', function () {
+                $('#mobile-opening-modal').fadeOut(300, function () { $(this).remove(); });
+            });
 
-                $('#modal-opening-selector').html($openingSel);
-                $('#modal-color-selector').html(`
-                    <label class="label-tiny" style="color:#38bdf8; display:block; margin-bottom:8px; font-weight:700;">🎨 COLOR</label>
-                `).append($colorSel);
+            // Confirmar selección
+            $('#confirm-opening-selection').on('click', function () {
+                const selectedOpening = $('#modal-opening-sel').val();
+                const selectedColor = $('#modal-color-sel').val();
+                const selectedDifficulty = $('#modal-difficulty-sel').val();
 
-                // Sincronizar cambios
-                $('#modal-opening-sel').on('change', function () {
-                    $('#opening-sel').val($(this).val()).trigger('change');
-                });
+                console.log('✅ Configuración:', { apertura: selectedOpening, color: selectedColor, dificultad: selectedDifficulty });
 
-                $('#modal-color-sel').on('change', function () {
-                    $('#study-color-sel').val($(this).val()).trigger('change');
-                });
-
-                $('#mobile-opening-modal').fadeIn(300);
-                console.log('📱 Modal móvil mostrado');
-            }
-        }
-
-        // Intentar añadir el selector después de un delay (para asegurar que el DOM está listo)
-        setTimeout(addStudyColorSelector, 1000);
-
-        // Crear modal si es móvil
-        if (isMobile) {
-            setTimeout(createMobileOpeningModal, 1000);
-        }
-
-        // También añadirlo cuando se cambie al modo study
-        const originalSetMode = window.setMode;
-        if (typeof originalSetMode === 'function') {
-            window.setMode = function (mode) {
-                originalSetMode.apply(this, arguments);
-
-                if (mode === 'study') {
-                    setTimeout(addStudyColorSelector, 500);
-
-                    // Mostrar modal en móvil
-                    if (isMobile) {
-                        setTimeout(function () {
-                            createMobileOpeningModal();
-                            showMobileOpeningModal();
-                        }, 800);
+                if (isTraining) {
+                    // Aplicar configuración de entrenamiento
+                    if ($('#ai-opening-practice').length > 0) {
+                        $('#ai-opening-practice').val(selectedOpening);
+                    }
+                    if ($('#ai-color-sel').length > 0) {
+                        $('#ai-color-sel').val(selectedColor);
+                    }
+                    if ($('#diff-sel').length > 0 && selectedDifficulty) {
+                        $('#diff-sel').val(selectedDifficulty);
                     }
 
-                    // Ocultar timers
-                    $('.timer, #my-timer, #opp-timer, .timer-display, [class*="timer"]').hide();
-                    console.log('⏱️ Timers ocultados en modo estudio');
+                    // Iniciar juego AI
+                    setTimeout(function () {
+                        if ($('#btn-start-ai').length > 0) {
+                            $('#btn-start-ai').click();
+                        }
+                    }, 300);
                 } else {
-                    // Mostrar timers en otros modos
-                    $('.timer, #my-timer, #opp-timer, .timer-display, [class*="timer"]').show();
+                    // Aplicar configuración de estudio
+                    if ($originalSelect.length > 0) {
+                        $originalSelect.val(selectedOpening).trigger('change');
+                    }
+
+                    if (typeof board !== 'undefined' && board) {
+                        board.orientation(selectedColor === 'w' ? 'white' : 'black');
+                    }
                 }
-            };
+
+                $('#mobile-opening-modal').fadeOut(300, function () { $(this).remove(); });
+            });
         }
 
-        // 3. OCULTAR TIMERS EN MODO ESTUDIO
-        // Observar cambios en el modo actual
-        const observer = new MutationObserver(function (mutations) {
-            // Verificar si estamos en modo estudio
-            if ($('[data-mode="study"]').hasClass('active') ||
+        // 3. BOTÓN FLOTANTE PARA MÓVIL
+        function createFloatingButton() {
+            if (isMobile() && $('#mobile-config-btn').length === 0) {
+                const floatingBtn = `
+                    <button id="mobile-config-btn" style="
+                        position: fixed;
+                        bottom: 80px;
+                        right: 20px;
+                        width: 60px;
+                        height: 60px;
+                        border-radius: 50%;
+                        background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+                        border: none;
+                        color: white;
+                        font-size: 1.8rem;
+                        cursor: pointer;
+                        z-index: 9998;
+                        box-shadow: 0 4px 20px rgba(56, 189, 248, 0.6);
+                        display: none;
+                        align-items: center;
+                        justify-content: center;
+                    ">⚙️</button>
+                `;
+
+                $('body').append(floatingBtn);
+
+                $('#mobile-config-btn').on('click', function () {
+                    console.log('🔘 Botón flotante pulsado');
+                    const currentModeValue = typeof currentMode !== 'undefined' ? currentMode : 'study';
+                    createAndShowMobileModal(currentModeValue);
+                });
+
+                console.log('✅ Botón flotante creado');
+            }
+        }
+
+        // 4. MOSTRAR/OCULTAR BOTÓN SEGÚN MODO
+        function toggleFloatingButton(show, mode) {
+            if (isMobile()) {
+                if (show) {
+                    // Cambiar color según modo
+                    const gradient = mode === 'ai'
+                        ? 'linear-gradient(135deg, #a78bfa, #8b5cf6)'
+                        : 'linear-gradient(135deg, #38bdf8, #0ea5e9)';
+                    const shadow = mode === 'ai'
+                        ? '0 4px 20px rgba(139, 92, 246, 0.6)'
+                        : '0 4px 20px rgba(56, 189, 248, 0.6)';
+
+                    $('#mobile-config-btn')
+                        .css({
+                            'background': gradient,
+                            'box-shadow': shadow,
+                            'display': 'flex'
+                        })
+                        .hide()
+                        .fadeIn(300);
+                    console.log('👁️ Botón flotante mostrado para modo:', mode);
+                } else {
+                    $('#mobile-config-btn').fadeOut(300);
+                }
+            }
+        }
+
+        // 5. INTERCEPTAR CAMBIO A MODO STUDY O AI
+        const originalSetMode = window.setMode;
+
+        window.setMode = function (mode) {
+            console.log('🔄 Cambiando a modo:', mode);
+
+            if (typeof originalSetMode === 'function') {
+                originalSetMode.apply(this, arguments);
+            }
+
+            if (mode === 'study' || mode === 'ai') {
+                console.log('📖 Modo', mode, 'activado');
+
+                if (!isMobile()) {
+                    setTimeout(addStudyColorSelector, 500);
+                } else {
+                    createFloatingButton();
+                    toggleFloatingButton(true, mode);
+                    // Mostrar modal automáticamente la primera vez
+                    setTimeout(() => createAndShowMobileModal(mode), 800);
+                }
+
+                if (mode === 'study') {
+                    $('.timer, #my-timer, #opp-timer, .timer-display, [class*="timer"]').hide();
+                }
+            } else {
+                toggleFloatingButton(false);
+                $('.timer, #my-timer, #opp-timer, .timer-display, [class*="timer"]').show();
+            }
+        };
+
+        // 6. OCULTAR TIMERS EN MODO ESTUDIO
+        const observer = new MutationObserver(function () {
+            const isStudyMode = $('[data-mode="study"]').hasClass('active') ||
                 $('#sec-study').hasClass('active') ||
-                (typeof currentMode !== 'undefined' && currentMode === 'study')) {
+                (typeof currentMode !== 'undefined' && currentMode === 'study');
+
+            const isAiMode = $('[data-mode="ai"]').hasClass('active') ||
+                $('#sec-ai').hasClass('active') ||
+                (typeof currentMode !== 'undefined' && currentMode === 'ai');
+
+            if (isStudyMode) {
                 $('.timer, #my-timer, #opp-timer, .timer-display, [class*="timer"]').hide();
+
+                if (isMobile()) {
+                    createFloatingButton();
+                    toggleFloatingButton(true, 'study');
+                }
+            }
+
+            if (isAiMode && isMobile()) {
+                createFloatingButton();
+                toggleFloatingButton(true, 'ai');
             }
         });
 
-        // Observar cambios en el body
         observer.observe(document.body, {
             attributes: true,
             childList: true,
@@ -161,16 +324,7 @@
             attributeFilter: ['class']
         });
 
-        // Ocultar timers inmediatamente si ya estamos en modo estudio
-        setTimeout(function () {
-            if ($('[data-mode="study"]').hasClass('active') ||
-                $('#sec-study').hasClass('active')) {
-                $('.timer, #my-timer, #opp-timer, .timer-display, [class*="timer"]').hide();
-                console.log('⏱️ Timers ocultados (check inicial)');
-            }
-        }, 2000);
-
-        console.log('✅ Study Mode Enhancements inicializado');
+        console.log('✅ Study & Training Mode Enhancements inicializado');
     });
 
 })();
