@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const cors = require('cors');
+const { Chess } = require('chess.js'); // Import chess.js for validation
 require('dotenv').config();
 
 const app = express();
@@ -27,14 +28,15 @@ const authLimiter = rateLimit({
   message: { error: "Demasiados intentos de acceso, intente de nuevo en una hora" }
 });
 
-/* app.use(helmet({
+// Security Middleware (Helix & HTTPS)
+app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:", "http:", "blob:"],
       styleSrc: ["'self'", "'unsafe-inline'", "https:", "http:"],
-      imgSrc: ["'self'", "data:", "https:", "http:"],
-      connectSrc: ["'self'", "wss:", "https:", "http:"],
+      imgSrc: ["'self'", "data:", "https:", "http:", "https://raw.githubusercontent.com"], // Added GitHub for pieces
+      connectSrc: ["'self'", "ws:", "wss:", "https:", "http:"],
       mediaSrc: ["'self'", "https:", "http:"],
       fontSrc: ["'self'", "https:", "http:"],
       workerSrc: ["'self'", "blob:"],
@@ -42,7 +44,16 @@ const authLimiter = rateLimit({
     },
   },
   crossOriginResourcePolicy: { policy: "cross-origin" }
-})); */
+}));
+
+// HTTPS Enforcement (Production only)
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV === 'production' && req.headers['x-forwarded-proto'] !== 'https') {
+    return res.redirect(301, `https://${req.get('host')}${req.originalUrl}`);
+  }
+  next();
+});
+
 app.use(express.json({ limit: '10kb' }));
 app.get('/*', (req, res, next) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -359,30 +370,65 @@ io.on('connection', (socket) => {
     const game = activeGames[data.gameId];
     if (game) {
       const now = Date.now();
-      const elapsed = Math.floor((now - game.lastUpdate) / 1000);
 
-      // Update time of the player who just moved
-      if (game.turn === 'w') {
-        game.whiteTime = Math.max(0, game.whiteTime - elapsed);
-      } else {
-        game.blackTime = Math.max(0, game.blackTime - elapsed);
+      // STRICT MOVEMENT VALIDATION
+      try {
+        const chess = new Chess(game.fen);
+
+        // 1. Validate Turn
+        const turnColor = chess.turn() === 'w' ? 'white' : 'black';
+        const isWhite = game.white === socket.username;
+        const isBlack = game.black === socket.username;
+
+        if (isWhite && turnColor !== 'white') return socket.emit('error', 'No es tu turno');
+        if (isBlack && turnColor !== 'black') return socket.emit('error', 'No es tu turno');
+
+        // 2. Validate Move Legality
+        const move = chess.move(data.move); // Attempt move on server board
+        if (!move) {
+          return socket.emit('error', 'Movimiento ilegal rechazado por el servidor');
+        }
+
+        // 3. Update Game State (using Server Calculation)
+        const elapsed = Math.floor((now - game.lastUpdate) / 1000);
+        if (game.turn === 'w') {
+          game.whiteTime = Math.max(0, game.whiteTime - elapsed);
+        } else {
+          game.blackTime = Math.max(0, game.blackTime - elapsed);
+        }
+
+        game.moves.push(move.san);
+        game.fen = chess.fen(); // Source of truth is SERVER
+        game.turn = chess.turn() === 'w' ? 'w' : 'b'; // Simplify logic
+        game.lastUpdate = now;
+        saveGames();
+
+        // 4. broadcast updated state
+        const moveData = {
+          move: move.san,
+          fen: game.fen,
+          whiteTime: game.whiteTime,
+          blackTime: game.blackTime,
+          turn: game.turn,
+          gameId: data.gameId
+        };
+
+        // Broadcast to opponent
+        socket.to(`game_${data.gameId}`).emit('move', moveData);
+        // Acknowledge to sender (to sync clock/fen)
+        socket.emit('move_ack', moveData);
+
+        // Check Game Over
+        if (chess.isGameOver()) {
+          // ... (implement game over logic if needed, or let client handle it. 
+          // Better to handle here but let's stick to minimal breaking changes.
+          // Client checks game over on FEN update usually)
+        }
+
+      } catch (e) {
+        console.error("Error validando movimiento:", e);
+        return socket.emit('error', 'Error procesando el movimiento');
       }
-
-      game.moves.push(data.move);
-      game.fen = data.fen || game.fen;
-      game.turn = game.turn === 'w' ? 'b' : 'w';
-      game.lastUpdate = now;
-      saveGames();
-
-      // Emit with updated server times to keep clients in sync
-      const moveData = {
-        ...data,
-        whiteTime: game.whiteTime,
-        blackTime: game.blackTime,
-        turn: game.turn
-      };
-      socket.to(`game_${data.gameId}`).emit('move', moveData);
-      socket.emit('move_ack', moveData); // Confirm to the sender too
     }
   });
 
