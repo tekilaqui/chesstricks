@@ -1,31 +1,121 @@
 ﻿        :root {
-            /* PROFESSIONAL BLUE & GRAY PALETTE - PREMIUM REFINEMENT */
-            --accent: #38bdf8;
-            --accent-gold: #fbbf24;
-            --bg-dark: #020617;
-            --panel-bg: rgba(15, 23, 42, 0.7);
-            --glass-bg: rgba(30, 41, 59, 0.6);
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --trap-color: #f43f5e;
-            --success: #10b981;
-            --neon-glow: 0 0 20px rgba(56, 189, 248, 0.3);
-            --glass-blur: blur(20px);
-            --border-glass: 1px solid rgba(255, 255, 255, 0.1);
+            /* PALETA PROFESIONAL 2024-2026 - MODO OSCURO */
+            --bg-dark: #0F1419;
+            --panel-bg: #1A2332;
+            --glass-bg: rgba(26, 35, 50, 0.85);
+            --text-main: #F0F4F9;
+            --text-muted: #A0AEC0;
+            --accent: #3B82F6;
+            --accent-secondary: #22D3EE;
+            --success: #22C55E;
+            --error: #EF4444;
+            --border-glass: 1px solid #2D3748;
+            --neon-glow: 0 0 20px rgba(59, 130, 246, 0.15);
+            --glass-blur: blur(12px);
 
-            /* BOARD THEME DEFAULTS */
-            --tile-light: #f0d9b5;
-            --tile-dark: #b58863;
+            /* TABLERO PROFESIONAL OSCURO BASE */
+            --tile-light: #2D3748;
+            --tile-dark: #1A202C;
         }
 
         body.light-theme {
-            --bg-dark: #f1f5f9;
-            --panel-bg: rgba(255, 255, 255, 0.8);
-            --glass-bg: rgba(255, 255, 255, 0.5);
-            --text-main: #0f172a;
-            --text-muted: #64748b;
-            --border-glass: 1px solid rgba(0, 0, 0, 0.1);
-            --neon-glow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --bg-dark: #E8EDF3;
+            /* Gris azulado muy suave, menos agresivo que el blanco puro */
+            --panel-bg: #F8FAFC;
+            /* Fondos de tarjeta casi blancos para contraste */
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --text-main: #1E293B;
+            /* Azul oscuro profundo */
+            --text-muted: #64748B;
+            /* Gris azulado */
+            --accent: #2563EB;
+            /* Azul vibrante profundo */
+            --accent-secondary: #0891B2;
+            /* Teal más oscuro para mejor lectura */
+            --border-glass: 1px solid #CBD5E1;
+            --neon-glow: 0 4px 12px rgba(37, 99, 235, 0.12);
+
+            /* TABLERO PROFESIONAL CLARO (SUECIA/MARFIL) */
+            --tile-light: #F0E6D2;
+            --tile-dark: #706B5D;
+        }
+
+        /* BOARD THEMES */
+        /* BOARD THEMES - DYNAMIC VARIABLES SYSTEM */
+        body.theme-wood {
+            --tile-light: #fdf5e6;
+            --tile-dark: #8B4513;
+        }
+
+        body.theme-neon {
+            --tile-light: #1A2332;
+            --tile-dark: #22D3EE;
+        }
+
+        body.theme-forest {
+            --tile-light: #EAEEF3;
+            --tile-dark: #16A34A;
+        }
+
+        body.theme-slate {
+            --tile-light: #2D3748;
+            --tile-dark: #1A202C;
+        }
+
+        body.theme-classic {
+            --tile-light: #F0E6D2;
+            --tile-dark: #706B5D;
+        }
+
+        /* Apply to chessboard.js squares if using CSS variables */
+        /* Note: chessboard.js uses images by default for tiles, but we can override with CSS */
+        .white-1e1d7 {
+            background-color: var(--tile-light) !important;
+            transition: background-color 0.3s ease;
+        }
+
+        .black-3c85d {
+            background-color: var(--tile-dark) !important;
+            transition: background-color 0.3s ease;
+        }
+
+        /* COORDINATES */
+        .notation-322f9 {
+            font-weight: 700;
+            font-size: 10px;
+            font-family: 'Inter', sans-serif;
+            pointer-events: none;
+        }
+
+        .alpha-d2270 {
+            bottom: 2px !important;
+            right: 2px !important;
+        }
+
+        .numeric-fc9cc {
+            top: 2px !important;
+            left: 2px !important;
+        }
+
+        body.theme-wood .notation-322f9 {
+            color: #5d4037;
+        }
+
+        body.theme-neon .notation-322f9 {
+            color: var(--accent);
+            opacity: 0.6;
+        }
+
+        body.theme-slate .notation-322f9 {
+            color: #94a3b8;
+        }
+
+        body.theme-forest .notation-322f9 {
+            color: #2d5a27;
+        }
+
+        body.theme-classic .notation-322f9 {
+            color: #3b82f6;
         }
 
         * {
@@ -48,19 +138,25 @@
 
         .app-header {
             height: 48px;
-            background: var(--glass-bg);
+            background: var(--panel-bg);
             backdrop-filter: blur(10px);
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 0 20px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            /* Soft border instead of blue */
+            border-bottom: 3px solid var(--accent-secondary);
+            /* Teal en Oscuro */
             z-index: 1000;
             flex-shrink: 0;
             position: sticky;
             top: 0;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        body.light-theme .app-header {
+            background: #FFFFFF;
+            border-bottom: 3px solid var(--accent);
+            /* Azul en Claro */
         }
 
         .logo-inline {
@@ -186,26 +282,46 @@
         }
 
         .mode-pill {
-            background: rgba(30, 41, 59, 0.5);
-            color: #94a3b8;
-            font-size: 0.6rem;
+            background: rgba(30, 41, 59, 0.3);
+            color: #64748b;
+            font-size: 0.65rem;
             font-weight: 700;
-            padding: 12px 5px;
+            padding: 10px 4px;
             border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.03);
             cursor: pointer;
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 4px;
-            text-transform: uppercase;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0.8;
+        }
+
+        .mode-pill:hover {
+            opacity: 1;
+            background: rgba(30, 41, 59, 0.5);
+            transform: translateY(-1px);
         }
 
         .mode-pill.active {
             background: rgba(34, 197, 94, 0.15);
             color: var(--accent);
             border-color: var(--accent);
-            box-shadow: var(--neon-glow);
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
+            opacity: 1;
+        }
+
+        .light-theme .mode-pill {
+            background: rgba(255, 255, 255, 0.5);
+            color: #8b6b4d;
+            border: 1px solid rgba(139, 69, 19, 0.1);
+        }
+
+        .light-theme .mode-pill.active {
+            background: rgba(139, 69, 19, 0.1);
+            color: #8b4513;
+            border-color: #8b4513;
         }
 
         #book-move-indicator {
@@ -273,10 +389,20 @@
             max-height: 55vh;
             aspect-ratio: 1/1;
             margin: 0 auto;
-            border: 2px solid #334155;
             border-radius: 4px;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
             touch-action: none;
+        }
+
+        .board-3d-effect {
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 0 6px #1e293b;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .board-3d-effect:hover {
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.7), 0 0 0 6px #334155;
         }
 
         @media (max-width: 450px) {
@@ -399,7 +525,7 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+            background: var(--accent);
             color: white;
             border: none;
             padding: 12px;
@@ -411,7 +537,7 @@
             text-transform: uppercase;
             letter-spacing: 0.8px;
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -420,8 +546,12 @@
 
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(56, 189, 248, 0.5);
             filter: brightness(1.1);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        body.light-theme .btn-primary {
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
         }
 
         .btn-primary:active {
@@ -429,7 +559,7 @@
         }
 
         .btn-danger {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
+            background: var(--error);
             color: white;
             border: none;
             padding: 12px;
@@ -440,12 +570,13 @@
             font-weight: 700;
             text-transform: uppercase;
             transition: 0.3s;
-            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.2);
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.15);
         }
 
         .btn-danger:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+            filter: brightness(1.1);
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.25);
         }
 
         .btn-danger:active {
@@ -453,14 +584,65 @@
         }
 
         .btn-control {
-            background: #1e293b;
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(5px);
             color: #f8fafc;
-            border: 1px solid #475569;
+            border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 10px;
             border-radius: 8px;
             width: 100%;
             font-size: 0.75rem;
             margin-bottom: 5px;
+            transition: border-color 0.3s, background 0.3s;
+            cursor: pointer;
+        }
+
+        .btn-control:hover {
+            background: rgba(30, 41, 59, 0.8);
+            border-color: var(--accent);
+        }
+
+        .btn-tool {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-muted);
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            transition: all 0.3s;
+        }
+
+        .btn-tool.active {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border-color: #22c55e;
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
+            font-weight: 800;
+        }
+
+        body.light-theme .btn-tool.active {
+            background: rgba(22, 163, 74, 0.1);
+            color: #16a34a;
+            border-color: #16a34a;
+        }
+
+
+        .btn-tool:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .btn-tool:active {
+            transform: translateY(0);
+        }
+
+        .btn-tool.active {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: var(--accent);
+            color: var(--accent);
         }
 
         /* Mejorar visibilidad de las opciones del select */
@@ -1122,17 +1304,17 @@
 
         /* TIMER STYLES */
         .timer-box {
-            background: #1e293b;
-            color: #fff;
+            background: var(--panel-bg);
+            color: var(--text-main);
             padding: 5px 12px;
             border-radius: 6px;
-            font-family: 'Courier New', Courier, monospace;
+            font-family: 'Inter', sans-serif;
             font-weight: 700;
             font-size: 1.1rem;
             min-width: 80px;
             text-align: center;
-            border: 2px solid #334155;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 2px solid var(--border-glass);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
         }
 
         .timer-box.active {
@@ -1167,9 +1349,9 @@
         }
 
         .time-btn {
-            background: #1e293b;
-            border: 1px solid #334155;
-            color: #94a3b8;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-glass);
+            color: var(--text-muted);
             padding: 8px;
             border-radius: 6px;
             font-size: 0.65rem;

@@ -672,9 +672,25 @@ try {
                     const isEndgame = game.board().flat().filter(p => p && p.type !== 'p').length <= 8;
 
                     function getStrategicAdvice() {
-                        if (isOpening) return "🎯 Desarrolla tus piezas menores y controla el centro.";
-                        if (isEndgame) return "👑 Activa tu rey y busca promocionar peones.";
-                        return "🧩 Busca debilidades tácticas o mejora la posición de tu peor pieza.";
+                        if (isOpening) {
+                            const advices = [
+                                "🎯 Intenta sacar tus piezas menores (caballos y alfiles) antes que la dama.",
+                                "🏰 El enroque temprano es clave para proteger a tu rey.",
+                                "🥊 Controla el centro con tus peones para ganar espacio.",
+                                "🛡️ ¡Cuidado con dejar piezas sin defensa! Revisa cada casilla."
+                            ];
+                            return advices[Math.floor(Math.random() * advices.length)];
+                        }
+                        if (isEndgame) {
+                            const advices = [
+                                "👑 En el final, el rey es una pieza de ataque. ¡Sácalo al centro!",
+                                "♟️ Los peones pasados son oro puro. Intenta promocionarlos.",
+                                "🔛 Busca la actividad de tus piezas más que el material.",
+                                "🛑 Evita que sus peones avancen bloqueándolos con tu rey."
+                            ];
+                            return advices[Math.floor(Math.random() * advices.length)];
+                        }
+                        return "🧩 Busca debilidades tácticas o mejora la posición de tu peor pieza. ¿Hay algún salto de caballo molesto?";
                     }
 
                     let openingName = '';
@@ -704,23 +720,23 @@ try {
                     }
 
                     if (isBook) {
-                        explanation = `<div style="color:var(--accent); font-weight:bold;">📖 JUGADA DE TEORÍA:</div><div style="margin-top:5px; font-style:italic;">${openingComment || ('Sigue la línea principal para controlar el centro y desarrollar piezas.')}.</div>`;
+                        explanation = `<div style="color:var(--accent); font-weight:bold;">📖 JUGADA DE TEORÍA:</div><div style="margin-top:5px; font-style:italic;">"${openingComment || ('Esta es una línea clásica bien estudiada que busca el equilibrio.')}".</div>`;
                         $('#book-move-indicator').fadeIn();
                         if (currentMode === 'maestro' || currentMode === 'ai') $('#coach-txt').show();
                     } else {
                         $('#book-move-indicator').fadeOut();
                         const san = lastMove ? lastMove.san : '';
                         if (diffVal > 2.0) {
-                            explanation = `<div style="color:#ef4444; font-weight:bold;">?? Error grave con ${san}:</div> Debilita tu posición drásticamente. El Maestro sugiere ${window.pvList && window.pvList[0] ? window.pvList[0].move : 'otra línea'}.`;
+                            explanation = `<div style="color:#ef4444; font-weight:bold;">⚠️ ¡Cuidado con ${san}!</div> Ese movimiento deja escapar una gran ventaja. El Maestro sugiere ${window.pvList && window.pvList[0] ? window.pvList[0].move : 'otra ruta más sólida'}.`;
                             drawBestMoveArrow(bestMoveLAN, 'red');
                         } else if (diffVal > 0.8) {
-                            explanation = `<div style="color:#f59e0b; font-weight:bold;">?! Imprecisión:</div> ${san} es algo prematura. Mejor era desarrollar para asegurar el enroque.`;
+                            explanation = `<div style="color:#f59e0b; font-weight:bold;">🤔 Una jugada dudosa...</div> ${san} no parece ser lo más preciso ahora. Había mejores formas de mejorar la posición.`;
                             drawBestMoveArrow(bestMoveLAN, 'orange');
                         } else if (diffVal < -0.5) {
-                            explanation = `<div style="color:#22c55e; font-weight:bold;">!! Excelente ${san}:</div> ¡Brillante! Controlas el centro y preparas un ataque decisivo.`;
+                            explanation = `<div style="color:#22c55e; font-weight:bold;">✨ ¡Excelente jugada!</div> Con ${san} demuestras mucha visión. Estás presionando los puntos débiles del rival.`;
                             drawBestMoveArrow(bestMoveLAN, 'green');
                         } else {
-                            explanation = `<div style="color:var(--text-muted);">${getStrategicAdvice()}</div>`;
+                            explanation = `<div style="color:var(--text-main);">${getStrategicAdvice()}</div>`;
                             drawBestMoveArrow(bestMoveLAN, 'blue');
                         }
                     }
@@ -1438,6 +1454,23 @@ function onSquareClick(sq) {
 }
 
 $(document).ready(() => {
+    function populateOp(targetId) {
+        const $sel = $(targetId);
+        if (!$sel.length) return;
+        $sel.empty().append('<option value="">-- Seleccionar --</option>');
+        ACTIVE_OPENINGS.forEach((group, gIdx) => {
+            const $group = $(`<optgroup label="${group.group}"></optgroup>`);
+            group.items.forEach((item, iIdx) => {
+                $group.append(`<option value="${gIdx}-${iIdx}">${item.name}</option>`);
+            });
+            $sel.append($group);
+        });
+    }
+
+    populateOp('#opening-sel');
+    populateOp('#maestro-opening-sel');
+    populateOp('#ai-opening-practice');
+
     board = Chessboard('myBoard', {
         draggable: true,
         position: 'start',
@@ -1528,87 +1561,91 @@ $(document).ready(() => {
     });
     $('#btn-nav-last').click(() => navigateHistory('last'));
 
+    // --- APPEARANCE HANDLERS ---
     $('#board-theme-sel').off('change').change(function () {
         const theme = $(this).val();
         localStorage.setItem('chess_board_theme', theme);
-        let colors = { light: '#f0d9b5', dark: '#b58863' }; // Classic
 
-        if (theme === 'wood') colors = { light: '#fdf5e6', dark: '#8b4513' }; // Marfil y Madera
-        if (theme === 'neon') colors = { light: '#1e293b', dark: '#38bdf8' };
-        if (theme === 'forest') colors = { light: '#acc', dark: '#2d5a27' };
-        if (theme === 'slate') colors = { light: '#94a3b8', dark: '#1e293b' };
+        $('body').removeClass((index, className) => (className.match(/\btheme-\S+/g) || []).join(' '));
+        $('body').addClass('theme-' + theme);
 
-        $('.white-1e1d7').css('background', colors.light);
-        $('.black-3c85d').css('background', colors.dark);
+        let colors = { light: '#F5F7FA', dark: '#1A2332' }; // Default neutral
 
-        // Update root vars for CSS access
+        if (theme === 'classic') colors = { light: '#F0E6D2', dark: '#706B5D' };
+        if (theme === 'neon') colors = { light: '#1A2332', dark: '#22D3EE' };
+        if (theme === 'forest') colors = { light: '#EAEEF3', dark: '#16A34A' };
+        if (theme === 'slate') colors = { light: '#2D3748', dark: '#1A202C' };
+        if (theme === 'wood') colors = { light: '#fdf5e6', dark: '#8B4513' };
+
         document.documentElement.style.setProperty('--tile-light', colors.light);
         document.documentElement.style.setProperty('--tile-dark', colors.dark);
+
+        // Refuerzo coordinadas
+        $('.notation-322f9').css('color', theme === 'neon' ? '#22D3EE' : 'inherit');
+
+        if (board) board.resize();
+        showToast("Tablero: " + theme.toUpperCase(), "🎨");
     });
 
     $('#app-theme-sel').off('change').change(function () {
         const theme = $(this).val();
         localStorage.setItem('chess_app_theme', theme);
-        if (theme === 'light') {
-            $('body').addClass('light-theme');
-        } else {
-            $('body').removeClass('light-theme');
-        }
+        if (theme === 'light') $('body').addClass('light-theme');
+        else $('body').removeClass('light-theme');
     });
-
-    // Auth initial load theme
-    const savedAppTheme = localStorage.getItem('chess_app_theme') || 'dark';
-    $('#app-theme-sel').val(savedAppTheme).trigger('change');
-
 
     $('#piece-theme-sel').off('change').change(function () {
         const theme = $(this).val();
         localStorage.setItem('chess_piece_theme', theme);
-        if (!board) return;
-        board = Chessboard('myBoard', {
-            draggable: true,
-            position: board.position(),
-            pieceTheme: getPieceTheme,
-            onDrop, onSnapEnd
-        });
-        $('#board-theme-sel').trigger('change');
+        if (board) {
+            const currentPos = board.position();
+            const currentOri = board.orientation();
+
+            // Re-inicialización robusta manteniendo callbacks
+            board = Chessboard('myBoard', {
+                draggable: true,
+                position: currentPos,
+                orientation: currentOri,
+                pieceTheme: getPieceTheme,
+                onDrop: onDrop,
+                onSnapEnd: onSnapEnd,
+                onClick: onSquareClick
+            });
+            $('#board-theme-sel').trigger('change');
+            showToast("Piezas: " + theme.toUpperCase(), "♟️");
+        }
     });
 
-    // Square Clicks
+    $('#lang-sel').off('change').change(function () {
+        setLanguage($(this).val());
+    });
+
+    // --- INITIAL LOAD ---
+    const savedAppTheme = localStorage.getItem('chess_app_theme') || 'dark';
+    $('#app-theme-sel').val(savedAppTheme).trigger('change');
+
+    const savedLang = localStorage.getItem('chess_lang') || 'es';
+    $('#lang-sel').val(savedLang).trigger('change');
+
+    const savedBT = localStorage.getItem('chess_board_theme') || 'classic';
+    $('#board-theme-sel').val(savedBT).trigger('change');
+
+    const savedPT = localStorage.getItem('chess_piece_theme') || 'wikipedia';
+    $('#piece-theme-sel').val(savedPT).trigger('change');
+
+    // Events & Interaction
     $(document).on('mousedown touchstart', '.square-55d63', function () {
         onSquareClick($(this).data('square'));
     });
 
-    // PC Reset Button
-    $('#btn-reset-board-pc, #btn-reset-ai').off('click').on('click', resetGamePosition);
+    $('#btn-reset-board-pc, #btn-reset-ai, #btn-reset-puz').off('click').on('click', resetGamePosition);
 
-    // Initial load fixes
-    const savedPT = localStorage.getItem('chess_piece_theme') || 'wikipedia';
-    $('#piece-theme-sel').val(savedPT);
-    const savedBT = localStorage.getItem('chess_board_theme') || 'classic';
-    $('#board-theme-sel').val(savedBT).trigger('change');
+    // Initial Resize
+    setTimeout(() => { if (board) board.resize(); }, 500);
+    setTimeout(() => { if (board) { board.resize(); updateUI(); } }, 1500);
 
-    if (savedPT !== 'wikipedia') {
-        // Force piece reload
-        $('#piece-theme-sel').trigger('change');
-    }
-
-    // Force board render multiple stages
-    setTimeout(() => {
-        if (board) {
-            board.start();
-            board.resize();
-        }
-    }, 500);
-
-    setTimeout(() => {
-        if (board) board.resize();
-        updateUI();
-    }, 1500);
-
-    // Ensure tab-btn click also resizes board
     $('.tab-btn').on('click', function () {
-        setTimeout(() => { if (board) board.resize(); }, 100);
+        setTimeout(() => { if (board) board.resize(); }, 150);
     });
 
 }); // END READY
@@ -2279,47 +2316,54 @@ function calculateAccuracy(prevEval, currentEval, turn) {
 }
 
 // --- ARROW DRAWING LOGIC ---
-function drawBestMoveArrow(move, color = 'rgba(56, 189, 248, 0.7)', clear = true) {
+function drawBestMoveArrow(move, color = 'rgba(34, 197, 94, 0.7)', clear = true) {
     const canvas = document.getElementById('arrowCanvas');
-    if (!canvas || !$(canvas).is(':visible')) return;
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-    if (clear) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Solo redimensionar si es necesario (evita borrar el canvas en cada dibujo de multi-flecha)
+    if (canvas.width !== canvas.offsetWidth || canvas.height !== canvas.offsetHeight) {
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+    }
 
-    if (move === null) return;
+    if (clear) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (move === null || move === undefined) return;
 
     const from = move.substring(0, 2);
     const to = move.substring(2, 4);
     const p1 = getSqPos(from);
     const p2 = getSqPos(to);
 
-    const headLen = 15;
+    if (!p1 || !p2) return;
+
+    const headLen = 18;
     const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
 
     let drawColor = color;
-    if (color === 'green') drawColor = 'rgba(34, 197, 94, 0.8)';
-    if (color === 'red') drawColor = 'rgba(239, 68, 68, 0.8)';
-    if (color === 'orange') drawColor = 'rgba(245, 158, 11, 0.8)';
+    if (color === 'green') drawColor = 'rgba(34, 197, 94, 0.85)';
+    if (color === 'red') drawColor = 'rgba(239, 68, 68, 0.85)';
+    if (color === 'orange') drawColor = 'rgba(245, 158, 11, 0.85)';
+    if (color === 'blue') drawColor = 'rgba(59, 130, 246, 0.85)';
 
     ctx.strokeStyle = drawColor;
-    ctx.lineWidth = 10; // Un poco más gruesa para mejor visibilidad
+    ctx.fillStyle = drawColor;
+    ctx.lineWidth = 12;
     ctx.lineCap = 'round';
-    ctx.setLineDash([5, 15]); // Animación base (estática pero distintiva)
 
+    // Dibujar línea principal
     ctx.beginPath();
     ctx.moveTo(p1.x, p1.y);
     ctx.lineTo(p2.x, p2.y);
     ctx.stroke();
 
-    ctx.setLineDash([]); // Reset para la punta
+    // Dibujar punta de flecha triangular sólida
     ctx.beginPath();
     ctx.moveTo(p2.x, p2.y);
     ctx.lineTo(p2.x - headLen * Math.cos(angle - Math.PI / 6), p2.y - headLen * Math.sin(angle - Math.PI / 6));
-    ctx.moveTo(p2.x, p2.y);
     ctx.lineTo(p2.x - headLen * Math.cos(angle + Math.PI / 6), p2.y - headLen * Math.sin(angle + Math.PI / 6));
-    ctx.stroke();
+    ctx.closePath();
+    ctx.fill();
 }
 
 function isBookMove(moveSan) {
@@ -2753,14 +2797,17 @@ const toggleHints = (btn) => {
     $('#btn-ai-hint, #btn-suggest-move').text(txt).toggleClass('active', hintsActive);
 
     if (hintsActive) {
-        $('#coach-txt').text("Analizando posición...");
+        $('#coach-txt').text("El Maestro está analizando la posición...");
         if (stockfish) {
             updateUI(true); // Force re-analysis
         }
+        $('#btn-hint-mobile-bar, #btn-ai-hint, #btn-suggest-move, #btn-hint-main').addClass('active');
     } else {
+        drawBestMoveArrow(null); // Borrar flechas inmediatamente
         $('.square-55d63').removeClass('highlight-hint');
         $('#best-move-display').hide();
-        if (!analysisActive) $('#coach-txt').text("Bienvenido. Juega una partida o analiza una posición para recibir mis consejos.");
+        $('#btn-hint-mobile-bar, #btn-ai-hint, #btn-suggest-move, #btn-hint-main').removeClass('active');
+        if (!analysisActive) $('#coach-txt').text("Pistas desactivadas. ¿Quieres que te ayude con el siguiente movimiento?");
     }
 };
 
@@ -3158,7 +3205,7 @@ $(document).on('click', '#btn-flip, #btn-flip-mobile', function () {
 
 // Manual Opening Handlers
 window.startTheoreticalStudy = function () {
-    var val = $('#opening-sel-main').val();
+    var val = $('#opening-sel').val();
     if (!val) return alert("Selecciona una apertura primero.");
 
     var parts = val.split('-');
@@ -3220,7 +3267,7 @@ $('#btn-study-prev').click(function () {
 });
 
 window.startOpeningPracticeManual = function () {
-    var val = $('#opening-sel-main').val();
+    var val = $('#opening-sel').val();
     if (!val) return alert("Selecciona una apertura primero.");
 
     // 1. Decidir el bando (Tu Bando)
@@ -3262,20 +3309,9 @@ window.startOpeningPracticeManual = function () {
 
     // 4. SOLUCIÓN DEFINITIVA: OCULTAR EL SELECTOR Y MOSTRAR INFO ESTÁTICA
     // El selector se resetea por algún evento del DOM, así que lo ocultamos completamente
-    const $practiceContainer = $('#ai-opening-practice').closest('div');
-    $practiceContainer.hide(); // Ocultar el selector problemático
-
-    // Crear un display estático que muestre la configuración bloqueada
-    const colorText = sideChoice === 'w' ? '⚪ BLANCAS' : sideChoice === 'b' ? '⚫ NEGRAS' : '🎲 AUTO';
-    const $lockedDisplay = $('<div id="locked-training-display" style="background:linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.2)); padding:15px; border-radius:10px; margin-bottom:15px; border:2px solid rgba(139, 92, 246, 0.5);">' +
-        '<div style="font-size:0.65rem; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">🔒 ENTRENAMIENTO ACTIVO</div>' +
-        '<div style="font-size:0.9rem; font-weight:800; color:#a78bfa; margin-bottom:5px;">📖 ' + currentOpeningName + '</div>' +
-        '<div style="font-size:0.7rem; color:rgba(255,255,255,0.8);">Color: <strong>' + colorText + '</strong></div>' +
-        '<div style="font-size:0.65rem; color:rgba(255,255,255,0.6); margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1);">Para cambiar la apertura, vuelve al menú principal</div>' +
-        '</div>');
-
     // Insertar antes del contenedor oculto
-    $practiceContainer.before($lockedDisplay);
+    // [Cuadro bloqueado eliminado a petición del usuario]
+    // $practiceContainer.before($lockedDisplay);
 
     console.log('✅ Display bloqueado creado para:', currentOpeningName);
 
@@ -3327,7 +3363,7 @@ window.startOpeningPracticeManual = function () {
 };
 
 window.startOpeningDrillsManual = function () {
-    var val = $('#opening-sel-main').val();
+    var val = $('#opening-sel').val();
     if (!val) return alert("Selecciona una apertura primero.");
 
     var parts = val.split('-');
