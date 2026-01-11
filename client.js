@@ -1,12 +1,4 @@
-﻿// --- DANGER DETECTION GLOBAL ---
-var currentDangerMsg = "";
-function showDangerExplanation() {
-    if (!currentDangerMsg) return;
-    $('#danger-desc').html(currentDangerMsg);
-    $('#danger-alert-box').fadeIn();
-}
-
-// --- PASSWORD TOGGLE ---
+﻿// --- PASSWORD TOGGLE ---
 $('#btn-show-pass').off('click').on('click', function () {
     const input = $('#auth-pass');
     const type = input.attr('type') === 'password' ? 'text' : 'password';
@@ -130,11 +122,11 @@ try {
 } catch (e) { console.error(e); }
 
 socket.on('connect', () => {
-    console.log("✅ Socket conectado:", socket.id);
+    console.log("✅ Conectado para sincronización de progreso");
 });
 
 socket.on('connect_error', (err) => {
-    console.error("❌ Error de conexión socket:", err.message);
+    console.warn("⚠️ Sin conexión al servidor. Modo local activo.");
 });
 
 const openAuth = () => {
@@ -158,8 +150,8 @@ var isJ = false;
 var lastEv = 0; // Legacy var, prefer window.lastEval
 window.lastEval = undefined;
 window.currentEval = undefined;
-var opponentAutoMode = false; // Manuel por defecto en Estudio
 var stockfish = null;
+var aiThinking = false;
 var myColor = 'w';
 var userEloBullet = 500;
 var userEloBlitz = 500;
@@ -179,12 +171,9 @@ var puzTimerInterval = null;
 
 var currentPuzzle = null;
 var puzzleStep = 0;
-var userPuzzleElo = parseInt(localStorage.getItem('chess_puz_elo')) || 500;
-var drillCategory = null;
-var localPuzzles = (typeof LOCAL_PUZZLES_DB !== 'undefined') ? LOCAL_PUZZLES_DB : [];
-
 // SISTEMA ELO & AUTH
 var userElo = parseInt(localStorage.getItem('chess_user_elo')) || 500;
+var userPuzzleElo = parseInt(localStorage.getItem('chess_puz_elo')) || 500;
 var userName = localStorage.getItem('chess_username') || "Invitado";
 var isAuth = localStorage.getItem('chess_is_auth') === 'true';
 
@@ -238,17 +227,24 @@ const LANGS = {
 
 function detectOpening() {
     const history = game.history();
+    if (history.length === 0) return { name: "", moveCount: 0, comments: [] };
     const movesStr = history.join(' ');
     let foundName = "";
     let foundMoveCount = 0;
     let foundComments = [];
 
-    // Exact match for the full line
     ACTIVE_OPENINGS.forEach(group => {
         group.items.forEach(item => {
             const moves = item.moves || item.m || [];
             const entryStr = moves.join(' ');
-            if (movesStr.startsWith(entryStr)) {
+            // If the theoretical line includes/starts with our current moves
+            if (entryStr.startsWith(movesStr)) {
+                if (moves.length > foundMoveCount) {
+                    foundName = item.name;
+                    foundMoveCount = moves.length;
+                    foundComments = item.comments || [];
+                }
+            } else if (movesStr.startsWith(entryStr)) { // We passed the line
                 if (moves.length > foundMoveCount) {
                     foundName = item.name;
                     foundMoveCount = moves.length;
@@ -258,14 +254,39 @@ function detectOpening() {
         });
     });
 
-    // Sub-opening detection (Defense)
-    let specializedName = foundName;
-    if (foundName) {
-        // Try to see if there's a more specific sub-entry (common in chess databases)
-        // For now, we use the foundName which already contains things like "Siciliana Najdorf"
+    const result = { name: foundName, moveCount: foundMoveCount, comments: foundComments };
+    if (foundName && foundMoveCount >= 4) {
+        let practiced = JSON.parse(localStorage.getItem('chess_practiced_openings') || '[]');
+        if (!practiced.includes(foundName)) {
+            practiced.push(foundName);
+            localStorage.setItem('chess_practiced_openings', JSON.stringify(practiced));
+            if (window.updateStudyStats) updateStudyStats();
+        }
     }
+    return result;
+}
 
-    return { name: foundName, moveCount: foundMoveCount, comments: foundComments };
+function findTheoreticalNextMove() {
+    const history = game.history();
+    const historyStr = history.join(' ');
+    const candidates = [];
+
+    ACTIVE_OPENINGS.forEach(group => {
+        group.items.forEach(item => {
+            const moves = item.moves || item.m || [];
+            const entryStr = moves.join(' ');
+            if (entryStr.startsWith(historyStr) && moves.length > history.length) {
+                candidates.push({
+                    move: moves[history.length],
+                    name: item.name,
+                    comments: item.comments || []
+                });
+            }
+        });
+    });
+
+    if (candidates.length === 0) return null;
+    return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
 window.resetGamePosition = function () {
@@ -275,8 +296,6 @@ window.resetGamePosition = function () {
     studyIndex = 0;
     historyPositions = ['start'];
     currentHistoryIndex = 0;
-    moveData = []; // Reset visual history
-    updateHistory();
     updateUI(true);
     showToast("Posición inicial restaurada", "🧹");
     if (currentMode === 'study') $('#study-controls').fadeOut();
@@ -289,18 +308,19 @@ function getAiElo() {
 
 function getQualityMsg(diff, isMate, isBookMove = false) {
     const t = LANGS[currentLang];
-    if (isBookMove) return { text: "📖 " + (t.book || "Teoría / Libro"), class: 'q-book', symbol: '📖' };
-    if (isMate) return { text: "!! " + t.mate, class: 'q-excellent', symbol: '!!' };
+    if (isBookMove) return { text: "📖 " + (t.book || "Teoría / Libro"), class: 'quality-book', symbol: '📖' };
+    if (isMate) return { text: "!! " + t.mate, class: 'quality-excellent', symbol: '!!' };
 
+    // Safety check for null/undefined diff
     if (diff === null || diff === undefined) diff = 0;
 
-    if (diff < 0.1) return { text: "!! " + (t.brilliant || "Jugada Maestra"), class: 'q-excellent', symbol: '!!' };
-    if (diff < 0.25) return { text: "! " + t.best || "Óptima", class: 'q-best', symbol: '!' };
-    if (diff < 0.45) return { text: "⭐ " + (t.excellent || "Excelente"), class: 'q-excellent', symbol: '⭐' };
-    if (diff < 0.7) return { text: t.good || "Buena", class: 'q-good', symbol: '' };
-    if (diff < 1.3) return { text: "?! " + t.inaccuracy, class: 'q-inaccuracy', symbol: '?!' };
-    if (diff < 2.5) return { text: "? " + t.mistake, class: 'q-mistake', symbol: '?' };
-    return { text: "?? " + t.blunder, class: 'q-blunder', symbol: '??' };
+    if (diff < 0.1) return { text: "!! " + (t.brilliant || "Jugada Maestra"), class: 'quality-excellent', symbol: '!!' };
+    if (diff < 0.25) return { text: "! " + t.best, class: 'quality-excellent', symbol: '!' };
+    if (diff < 0.5) return { text: "⭐ " + (t.great || "Muy buena"), class: 'quality-excellent', symbol: '⭐' };
+    if (diff < 0.8) return { text: t.good, class: 'quality-excellent', symbol: '' };
+    if (diff < 1.4) return { text: "?! " + t.inaccuracy, class: 'quality-dubious', symbol: '?!' };
+    if (diff < 2.5) return { text: "? " + t.mistake, class: 'quality-dubious', symbol: '?' };
+    return { text: "?? " + t.blunder, class: 'quality-blunder', symbol: '??' };
 }
 
 function setLanguage(l) {
@@ -403,8 +423,10 @@ function updateElo(opponentElo, result, isPuzzle = false) {
         $('#header-elo').text(userElo + " ELO");
     }
 
-    // Sync with Server (Global ELO)
-    if (isAuth) {
+    $('#coach-txt').append(`<br><b style="color:var(--accent)">${isPuzzle ? 'Puzzle ELO' : 'Nivel'}: ${newElo}</b>`);
+
+    // Sync with Server (Simplified)
+    if (isAuth && socket && socket.connected) {
         socket.emit('update_elo', {
             user: userName,
             elo: userElo,
@@ -412,7 +434,20 @@ function updateElo(opponentElo, result, isPuzzle = false) {
         });
     }
 
-    $('#coach-txt').append(`< br > <b style="color:var(--accent)">${isPuzzle ? 'Puzzle ELO' : 'ELO'}: ${newElo}</b>`);
+    // Update Study Stats
+    updateStudyStats();
+}
+
+function updateStudyStats() {
+    const solved = JSON.parse(localStorage.getItem('chess_solved_puzzles') || '[]');
+    $('#stat-puz-count').text(solved.length);
+
+    const practiced = JSON.parse(localStorage.getItem('chess_practiced_openings') || '[]');
+    $('#stat-openings-count').text(practiced.length);
+
+    // Header elos
+    $('#header-elo-puz').text(`🧩 Puzzles: ${userPuzzleElo}`);
+    $('#header-elo').text(`📊 Nivel: ${userElo}`);
 }
 
 var solvedPuzzles = JSON.parse(localStorage.getItem('chess_solved_puzzles') || '[]');
@@ -544,274 +579,341 @@ async function loadRandomPuzzle(retryCount = 0, forcedCat = null) {
 }
 
 // --- STOCKFISH INITIALIZATION ---
-// --- STOCKFISH INITIALIZATION ---
-// --- STOCKFISH INITIALIZATION ---
 try {
-    console.log("♟️ Iniciando Stockfish...");
-    stockfish = new Worker('stockfish.js');
+    console.log("♟️ Iniciando Stockfish 17 NNUE...");
+    // Usar versión lite multithread para balance entre potencia y compatibilidad móvil
+    stockfish = new Worker('https://unpkg.com/stockfish@17.1.0/stockfish-nnue-17.1-lite-multithread.js');
     stockfish.postMessage('uci');
+    stockfish.postMessage('ucinewgame');
+    stockfish.postMessage('isready');
 
-    stockfish.onmessage = (e) => {
+    const threads = Math.max(1, (navigator.hardwareConcurrency || 4) - 1);
+    stockfish.postMessage('setoption name Threads value ' + threads);
+    stockfish.postMessage('setoption name Hash value 256');
+    stockfish.postMessage('setoption name Skill Level value 20');
+    console.log(`🚀 Motor configurado: ${threads} hilos, 256MB Hash, NNUE activo`);
+
+    stockfish.onerror = (e) => {
+        console.error("Worker Error:", e);
+        aiThinking = false;
+    };
+
+    stockfish.onmessage = function (e) {
         var l = e.data;
+
+        // Parsear NPS (Velocidad)
+        if (l.includes('nps')) {
+            const m = l.match(/nps (\d+)/);
+            if (m) {
+                const nps = parseInt(m[1]);
+                const txt = nps > 1000000 ? (nps / 1000000).toFixed(1) + 'M' : (nps / 1000).toFixed(0) + 'k';
+                $('#engine-nps').text(txt + ' nps');
+            }
+        }
+
         if (l === 'uciok') console.log("✅ Stockfish UCI OK");
         if (l === 'readyok') console.log("✅ Stockfish Ready");
 
-        // 1. ANÁLISIS EN TIEMPO REAL (Info: Score, PV, Coach, Flechas)
-        if (l.includes('score')) {
-            // Parse Score
-            let score = 0;
-            let isMate = l.includes('mate');
-            if (isMate) {
-                let match = l.match(/score mate (-?\d+)/);
-                score = match ? parseInt(match[1]) * 1000 : 9999;
-            } else {
-                let match = l.match(/score cp (-?\d+)/);
-                if (match) score = parseInt(match[1]) / 100;
-            }
+        // EVALUATION BAR
+        if (l.includes('score cp')) {
+            var match = l.match(/score cp (-?\d+)/);
+            if (!match) return;
+            var cp = parseInt(match[1]) / 100;
+            var ev = (game.turn() === 'w' ? cp : -cp);
+            var h = Math.max(0, Math.min(100, 50 + (ev * 15)));
 
-            // Adjust perspective
-            let ev = (game.turn() === 'w' ? score : -score);
-            let h = Math.max(0, Math.min(100, 50 + (ev * 15)));
-
-            // Update Eval Bar
             if (!analysisActive) $('#eval-fill-master').css('height', h + '%');
-            window.currentEval = ev; // Store for logic
 
-            // Parse Best Move (PV) for Comments & Hints
             var pvFull = l.split(' pv ')[1] ? l.split(' pv ')[1].split(' ') : [];
             if (pvFull.length > 0) {
                 var bestMoveLAN = pvFull[0];
-
-                // --- COACH & QUALITY LOGIC (Updates continuously) ---
-                const lastMove = fullHistory.length > 0 ? fullHistory[fullHistory.length - 1] : null;
-                let diffVal = 0;
-                if (window.lastEval !== undefined) {
-                    // Logic to determine quality based on eval shift
-                    if (game.turn() === 'b') diffVal = ev - window.lastEval;
-                    else diffVal = window.lastEval - ev;
-                }
-
-                let evalLoss = 0;
-                if (game.turn() === 'b') evalLoss = (window.lastEval || ev) - ev;
-                else evalLoss = ev - (window.lastEval || ev);
-
-                // Update Quality (only if recent move exists)
-                const isBook = isBookMove(lastMove ? lastMove.san : '');
-                var q = getQualityMsg(Math.max(0, evalLoss), isMate, isBook);
-
-                if (fullHistory.length > 0) {
-                    moveData[fullHistory.length - 1] = { san: lastMove.san, quality: q };
-                    updateHistory();
-                }
-
-                // Generate Coach Explanation
-                let explanation = getHumanExplanation(ev, evalLoss, isMate, isBook, isOpening);
-                let moveQualityHtml = `<div class="${q.class}" style="font-size:1.1rem; margin-bottom:5px;">${q.text}</div>`;
-
-                let openingName = ''
-                if (isOpening && fullHistory.length >= 2) {
-                    const detected = detectOpening();
-                    if (detected.name) openingName = '🎯 ' + detected.name;
-                }
-                let openingMsg = openingName ? `<div style="color:var(--accent); font-size:0.75rem; margin-bottom:10px; font-weight:800; background:rgba(139,92,246,0.1); padding:5px 10px; border-radius:6px; border-left:3px solid var(--accent);">${openingName}</div>` : '';
-
-                // Render Coach Text
-                $('#coach-txt').html(`
-                    ${openingMsg}
-                    ${moveQualityHtml}
-                    <div style="display:flex; gap:10px; margin-bottom:8px;">
-                        <div style="font-size:0.65rem; color:var(--text-muted);">Eval: <b style="color:var(--text-main)">${ev > 0 ? '+' : ''}${isMate ? 'M' : ev.toFixed(1)}</b></div>
-                    </div>
-                    <div style="font-size:0.78rem; line-height:1.5; color:var(--text-main); background:rgba(255,255,255,0.03); padding:12px; border-radius:10px;">${explanation}</div>
-                `);
-
-                // --- HINTS (Visual Arrows) for Player Turn ---
-                // Only show hints if it is NOT the AI's turn to auto-move
-                const isAiTurn = (game.turn() !== myColor && (currentMode === 'ai' || currentMode === 'maestro' || (currentMode === 'study' && opponentAutoMode)));
-
-                if (!isAiTurn && (hintsActive || analysisActive)) {
+                if (hintsActive || analysisActive) {
                     $('#best-move-display').html("💡 Sugerencia: <b style='color:white'>" + lanToSan(bestMoveLAN) + "</b>").show();
-                    // Click to move functionality for hint
-                    $('#best-move-display').off('click').on('click', function () {
-                        game.move({ from: bestMoveLAN.substring(0, 2), to: bestMoveLAN.substring(2, 4), promotion: 'q' });
-                        board.position(game.fen());
-                        updateUI(true);
-                        checkGameOver();
-                    });
+                    drawBestMoveArrow(bestMoveLAN);
+                    $('.square-55d63').removeClass('highlight-hint');
+                    $('[data-square="' + bestMoveLAN.substring(0, 2) + '"]').addClass('highlight-hint');
+                    $('[data-square="' + bestMoveLAN.substring(2, 4) + '"]').addClass('highlight-hint');
 
-                    if (hintsActive) drawBestMoveArrow(bestMoveLAN);
-
-                    window.pvList = [{ moveLAN: bestMoveLAN }]; // Save for redraw
+                    // Multi-arrow support for Top 3
+                    if (window.pvList && hintsActive) {
+                        drawBestMoveArrow(null); // Clear first
+                        window.pvList.slice(0, 3).forEach((p, idx) => {
+                            const color = idx === 0 ? 'green' : (idx === 1 ? 'rgba(56, 189, 248, 0.5)' : 'rgba(255,255,255,0.3)');
+                            drawBestMoveArrow(p.moveLAN, color, false);
+                        });
+                    }
+                } else {
+                    drawBestMoveArrow(null);
+                    $('.square-55d63').removeClass('highlight-hint');
+                    $('#best-move-display').hide();
                 }
-            }
 
-            // Capture MultiPV
-            if (l.includes('multipv')) {
-                const mv = l.match(/multipv (\d+)/);
-                const pvIdx = mv ? parseInt(mv[1]) : 1;
-                let pvScore = score; // Use parsed score
-                const pvMoves = l.split(' pv ')[1];
-                if (pvMoves) {
-                    const move = pvMoves.split(' ')[0];
-                    if (!window.pvList || pvIdx === 1) window.pvList = [];
-                    window.pvList[pvIdx - 1] = { move: lanToSan(move), eval: pvScore };
+                if (currentMode === 'ai' || isJ || analysisActive || hintsActive || currentMode === 'study') {
+                    const fullHistory = game.history({ verbose: true });
+                    const lastMove = fullHistory.length > 0 ? fullHistory[fullHistory.length - 1] : null;
+
+                    var diffVal = 0;
+                    if (window.lastEval !== undefined) {
+                        const gameTurn = game.turn();
+                        const prevE = window.lastEval;
+                        const currE = ev;
+                        if (gameTurn === 'w') diffVal = currE - prevE;
+                        else diffVal = prevE - currE;
+                    }
+
+                    const evalMag = Math.abs(diffVal);
+                    const isBook = isBookMove(lastMove ? lastMove.san : '');
+                    var q = getQualityMsg(evalMag, l.includes('mate'), isBook);
+                    var acc = isBook ? 100 : Math.max(0, Math.min(100, 100 - (evalMag * 20)));
+
+                    let explanation = '';
+                    let tacticalInfo = '';
+                    const isOpening = fullHistory.length <= 15;
+                    const isEndgame = game.board().flat().filter(p => p && p.type !== 'p').length <= 8;
+
+                    function getStrategicAdvice() {
+                        if (isOpening) return "🎯 Desarrolla tus piezas menores y controla el centro.";
+                        if (isEndgame) return "👑 Activa tu rey y busca promocionar peones.";
+                        return "🧩 Busca debilidades tácticas o mejora la posición de tu peor pieza.";
+                    }
+
+                    let openingName = '';
+                    let openingComment = '';
+                    if (isOpening && fullHistory.length >= 2) {
+                        const detected = detectOpening();
+                        if (detected.name) openingName = '🎯 ' + detected.name;
+
+                        // Lichess API integration (every 4 moves to optimize)
+                        if (fullHistory.length % 4 === 0) {
+                            fetchOpeningFromLichess().then(name => {
+                                if (name) {
+                                    openingName = '🌍 ' + name;
+                                    $('#coach-opening-name').text(openingName); // Update specific UI element if exists
+                                }
+                            });
+                        }
+                        // Check if our history matches the detected line length correctly
+                        if (isBook && detected.comments) {
+                            // Try to find comment for this specific move index
+                            // History length is 1-based, so for move 1 (e4), length is 1. Comment is at index 0.
+                            const moveIdx = fullHistory.length - 1;
+                            if (detected.comments[moveIdx]) {
+                                openingComment = detected.comments[moveIdx];
+                            }
+                        }
+                    }
+
+                    if (isBook) {
+                        explanation = `<div style="color:var(--accent); font-weight:bold;">📖 JUGADA DE TEORÍA:</div><div style="margin-top:5px; font-style:italic;">${openingComment || ('Sigue la línea principal para controlar el centro y desarrollar piezas.')}.</div>`;
+                        $('#book-move-indicator').fadeIn();
+                        if (currentMode === 'maestro' || currentMode === 'ai') $('#coach-txt').show();
+                    } else {
+                        $('#book-move-indicator').fadeOut();
+                        const san = lastMove ? lastMove.san : '';
+                        if (diffVal > 2.0) {
+                            explanation = `<div style="color:#ef4444; font-weight:bold;">?? Error grave con ${san}:</div> Debilita tu posición drásticamente. El Maestro sugiere ${window.pvList && window.pvList[0] ? window.pvList[0].move : 'otra línea'}.`;
+                            drawBestMoveArrow(bestMoveLAN, 'red');
+                        } else if (diffVal > 0.8) {
+                            explanation = `<div style="color:#f59e0b; font-weight:bold;">?! Imprecisión:</div> ${san} es algo prematura. Mejor era desarrollar para asegurar el enroque.`;
+                            drawBestMoveArrow(bestMoveLAN, 'orange');
+                        } else if (diffVal < -0.5) {
+                            explanation = `<div style="color:#22c55e; font-weight:bold;">!! Excelente ${san}:</div> ¡Brillante! Controlas el centro y preparas un ataque decisivo.`;
+                            drawBestMoveArrow(bestMoveLAN, 'green');
+                        } else {
+                            explanation = `<div style="color:var(--text-muted);">${getStrategicAdvice()}</div>`;
+                            drawBestMoveArrow(bestMoveLAN, 'blue');
+                        }
+                    }
+
+                    if (lastMove) {
+                        if (game.in_check()) tacticalInfo += '⚔️ ¡Jaque! ';
+                        if (lastMove.captured) tacticalInfo += `📍 Captura de ${lastMove.captured.toUpperCase()}. `;
+                    }
+
+                    let moveQuality = `<div class="${q.class}" style="font-size:1.1rem; margin-bottom:5px;">${q.text}</div>`;
+                    let precisionMsg = `<div style="font-size:0.7rem; color:var(--text-muted);">Precisión: ${acc.toFixed(0)}%</div>`;
+                    let openingMsg = openingName ? `<div style="color:var(--accent); font-size:0.75rem; margin-bottom:10px; font-weight:800; background:rgba(139,92,246,0.1); padding:5px 10px; border-radius:6px; border-left:3px solid var(--accent);">${openingName}</div>` : '';
+
+                    if (pvFull.length > 2) {
+                        tacticalInfo += `<br>Línea recomendada: ${pvFull.slice(0, 3).map(m => lanToSan(m)).join(' ')}...`;
+                    }
+
+                    // MULTI-PV Support: If we have multiple best moves, show them
+                    let multiPvHtml = "";
+                    if (window.pvList && window.pvList.length > 1 && hintsActive) {
+                        multiPvHtml = `<div style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
+                            <div style="font-size:0.6rem; color:var(--accent); margin-bottom:8px; font-weight:800; letter-spacing:1px; text-transform:uppercase;">Mejores Continuaciones:</div>
+                            ${window.pvList.slice(0, 3).map((p, idx) => `
+                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; margin-bottom:5px; background:rgba(255,255,255,0.04); padding:6px 10px; border-radius:6px;">
+                                    <span>${idx === 0 ? '⭐' : '🔹'} <b style="color:var(--accent)">${p.move}</b></span>
+                                    <div style="display:flex; flex-direction:column; align-items:flex-end;">
+                                        <span style="font-weight:700; color:${p.eval >= 0 ? '#22c55e' : '#ef4444'};">${p.eval > 0 ? '+' : ''}${p.eval.toFixed(1)}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>`;
+                    }
+
+                    $('#coach-txt').html(`
+                        ${openingMsg}
+                        ${moveQuality}
+                        <div style="display:flex; gap:10px; margin-bottom:8px;">
+                            <div style="font-size:0.65rem; color:var(--text-muted);">Eval: <b style="color:var(--text-main)">${ev > 0 ? '+' : ''}${ev.toFixed(1)}</b></div>
+                            ${precisionMsg}
+                        </div>
+                        <div style="font-size:0.78rem; line-height:1.5; color:var(--text-main); background:rgba(255,255,255,0.03); padding:12px; border-radius:10px;">
+                            ${explanation}
+                            <div style="margin-top:10px; text-align:right;">
+                                <button class="btn-tool" style="font-size:0.6rem; padding:4px 8px;" onclick="explainTactics()">💡 Explicar táctica</button>
+                            </div>
+                        </div>
+                        ${multiPvHtml}
+                        <div style="font-size:0.7rem; color:#3b82f6; margin-top:10px; font-weight:600; background:rgba(59,130,246,0.05); padding:5px; border-radius:4px;">${tacticalInfo}</div>
+                    `);
+                    isJ = false;
                 }
             }
         }
+        window.currentEval = ev;
 
-        // 2. EJECUCIÓN DE MOVIMIENTO (Best Move) - SOLO AQUÍ MUEVE LA IA
-        if (l.startsWith('bestmove')) {
-            const bestMoveParts = l.split(' ');
-            const bestMoveLAN = bestMoveParts[1];
+        // Catch individual PVs for multi-PV display
+        if (l.includes('multipv')) {
+            const mv = l.match(/multipv (\d+)/);
+            const pvIdx = mv ? parseInt(mv[1]) : 1;
+            const scoreMatch = l.match(/score cp (-?\d+)/);
+            const pvMoves = l.split(' pv ')[1];
+            if (scoreMatch && pvMoves) {
+                const move = pvMoves.split(' ')[0];
+                const score = parseInt(scoreMatch[1]) / 100 * (game.turn() === 'w' ? 1 : -1);
 
-            // Check if AI should move
-            const isAiTurn = game.turn() !== myColor;
-            const shouldAiMove = (currentMode === 'ai' || currentMode === 'maestro' || (currentMode === 'study' && opponentAutoMode));
-
-            if (isAiTurn && shouldAiMove && bestMoveLAN && bestMoveLAN !== '(none)') {
-                // Prevent double moves if aiThinking flag was weird, but here we trust the engine finish
-
-                setTimeout(() => {
-                    game.move({ from: bestMoveLAN.substring(0, 2), to: bestMoveLAN.substring(2, 4), promotion: 'q' });
-                    board.position(game.fen());
-                    aiThinking = false; // Reset flag
-                    updateUI(true); // Loops back to analyze new position
-                    checkGameOver();
-                }, 500); // Small delay for realism
-            } else {
-                aiThinking = false; // Reset flag anyway
+                if (!window.pvList || pvIdx === 1) window.pvList = [];
+                window.pvList[pvIdx - 1] = { move: lanToSan(move), moveLAN: move, eval: score };
             }
+        }
+
+        function lanToSan(lan) {
+            if (!lan) return "";
+            const from = lan.substring(0, 2);
+            const to = lan.substring(2, 4);
+            const promo = lan.length > 4 ? lan[4] : '';
+            const temp = new Chess(game.fen());
+            const m = temp.move({ from, to, promotion: promo });
+            return m ? m.san : lan;
+        }
+
+        if (l.startsWith('bestmove') && (currentMode === 'ai' || currentMode === 'maestro') && game.turn() !== myColor) {
+            console.log(`📨 Stockfish respondió: ${l}`);
+
+            // BLOQUEO ABSOLUTO: Si hay una línea teórica activa, ignorar por completo al motor
+            if (aiPracticeLine && aiPracticeIndex < aiPracticeLine.length) {
+                console.log("🛑 Motor bloqueado: Siguiendo teoría.");
+                return;
+            }
+
+            var bestMove = l.split(' ')[1];
+            console.log(`🎲 Mejor jugada de Stockfish: ${bestMove}`);
+
+            // Use the correct selector based on mode
+            const diffSel = (currentMode === 'maestro') ? '#maestro-diff-sel' : '#diff-sel';
+            const diffLvl = parseInt($(diffSel).val()) || 10;
+            let blunderChance = 0;
+            if (diffLvl === 1) blunderChance = 0.5;
+            else if (diffLvl === 3) blunderChance = 0.35;
+            else if (diffLvl === 5) blunderChance = 0.20;
+
+            if (Math.random() < blunderChance) {
+                const legalMoves = game.moves({ verbose: true });
+                if (legalMoves.length > 0) {
+                    const randomM = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+                    bestMove = randomM.from + randomM.to + (randomM.promotion || '');
+                    console.log(`🎭 Introduciendo error intencional (dificultad ${diffLvl}): ${bestMove}`);
+                }
+            }
+
+            console.log(`♟️ Ejecutando movimiento: ${bestMove}`);
+            game.move({ from: bestMove.substring(0, 2), to: bestMove.substring(2, 4), promotion: 'q' });
+            board.position(game.fen());
+            console.log("🔓 aiThinking = false (Stockfish completado)");
+            aiThinking = false; // Liberar bloqueo
+            updateUI(true);
+            checkGameOver();
         }
     };
 } catch (e) {
-    console.error("❌ Error cargando Stockfish:", e);
-    alert("Error crítico cargando IA. Recarga la página.");
-}
-
-// Helpers outside to avoid nesting issues
-function lanToSan(lan) {
-    if (!lan) return "";
-    const from = lan.substring(0, 2);
-    const to = lan.substring(2, 4);
-    const promo = lan.length > 4 ? lan[4] : '';
-    const temp = new Chess(game.fen());
-    const m = temp.move({ from, to, promotion: promo });
-    return m ? m.san : lan;
-}
-
-// Helper to categorize move quality
-function getQualityMsg(diff, isMate, isBook) {
-    if (isBook) return { text: "📖 TEORÍA", class: 'q-book', symbol: '📖' };
-    if (isMate) return { text: "🏁 JUGADA DECISIVA", class: 'q-excellent', symbol: '#' };
-
-    // diff is absolute loss in centipawns/pawns
-    if (diff <= 0.2) return { text: "⭐ EXCELENTE", class: 'q-best', symbol: '!!' };
-    if (diff <= 0.5) return { text: "✅ BUENA", class: 'q-good', symbol: '!' };
-    if (diff <= 1.0) return { text: "⚠️ IMPRECISIÓN", class: 'q-inaccuracy', symbol: '?!' };
-    if (diff <= 2.0) return { text: "❌ ERROR", class: 'q-mistake', symbol: '?' };
-
-    return { text: "💥 BLUNDER", class: 'q-blunder', symbol: "??" };
-}
-
-// Humanized Explanation Logic (Updated & Enhanced)
-function getHumanExplanation(ev, diff, isMate, isBook, isOp) {
-    // 1. APERTURAS Y TEORÍA
-    if (isBook) {
-        let opName = currentOpeningName || 'Apertura Estándar';
-        let tip = "Sigue el desarrollo lógico de piezas.";
-
-        // Comentarios específicos por apertura (Flavor Text)
-        if (opName.includes('Española') || opName.includes('Ruy Lopez'))
-            tip = "Clásica Ruy Lopez. Bb5 presiona el caballo, pero a6 suele obligar a decidir. ¡Controla el centro!";
-        else if (opName.includes('Siciliana'))
-            tip = "Lucha asimétrica (combate). Las negras buscan contrajuego dinámico en c5.";
-        else if (opName.includes('Francesa'))
-            tip = "Sólida pero pasiva al inicio. Cuidado con el alfil de casillas blancas bloqueado.";
-        else if (opName.includes('Caro-Kann'))
-            tip = "Estructura de peones muy sólida. Finales favorables si sobrevives al medio juego.";
-        else if (opName.includes('Italiana'))
-            tip = "Desarrollo rápido de Bc4 apuntando a f7. Un clásico del juego abierto.";
-
-        return `📖 <b class="q-book">TEORÍA DE LIBRO</b><br><span style="font-size:0.9em; opacity:0.9">${opName}: ${tip}</span>`;
-    }
-
-    // 2. FINALES Y MATES
-    if (isMate) return `♛ <b class="q-excellent">¡JUGADA DE MATE!</b><br>El desenlace es inevitable. ¡Calcula con precisión!`;
-
-    // 3. CALIDAD DE LA JUGADA (Basado en 'diff' - pérdida de ventaja)
-    // diff representa cuánto peor es tu jugada respecto a la mejor (en peones)
-
-    // ERROR GRAVE (Blunder): > 2.5 peones
-    if (diff > 2.5) {
-        return `💥 <b class="q-blunder">ERROR GRAVE (Colgada)</b><br>Has regalado una pieza o un mate. ¡Esta jugada cambia el resultado!`;
-    }
-
-    // ERROR (Mistake): > 1.2 peones
-    if (diff > 1.2) {
-        return `🔥 <b class="q-mistake">ERROR TÁCTICO</b><br>Pierdes una ventaja clara o permites un fuerte contraataque.`;
-    }
-
-    // IMPRECISIÓN (Inaccuracy): > 0.6 peones
-    if (diff > 0.6) {
-        return `⚠️ <b class="q-inaccuracy">IMPRECISIÓN</b><br>Jugada pasiva. Había una continuación más fuerte o activa.`;
-    }
-
-    // JUGADA MAESTRA/BUENA (diff muy bajo o ganancia)
-    if (diff < 0.1) {
-        // Si además cambia la evaluación mucho a nuestro favor (rival se equivocó antes)
-        return `⭐ <b class="q-best">¡JUGADA ÓPTIMA!</b><br>La mejor respuesta posible. Mantienes la presión máxima.`;
-    }
-    if (diff < 0.35) {
-        return `✅ <b class="q-good">BUEN MOVIMIENTO</b><br>Sólido y lógico. Mejoras tu posición paso a paso.`;
-    }
-
-    // 4. CONTEXTO GENERAL
-    let evalText = "La posición está igualada.";
-    if (ev > 1.5) evalText = "Las blancas tienen ventaja clara.";
-    if (ev < -1.5) evalText = "Las negras dominan la posición.";
-
-    if (isOp) return `🧩 <b class="q-good">FASE DE APERTURA</b><br>${evalText} Recuerda: Control central, desarrollo y seguridad del rey.`;
-
-    return `🧠 <b class="q-good">POSICIÓN COMPLEJA</b><br>${evalText} Busca planes a largo plazo y debilidades estructurales.`;
+    console.error("❌ Error en Stockfish:", e);
 }
 
 function makeAIMove() {
-    if (game.game_over()) return;
+    if (game.game_over()) {
+        console.log("⏹️ Juego terminado, IA no mueve");
+        return;
+    }
 
-    if (aiThinking) return;
+    if (aiThinking) {
+        console.log("⏳ IA ya está pensando, evitando llamada duplicada");
+        return;
+    }
+
+    aiThinking = true;
+    console.log("🔒 aiThinking = true");
+
+    // Timeout de seguridad: si después de 15 segundos no se ha movido, desbloquear
+    const safetyTimeout = setTimeout(() => {
+        if (aiThinking) {
+            console.error("⚠️ Timeout de seguridad: desbloqueando IA");
+            aiThinking = false;
+        }
+    }, 15000);
 
     const sideThatMoves = game.turn();
-    if (sideThatMoves === myColor) return;
+    if (sideThatMoves === myColor) {
+        console.log("❌ Es turno del jugador, no de la IA");
+        aiThinking = false;
+        clearTimeout(safetyTimeout);
+        return;
+    }
 
-    console.log(`🤖 IA pensando... (Turno: ${sideThatMoves}, MiColor: ${myColor}, PrácticaIdx: ${aiPracticeIndex})`);
+    console.log(`🤖 Maestro pensando... (Turno: ${sideThatMoves}, Modo: ${currentMode}, myColor: ${myColor}, PrácticaIdx: ${aiPracticeIndex})`);
 
-    // --- MODO ENTRENAMIENTO DE APERTURA ---
+    let moveToPlay = null;
+    let commentToPlay = "";
+
+    // 1. Línea específica de entrenamiento
     if (aiPracticeLine && Array.isArray(aiPracticeLine) && aiPracticeIndex < aiPracticeLine.length) {
-
-        // FUERZA SINCRONIZACIÓN: En cada turno de la IA, el índice debe ser igual al historial
-        // Esto evita que si una jugada del jugador se procesó raro, la IA se pierda.
         const history = game.history();
-        if (aiPracticeIndex !== history.length) {
-            console.warn(`[RE-SYNC] Corrigiendo índice: de ${aiPracticeIndex} a ${history.length}`);
-            aiPracticeIndex = history.length;
+        if (aiPracticeIndex !== history.length) aiPracticeIndex = history.length;
+
+        if (aiPracticeIndex < aiPracticeLine.length) {
+            moveToPlay = aiPracticeLine[aiPracticeIndex].trim();
+            commentToPlay = (currentOpeningComments && currentOpeningComments[aiPracticeIndex]) || "";
+            console.log(`📖 Usando línea de práctica: ${moveToPlay}`);
         }
+    }
 
-        if (aiPracticeIndex >= aiPracticeLine.length) {
-            console.log("[TEORIA] Línea finalizada. El motor ahora toma el mando.");
-            aiPracticeLine = null;
-            makeAIMove();
-            return;
+    // 2. Si no hay línea activa, buscar en la base de datos general (Fase Apertura)
+    if (!moveToPlay && (currentMode === 'maestro' || currentMode === 'ai') && game.history().length < 15) {
+        console.log("🔍 Buscando en base de datos de aperturas...");
+        const theory = findTheoreticalNextMove();
+        if (theory) {
+            moveToPlay = theory.move;
+            commentToPlay = theory.comments[game.history().length] || "Jugada de libro según la base de datos.";
+            currentOpeningName = theory.name;
+            console.log(`🌍 Encontrada en BD: ${moveToPlay} (${theory.name})`);
+        } else {
+            console.log("❌ No se encontró jugada teórica en BD");
         }
+    }
 
-        let moveToPlay = aiPracticeLine[aiPracticeIndex].trim();
-        console.log(`📖 [MAESTRO] Turno IA (${sideThatMoves}). Jugando teoría #${aiPracticeIndex}: ${moveToPlay}`);
-
+    if (moveToPlay) {
+        console.log(`✅ IA jugando teoría: ${moveToPlay}`);
         if (stockfish) stockfish.postMessage('stop');
 
-        aiThinking = true;
         setTimeout(() => {
-            if (game.turn() === myColor || !aiPracticeLine) {
+            // Verificar que sigue siendo turno de la IA antes de mover
+            if (game.turn() === myColor) {
+                console.log("❌ Ya no es turno de la IA, cancelando");
                 aiThinking = false;
+                clearTimeout(safetyTimeout);
                 return;
             }
 
@@ -858,9 +960,8 @@ function makeAIMove() {
                 checkGameOver();
                 $('#book-move-indicator').fadeIn();
 
-                let comm = (currentOpeningComments && currentOpeningComments[aiPracticeIndex - 1])
-                    ? currentOpeningComments[aiPracticeIndex - 1]
-                    : "Esta jugada sigue la teoría establecida para esta apertura.";
+                let comm = commentToPlay || (currentOpeningComments && currentOpeningComments[aiPracticeIndex - 1])
+                    || "Esta jugada sigue la teoría establecida para esta apertura.";
 
                 $('#coach-txt').html(`
                         <div style="color:var(--accent); font-size:0.7rem; font-weight:800; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px; margin-bottom:10px;">
@@ -871,11 +972,14 @@ function makeAIMove() {
                             ${comm}
                         </div>
                     `);
+                console.log("🔓 aiThinking = false (jugada teórica exitosa)");
                 aiThinking = false;
+                clearTimeout(safetyTimeout);
             } else {
                 console.error("❌ Error al realizar jugada de teoría:", moveToPlay);
                 aiPracticeLine = null;
                 aiThinking = false;
+                clearTimeout(safetyTimeout);
                 makeAIMove(); // Deja que Stockfish decida ahora
             }
         }, 1000); // 1s de "reflexión" para el maestro
@@ -883,16 +987,25 @@ function makeAIMove() {
     }
 
     // --- MODO MOTOR ESTÁNDAR (STOCKFISH) ---
-    if (stockfish) {
-        // Use the correct selector based on mode
-        const diffSel = (currentMode === 'maestro') ? '#maestro-diff-sel' : '#diff-sel';
-        const diff = parseInt($(diffSel).val()) || 10;
-
-        stockfish.postMessage('stop');
-        stockfish.postMessage('setoption name MultiPV value 3'); // Show top 3 moves
-        stockfish.postMessage('position fen ' + game.fen());
-        stockfish.postMessage('go depth ' + diff);
+    console.log("🎯 No hay jugada teórica, usando Stockfish...");
+    if (!stockfish) {
+        console.error("❌ Stockfish no está inicializado!");
+        aiThinking = false;
+        clearTimeout(safetyTimeout);
+        return;
     }
+
+    // Use the correct selector based on mode
+    const diffSel = (currentMode === 'maestro') ? '#maestro-diff-sel' : '#diff-sel';
+    const diff = parseInt($(diffSel).val()) || 10;
+
+    console.log(`⚙️ Enviando posición a Stockfish (depth: ${Math.max(diff, 18)})`);
+    stockfish.postMessage('stop');
+    stockfish.postMessage('setoption name MultiPV value 3');
+    stockfish.postMessage('position fen ' + game.fen());
+    stockfish.postMessage('go depth ' + Math.max(diff, 18) + ' movetime 10000');
+
+    // El timeout de seguridad se limpiará cuando Stockfish responda con bestmove
 }
 
 function checkGameOver() {
@@ -975,53 +1088,10 @@ function abortGame() {
     }
 }
 
-var moveData = []; // [{san: 'e4', color: 'w', quality: null}]
-
 function updateHistory() {
-    const history = game.history({ verbose: true });
     historyPositions.push(game.fen());
     currentHistoryIndex = historyPositions.length - 1;
-
-    const list = $('#game-moves-list');
-    if (!list.length) return;
-    list.empty();
-
-    let html = "";
-    for (let i = 0; i < history.length; i += 2) {
-        const moveNum = Math.floor(i / 2) + 1;
-        const wMove = history[i];
-        const bMove = history[i + 1];
-
-        const wQuality = (moveData[i] && moveData[i].quality) ? moveData[i].quality : { class: '', symbol: '' };
-        const bQuality = (moveData[i + 1] && moveData[i + 1].quality) ? moveData[i + 1].quality : { class: '', symbol: '' };
-
-        html += `<div class="move-number">${moveNum}.</div>`;
-        html += `<div class="move-item ${wQuality.class} ${i === currentHistoryIndex - 1 ? 'active' : ''}" onclick="navigateHistoryIndex(${i})">
-                    ${wMove.san} <span class="move-symbol">${wQuality.symbol}</span>
-                 </div>`;
-        if (bMove) {
-            html += `<div class="move-item ${bQuality.class} ${i + 1 === currentHistoryIndex - 1 ? 'active' : ''}" onclick="navigateHistoryIndex(${i + 1})">
-                        ${bMove.san} <span class="move-symbol">${bQuality.symbol}</span>
-                     </div>`;
-        } else {
-            html += `<div></div>`;
-        }
-    }
-    list.append(html);
-
-    // Auto-scroll to bottom
-    list.scrollTop(list[0].scrollHeight);
 }
-
-window.navigateHistoryIndex = function (idx) {
-    currentHistoryIndex = idx + 1;
-    board.position(historyPositions[currentHistoryIndex]);
-    game.load(historyPositions[currentHistoryIndex]);
-    updateUI(false);
-    // Highlight the active move in list
-    $('#game-moves-list .move-item').removeClass('active');
-    $('#game-moves-list .move-item').eq(idx).addClass('active');
-};
 
 function navigateHistory(dir) {
     if (dir === 'first') currentHistoryIndex = 0;
@@ -1048,7 +1118,7 @@ function navigateHistory(dir) {
         // Analyze current position
         stockfish.postMessage('stop');
         stockfish.postMessage('position fen ' + game.fen());
-        stockfish.postMessage('go depth 15');
+        stockfish.postMessage('go depth 22 movetime 5000');
 
         $('#coach-txt').html('<div style="color:var(--accent);">Analizando jugada...</div>');
     } else if (currentHistoryIndex === 0) {
@@ -1079,26 +1149,20 @@ function updateMaterial() {
     $('#material-display').text(txt).css('color', diff > 0 ? '#fff' : (diff < 0 ? '#aaa' : '#888'));
 }
 
-function updateUI(moved) {
-    if (moved === undefined) moved = false;
-
+function updateUI(moved = false) {
     $('.square-55d63').removeClass('highlight-selected highlight-hint');
     $('.legal-dot').remove();
 
     updateMaterial();
 
-    // BUG #2 FIX: Sincronizar Flecha de Pistas
-    if (hintsActive && typeof window.bestMoveLAN !== 'undefined' && window.bestMoveLAN) {
-        drawBestMoveArrow(window.bestMoveLAN);
-    } else {
-        clearArrowCanvas();
-    }
-
     if (moved) {
         // Sound logic
         if (game.in_check()) playSnd('check');
-        else if (game.history({ verbose: true }).pop().flags.includes('c')) playSnd('capture');
-        else playSnd('move');
+        else {
+            const history = game.history({ verbose: true });
+            if (history.length > 0 && history[history.length - 1].flags.includes('c')) playSnd('capture');
+            else playSnd('move');
+        }
 
         updateHistory();
         if (!gameStarted && currentMode !== 'exercises' && currentMode !== 'study') startClock();
@@ -1109,42 +1173,37 @@ function updateUI(moved) {
             window.lastEval = window.currentEval;
         }
         if (stockfish && currentMode !== 'local' && (currentMode === 'ai' || currentMode === 'maestro' || hintsActive || currentMode === 'study')) {
-            // Decidir si la IA debe mover (SÓLO si el modo automático está activado)
-            const isOurTurn = (game.turn() === myColor);
-
-            // Si es modo AI o MAESTRO, auto-activar el modo si no se ha tocado
-            const shouldAIMove = (currentMode === 'ai' || currentMode === 'maestro' || currentMode === 'study') && opponentAutoMode;
-
-            if (shouldAIMove && !isOurTurn) {
+            if ((currentMode === 'ai' || currentMode === 'maestro') && game.turn() !== myColor) {
                 makeAIMove();
             } else {
-                // Solo analizar
                 stockfish.postMessage('stop');
-                stockfish.postMessage('setoption name MultiPV value 3');
+                stockfish.postMessage('setoption name MultiPV value 3'); // Show top 3 moves
                 stockfish.postMessage('position fen ' + game.fen());
-                stockfish.postMessage('go depth 15');
+                stockfish.postMessage('go depth 20 movetime 5000');
             }
         }
     } else {
         // Even if not moved, if we are in study mode and just entered, start analysis
-        if (currentMode === 'study' || currentMode === 'ai' || currentMode === 'maestro') {
+        if (stockfish && (currentMode === 'study' || currentMode === 'ai' || currentMode === 'maestro')) {
             stockfish.postMessage('stop');
             stockfish.postMessage('setoption name MultiPV value 3');
             stockfish.postMessage('position fen ' + game.fen());
-            stockfish.postMessage('go depth 15');
+            stockfish.postMessage('go depth 20 movetime 5000');
         }
     }
 }
 
 function getPieceTheme(piece) {
     try {
-        // Check if element exists to avoid errors
-        const el = $('#piece-theme-sel');
-        const theme = (el.length ? el.val() : null) || localStorage.getItem('chess_piece_theme') || 'wikipedia';
+        const theme = localStorage.getItem('chess_piece_theme') || 'wikipedia';
 
-        if (theme === 'alpha' || theme === 'uscf') {
+        // Lichess standard SVG themes
+        const svgThemes = ['alpha', 'uscf', 'companion', 'merida', 'cbetta', 'pixel'];
+        if (svgThemes.includes(theme)) {
             return 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/' + theme + '/' + piece + '.svg';
         }
+
+        // Default Wikipedia (PNG)
         return 'https://raw.githubusercontent.com/oakmac/chessboardjs/master/website/img/chesspieces/wikipedia/' + piece + '.png';
     } catch (e) {
         return 'https://raw.githubusercontent.com/oakmac/chessboardjs/master/website/img/chesspieces/wikipedia/' + piece + '.png';
@@ -1161,22 +1220,11 @@ function onDrop(source, target) {
         const piece = game.get(source);
         if (!piece) return 'snapback';
 
-        // En modo online, solo puedes mover tus piezas
-        if (currentMode === 'local' && piece.color !== myColor) {
+        // En modo AI o Maestro, solo puedes mover cuando es tu turno
+        if ((currentMode === 'ai' || currentMode === 'maestro') && game.turn() !== myColor) {
+            console.warn("🚫 No es tu turno");
             return 'snapback';
         }
-
-        // En modo AI/Maestro, si el modo automático está activo, NO puedes mover por el rival
-        // Salvo que sea tu turno, claro.
-        if ((currentMode === 'ai' || currentMode === 'maestro') && opponentAutoMode) {
-            if (game.turn() !== myColor) return 'snapback';
-        }
-    }
-
-    // En modo ESTUDIO, si el oponente está en AUTO, bloquear movimientos manuales del rival
-    if (currentMode === 'study' && opponentAutoMode) {
-        const piece = game.get(source);
-        if (piece && piece.color !== myColor) return 'snapback';
     }
 
     var move = game.move({
@@ -1210,10 +1258,10 @@ function onDrop(source, target) {
             showToast("¡Teórico!: " + move.san, "📖");
             $('#coach-txt').html(`
                     <div style="color:var(--accent); font-size:0.7rem; font-weight:800; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px; margin-bottom:10px;">
-                        ${currentOpeningName || 'Línea de Apertura'}
+                        📖 ENTRENANDO: ${currentOpeningName || 'Teoría'}
                     </div>
-                    <div style="font-size:1rem; font-weight:700; color:var(--text-main); margin-bottom:8px;">Has jugado: ${move.san}</div>
-                    <div style="font-size:0.85rem; line-height:1.5; color:var(--text-main); background:rgba(255,255,255,0.03); padding:10px; border-radius:8px;">
+                    <div class="quality-book" style="color:var(--accent); font-weight:800; font-size:1.1rem; margin-bottom:5px;">JUGADA DE LIBRO: ${move.san}</div>
+                    <div style="font-size:0.8rem; line-height:1.4; color:var(--text-main); background:rgba(255,255,255,0.03); padding:10px; border-radius:8px;">
                         ${comm}
                     </div>
                 `);
@@ -1252,8 +1300,16 @@ function onDrop(source, target) {
 }
 
 function onSquareClick(sq) {
+    console.log(`🖱️ Click en casilla: ${sq}`);
+    showMoveTooltip(sq); // Show technical insight if available
     if (selectedSq) {
-        if (selectedSq === sq) { selectedSq = null; updateUI(); return; }
+        console.log(`📍 Casilla previamente seleccionada: ${selectedSq}`);
+        if (selectedSq === sq) {
+            console.log("❌ Deseleccionando casilla");
+            selectedSq = null;
+            updateUI();
+            return;
+        }
 
         if (currentMode === 'exercises') {
             const tempGame = new Chess(game.fen());
@@ -1319,6 +1375,7 @@ function onSquareClick(sq) {
 
         var move = game.move({ from: selectedSq, to: sq, promotion: 'q' });
         if (move) {
+            console.log(`✅ Movimiento ejecutado por clic: ${move.san} (${selectedSq} → ${sq})`);
             board.position(game.fen());
             selectedSq = null;
 
@@ -1340,10 +1397,10 @@ function onSquareClick(sq) {
                     showToast("¡Teórico!: " + move.san, "📖");
                     $('#coach-txt').html(`
                         <div style="color:var(--accent); font-size:0.7rem; font-weight:800; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px; margin-bottom:10px;">
-                            ${currentOpeningName || 'Línea de Apertura'}
+                            📖 APERTURA: ${currentOpeningName || 'Teoría'}
                         </div>
-                        <div style="font-size:1rem; font-weight:700; color:var(--text-main); margin-bottom:8px;">Has jugado: ${move.san}</div>
-                        <div style="font-size:0.85rem; line-height:1.5; color:var(--text-main); background:rgba(255,255,255,0.03); padding:10px; border-radius:8px;">
+                        <div class="quality-book" style="color:var(--accent); font-weight:800; font-size:1.1rem; margin-bottom:5px;">JUGADA DE LIBRO: ${move.san}</div>
+                        <div style="font-size:0.8rem; line-height:1.4; color:var(--text-main); background:rgba(255,255,255,0.03); padding:10px; border-radius:8px;">
                             ${comm}
                         </div>
                     `);
@@ -1356,24 +1413,17 @@ function onSquareClick(sq) {
             }
 
             if (currentMode === 'local') {
-                socket.emit('move', { move: move.san, gameId: gameId, fen: game.fen() });
-
-                // Smart Turn Jumper
-                setTimeout(() => {
-                    socket.emit('get_my_games');
-                    setTimeout(() => {
-                        const nextTurn = [...$('.active-game-item')].find(el => $(el).find('b').length > 0 && !$(el).attr('onclick').includes(gameId));
-                        if (nextTurn) {
-                            showToast("Tu turno en otra partida", "♟️");
-                            nextTurn.click();
-                        }
-                    }, 600);
-                }, 500);
+                // Online sync removed.
+                console.log("Move made in local mode");
             }
 
+            console.log("📞 Llamando a updateUI(true) y makeAIMove()...");
             updateUI(true);
+            setTimeout(makeAIMove, 250); // Asegurar que la IA reaccione al click
             checkGameOver();
             return;
+        } else {
+            console.log(`❌ Movimiento inválido: ${selectedSq} → ${sq}`);
         }
     }
     var piece = game.get(sq);
@@ -1387,101 +1437,20 @@ function onSquareClick(sq) {
     }
 }
 
-// --- RESTRICCIÓN DE MOVIMIENTO (onDragStart) ---
-function onDragStart(source, piece, position, orientation) {
-    if (game.game_over()) return false;
-    if (typeof aiThinking !== 'undefined' && aiThinking) return false;
-    const isLocalPure = currentMode === 'pass-and-play' || (!gameId && currentMode === 'local');
-    if (!isLocalPure && piece.charAt(0) !== myColor) {
-        showToast('¡No puedes mover las piezas del rival!', '🚫');
-        return false;
-    }
-    if (currentMode === 'ai' || currentMode === 'maestro' || currentMode === 'study' || currentMode === 'exercises') {
-        if ((currentMode === 'ai' || currentMode === 'maestro') && game.turn() !== myColor) {
-            showToast('Espera tu turno...', '⏳');
-            return false;
-        }
-        if (game.turn() !== piece.charAt(0)) return false;
-    }
-    if (!isLocalPure && game.turn() !== piece.charAt(0)) return false;
-    return true;
-}
-
-// ARROW DRAWING UTILS (Required for hints)
-function clearArrowCanvas() {
-    const cvs = document.getElementById('arrowCanvas');
-    if (!cvs) return;
-    const ctx = cvs.getContext('2d');
-    ctx.clearRect(0, 0, cvs.width, cvs.height);
-}
-
-function drawBestMoveArrow(moveLAN) {
-    // BUG #2 FIX: Ensure arrow is only drawn if hints are active
-
-    const cvs = document.getElementById('arrowCanvas');
-    if (!cvs) return;
-
-    const ctx = cvs.getContext('2d');
-
-    // Clear first to avoid trails
-    ctx.clearRect(0, 0, cvs.width, cvs.height);
-
-    if (!moveLAN || !hintsActive) return;
-
-    // Ajustar canvas al tamaño real
-    const r = cvs.getBoundingClientRect();
-    cvs.width = r.width;
-    cvs.height = r.height;
-
-    const sqSize = cvs.width / 8;
-
-    const from = moveLAN.substring(0, 2);
-    const to = moveLAN.substring(2, 4);
-
-    const cols = 'abcdefgh';
-    const rows = '87654321';
-
-    const isWhite = board.orientation() === 'white';
-
-    const colIdx = (c) => isWhite ? cols.indexOf(c) : 7 - cols.indexOf(c);
-    const rowIdx = (r) => isWhite ? rows.indexOf(r) : 7 - rows.indexOf(r);
-
-    const x1 = colIdx(from[0]) * sqSize + sqSize / 2;
-    const y1 = rowIdx(from[1]) * sqSize + sqSize / 2;
-    const x2 = colIdx(to[0]) * sqSize + sqSize / 2;
-    const y2 = rowIdx(to[1]) * sqSize + sqSize / 2;
-
-    // Draw Arrow
-    ctx.beginPath();
-    ctx.strokeStyle = '#fbbf24'; // Amber-400
-    ctx.lineWidth = 6;
-    ctx.lineCap = 'round';
-    ctx.globalAlpha = 0.7;
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.stroke();
-
-    // Arrowhead
-    const angle = Math.atan2(y2 - y1, x2 - x1);
-    ctx.beginPath();
-    ctx.fillStyle = '#fbbf24';
-    ctx.moveTo(x2, y2);
-    ctx.lineTo(x2 - 15 * Math.cos(angle - Math.PI / 6), y2 - 15 * Math.sin(angle - Math.PI / 6));
-    ctx.lineTo(x2 - 15 * Math.cos(angle + Math.PI / 6), y2 - 15 * Math.sin(angle + Math.PI / 6));
-    ctx.fill();
-}
-
-
 $(document).ready(() => {
     board = Chessboard('myBoard', {
-        showNotation: true, // ✅ BUG #4 FIX
         draggable: true,
         position: 'start',
         pieceTheme: getPieceTheme,
-        onDragStart: onDragStart,
         onDrop: onDrop,
-        onSnapEnd: onSnapEnd
+        onSnapEnd: onSnapEnd,
+        onClick: onSquareClick
     });
+
+    console.log("✅ Tablero inicializado con onClick, onDrop y onSnapEnd");
+
+    // Update stats on load
+    updateStudyStats();
 
     // Population now handled globally at line 2495
 
@@ -1511,8 +1480,7 @@ $(document).ready(() => {
         }
     });
 
-    // Sidebar Online Logic
-    $('#btn-create').click(() => window.createOnlineChallenge(true));
+    // Online creation removed.
     $('#hamburger-menu').click(() => { $('#side-drawer').addClass('open'); $('#side-drawer-overlay').fadeIn(); });
     $('#side-drawer-overlay').click(() => { $('#side-drawer').removeClass('open'); $('#side-drawer-overlay').fadeOut(); });
 
@@ -1531,12 +1499,10 @@ $(document).ready(() => {
     $('#side-drawer-overlay').off('click').click(() => { $('#side-drawer').removeClass('open'); $('#side-drawer-overlay').fadeOut(); });
 
     // Flip Handler
-    // BUG #3: Board Flip Unificado
-    $('#btn-flip, #btn-flip-mobile, #btn-flip-pc, #btn-flip-pc-local, #btn-flip-pc-sidebar').off('click').on('click', function () {
+    $('#btn-flip, #btn-flip-mobile, #btn-flip-board, #btn-flip-small').off('click').on('click', function () {
         if (typeof board !== 'undefined' && board.flip) {
             board.flip();
             showToast("Tablero girado", "🔄");
-            if ($('#mobile-actions-menu').is(':visible')) $('#mobile-actions-menu').fadeOut();
         }
     });
 
@@ -1565,13 +1531,34 @@ $(document).ready(() => {
     $('#board-theme-sel').off('change').change(function () {
         const theme = $(this).val();
         localStorage.setItem('chess_board_theme', theme);
-        let colors = { light: '#f0d9b5', dark: '#b58863' };
-        if (theme === 'wood') colors = { light: '#eec', dark: '#8b4513' };
-        if (theme === 'neon') colors = { light: '#1e293b', dark: '#0f172a' };
-        if (theme === 'forest') colors = { light: '#acc', dark: '#2e8b57' };
+        let colors = { light: '#f0d9b5', dark: '#b58863' }; // Classic
+
+        if (theme === 'wood') colors = { light: '#fdf5e6', dark: '#8b4513' }; // Marfil y Madera
+        if (theme === 'neon') colors = { light: '#1e293b', dark: '#38bdf8' };
+        if (theme === 'forest') colors = { light: '#acc', dark: '#2d5a27' };
+        if (theme === 'slate') colors = { light: '#94a3b8', dark: '#1e293b' };
+
         $('.white-1e1d7').css('background', colors.light);
         $('.black-3c85d').css('background', colors.dark);
+
+        // Update root vars for CSS access
+        document.documentElement.style.setProperty('--tile-light', colors.light);
+        document.documentElement.style.setProperty('--tile-dark', colors.dark);
     });
+
+    $('#app-theme-sel').off('change').change(function () {
+        const theme = $(this).val();
+        localStorage.setItem('chess_app_theme', theme);
+        if (theme === 'light') {
+            $('body').addClass('light-theme');
+        } else {
+            $('body').removeClass('light-theme');
+        }
+    });
+
+    // Auth initial load theme
+    const savedAppTheme = localStorage.getItem('chess_app_theme') || 'dark';
+    $('#app-theme-sel').val(savedAppTheme).trigger('change');
 
 
     $('#piece-theme-sel').off('change').change(function () {
@@ -1582,7 +1569,6 @@ $(document).ready(() => {
             draggable: true,
             position: board.position(),
             pieceTheme: getPieceTheme,
-            onDragStart: onDragStart,
             onDrop, onSnapEnd
         });
         $('#board-theme-sel').trigger('change');
@@ -1599,8 +1585,13 @@ $(document).ready(() => {
     // Initial load fixes
     const savedPT = localStorage.getItem('chess_piece_theme') || 'wikipedia';
     $('#piece-theme-sel').val(savedPT);
-    $('#board-theme-sel').val(localStorage.getItem('chess_board_theme') || 'classic').trigger('change');
-    if (savedPT !== 'wikipedia') $('#piece-theme-sel').trigger('change');
+    const savedBT = localStorage.getItem('chess_board_theme') || 'classic';
+    $('#board-theme-sel').val(savedBT).trigger('change');
+
+    if (savedPT !== 'wikipedia') {
+        // Force piece reload
+        $('#piece-theme-sel').trigger('change');
+    }
 
     // Force board render multiple stages
     setTimeout(() => {
@@ -1615,8 +1606,7 @@ $(document).ready(() => {
         updateUI();
     }, 1500);
 
-    // Button Bindings
-    $('#btn-toggle-hints-study').click(toggleHints);
+    // Ensure tab-btn click also resizes board
     $('.tab-btn').on('click', function () {
         setTimeout(() => { if (board) board.resize(); }, 100);
     });
@@ -1873,42 +1863,37 @@ window.joinGame = (id, oppName, time) => {
 };
 
 window.getEloTypeFromTime = function (mins) {
-    if (mins <= 1) return 'elo1';      // Bullet
-    if (mins <= 5) return 'elo3';      // Blitz (incluye 3 y 5)
-    if (mins <= 30) return 'elo10';    // Rapid (hasta 30m)
-    if (mins >= 1440) return 'eloDaily'; // Daily / Correspondence
-    return 'elo'; // Standard fallback
+    if (mins <= 1) return 'elo1';
+    if (mins <= 3) return 'elo3';
+    if (mins >= 1440) return 'eloDaily';
+    return 'elo10';
 };
 
 window.updateElo = function (oppElo, result, isPuzzle = false) {
     if (!isAuth) return;
 
     let type = 'elo';
-    let currentRating = userElo;
+    let currentRating = userEloRapid; // default
 
     if (isPuzzle) {
         type = 'puz';
         currentRating = userPuzzleElo;
     } else {
-        // Obtener el tiempo de la partida actual para determinar categoría
-        let mins = 10; // default
-        const activeSelector = (currentMode === 'ai' || currentMode === 'maestro') ? '#maestro-time-sel' : '#online-time-sel-lobby';
-        mins = parseInt($(activeSelector).val()) || 10;
-
+        const activeSelector = currentMode === 'ai' || currentMode === 'maestro' ? '#ai-time-selector' : '#local-time-selector';
+        const mins = parseInt($(activeSelector + ' .time-btn.active').data('time')) || 10;
         type = getEloTypeFromTime(mins);
 
         if (type === 'elo1') currentRating = userEloBullet;
         else if (type === 'elo3') currentRating = userEloBlitz;
         else if (type === 'eloDaily') currentRating = userEloDaily;
-        else if (type === 'elo10') currentRating = userEloRapid;
-        else currentRating = userElo;
+        else currentRating = userEloRapid;
     }
 
     const K = 32;
     const expected = 1 / (1 + Math.pow(10, (oppElo - currentRating) / 400));
     const newElo = Math.round(currentRating + K * (result - expected));
 
-    // Actualizar localmente y persistir
+    // Update locally
     if (type === 'puz') {
         userPuzzleElo = newElo;
         localStorage.setItem('chess_puz_elo', newElo);
@@ -1916,27 +1901,11 @@ window.updateElo = function (oppElo, result, isPuzzle = false) {
         if (type === 'elo1') { userEloBullet = newElo; localStorage.setItem('chess_elo_1', newElo); }
         else if (type === 'elo3') { userEloBlitz = newElo; localStorage.setItem('chess_elo_3', newElo); }
         else if (type === 'eloDaily') { userEloDaily = newElo; localStorage.setItem('chess_elo_daily', newElo); }
-        else if (type === 'elo10') { userEloRapid = newElo; localStorage.setItem('chess_elo_10', newElo); }
-        else { userElo = newElo; localStorage.setItem('chess_user_elo', newElo); }
+        else { userEloRapid = newElo; localStorage.setItem('chess_elo_10', newElo); }
     }
 
-    // Informar al servidor
-    if (socket) {
-        socket.emit('update_elo', {
-            user: userName,
-            elo: newElo,
-            type: type
-        });
-    }
-
+    if (socket) socket.emit('update_elo', { user: userName, elo: newElo, type: type });
     updateAuthUI();
-
-    // Feedback visual en el panel del coach
-    const catName = type === 'puz' ? 'Puzzle' : (type === 'elo1' ? 'Bullet' : (type === 'elo3' ? 'Blitz' : (type === 'elo10' ? 'Rapid' : (type === 'eloDaily' ? 'Daily' : 'ELO'))));
-    $('#coach-txt').append(`<div style="margin-top:10px; padding:5px; background:rgba(34,197,94,0.1); border-radius:5px; border-left:3px solid #22c55e;">
-        <b style="color:#22c55e">NUEVO ELO ${catName}: ${newElo}</b> 
-        <span style="font-size:0.7rem; color:var(--text-muted)">(${result === 1 ? '+' + (newElo - currentRating) : (newElo - currentRating)})</span>
-    </div>`);
 };
 
 socket.on('game_start', function (data) {
@@ -2155,7 +2124,7 @@ $('#btn-start-ai').click(() => {
         currentOpeningName = null;
         currentOpeningComments = [];
         console.log("🆓 Juego libre activado.");
-        $('#coach-txt').html("<b>Modo Maestro Activo.</b><br>Juega contra la IA y recibe consejos en tiempo real.");
+        $('#coach-txt').html("<b>Modo Maestro Activo.</b><br>Juega contra Stockfish y recibe consejos.");
     }
 
     currentMode = 'ai';
@@ -2218,7 +2187,7 @@ $('#btn-analyze-game').click(() => {
     isJ = true;
     stockfish.postMessage('stop');
     stockfish.postMessage('position fen ' + game.fen());
-    stockfish.postMessage('go depth 14');
+    stockfish.postMessage('go depth 22 movetime 8000');
 });
 
 // --- CHESSIS-STYLE FULL ANALYSIS LOGIC ---
@@ -2310,13 +2279,47 @@ function calculateAccuracy(prevEval, currentEval, turn) {
 }
 
 // --- ARROW DRAWING LOGIC ---
-function drawBestMoveArrow(move) {
+function drawBestMoveArrow(move, color = 'rgba(56, 189, 248, 0.7)', clear = true) {
     const canvas = document.getElementById('arrowCanvas');
-    if (canvas) {
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-    return; // Desactivado por petición del usuario
+    if (!canvas || !$(canvas).is(':visible')) return;
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+    if (clear) ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (move === null) return;
+
+    const from = move.substring(0, 2);
+    const to = move.substring(2, 4);
+    const p1 = getSqPos(from);
+    const p2 = getSqPos(to);
+
+    const headLen = 15;
+    const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+
+    let drawColor = color;
+    if (color === 'green') drawColor = 'rgba(34, 197, 94, 0.8)';
+    if (color === 'red') drawColor = 'rgba(239, 68, 68, 0.8)';
+    if (color === 'orange') drawColor = 'rgba(245, 158, 11, 0.8)';
+
+    ctx.strokeStyle = drawColor;
+    ctx.lineWidth = 10; // Un poco más gruesa para mejor visibilidad
+    ctx.lineCap = 'round';
+    ctx.setLineDash([5, 15]); // Animación base (estática pero distintiva)
+
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+
+    ctx.setLineDash([]); // Reset para la punta
+    ctx.beginPath();
+    ctx.moveTo(p2.x, p2.y);
+    ctx.lineTo(p2.x - headLen * Math.cos(angle - Math.PI / 6), p2.y - headLen * Math.sin(angle - Math.PI / 6));
+    ctx.moveTo(p2.x, p2.y);
+    ctx.lineTo(p2.x - headLen * Math.cos(angle + Math.PI / 6), p2.y - headLen * Math.sin(angle + Math.PI / 6));
+    ctx.stroke();
 }
 
 function isBookMove(moveSan) {
@@ -2426,7 +2429,7 @@ function getPositionEval(fen) {
     return new Promise((resolve) => {
         stockfish.postMessage('stop');
         stockfish.postMessage('position fen ' + fen);
-        stockfish.postMessage('go depth 14');
+        stockfish.postMessage('go depth 20 movetime 4000');
 
         const handler = (e) => {
             const l = e.data;
@@ -2454,6 +2457,58 @@ function getPositionEval(fen) {
         };
         stockfish.addEventListener('message', handler);
     });
+}
+
+async function fetchOpeningFromLichess() {
+    const history = game.history();
+    if (history.length === 0) return null;
+    try {
+        const moves = history.join(',');
+        const response = await fetch(`https://explorer.lichess.ovh/masters?play=${moves}`);
+        const data = await response.json();
+        if (data.opening) {
+            return `${data.opening.name} (${data.opening.eco})`;
+        }
+    } catch (e) { console.error("Error Lichess API:", e); }
+    return null;
+}
+
+function explainTactics() {
+    const history = game.history({ verbose: true });
+    if (history.length === 0) return alert("El Maestro dice: Controla el centro y desarrolla piezas en la apertura.");
+
+    const lastMove = history[history.length - 1];
+    const ev = window.currentEval || 0.0;
+
+    let detail = `<div style="text-align:left; font-size:0.8rem;"><b>Análisis del Maestro:</b><br><br>`;
+
+    if (ev > 1.5) detail += "⚪ Las Blancas tienen una ventaja clara. Busca presionar las debilidades creadas.<br>";
+    else if (ev < -1.5) detail += "⚫ Las Negras están mejor. Mantén la solidez y contraataca.<br>";
+    else detail += "⚖️ La posición está equilibrada. Cada detalle cuenta.<br>";
+
+    if (lastMove.captured) detail += `✅ Capturar en ${lastMove.to} fue una decisión táctica concreta. `;
+    if (game.in_check()) detail += "⚠️ ¡El rey oponente está bajo ataque directo! ";
+
+    const centerSquares = ['d4', 'd5', 'e4', 'e5'];
+    if (centerSquares.includes(lastMove.to)) detail += "🎯 Dominar el centro te da libertad de movimiento. ";
+
+    if (window.pvList && window.pvList[0]) {
+        detail += `<br><br>💡 Sugerencia técnica: <b>${window.pvList[0].move}</b> es la continuación más precisa según mi cálculo profundo.`;
+    }
+
+    detail += "</div>";
+
+    showToast("Explicación cargada", "💡");
+    $('#coach-txt').append(`<div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px; background:rgba(0,0,0,0.2); border-radius:5px; padding:8px;">${detail}</div>`);
+}
+
+function showMoveTooltip(square) {
+    if (!window.pvList || !window.pvList[0]) return;
+    const best = window.pvList[0];
+    const ev = best.eval || 0;
+    if (hintsActive) {
+        showToast(`Continuación óptima: ${best.move} (${ev > 0 ? '+' : ''}${ev.toFixed(1)})`, "🎯");
+    }
 }
 
 $('#btn-full-analysis').click(analyzeFullGame);
@@ -2536,22 +2591,15 @@ window.updateAuthUI = function () {
 
         // Update drawer Elo Summary
         $('#drawer-user-elo').html(`
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-top:5px;">
-                <span style="color:#ef4444">Bullet: ${userEloBullet}</span>
-                <span style="color:#f59e0b">Blitz: ${userEloBlitz}</span>
-                <span style="color:var(--accent)">Rapid: ${userEloRapid}</span>
-                <span style="color:#a78bfa">Daily: ${userEloDaily}</span>
-            </div>
+            <div style="margin-top:5px; color:var(--accent); font-weight:700;">Nivel General: ${userElo}</div>
             <div style="margin-top:5px; color:#3b82f6">Puzzles: ${userPuzzleElo}</div>
         `);
 
-        $('#btn-delete-account, #auth-delete-area').show();
         $('#guest-access-section').hide();
     } else {
         $('#btn-auth-trigger').show();
         $('#btn-auth-drawer').show();
         $('#btn-logout-drawer').hide();
-        $('#btn-delete-account, #auth-delete-area').hide();
 
         $('#drawer-user-name').text("Invitado");
         $('#my-name-display').text("Invitado");
@@ -2562,9 +2610,9 @@ updateAuthUI();
 
 $('.mode-pill').on('click', function () {
     const mode = $(this).data('mode');
-    if (mode === 'ai') $('#opp-name').text('Stockfish');
-    else if (mode === 'local') $('#opp-name').text('Oponente Online');
-    else $('#opp-name').text('Oponente');
+    if (mode === 'ai') $('#opp-name').text('Maestro IA');
+    else if (mode === 'study') $('#opp-name').text('Análisis');
+    else $('#opp-name').text('Práctica');
 });
 
 $('#btn-register-submit').click(() => {
@@ -2591,6 +2639,7 @@ $('#btn-auth-submit').click(() => {
     if (!socket.connected) return alert("❌ No hay conexión con el servidor. Asegúrate de iniciar 'node server.js'");
     if (!name || !pass) return alert("Completa los campos.");
     if (isReg && !email) return alert("Escribe un email.");
+
     if (isReg) {
         socket.emit('register', { user: name, pass: pass, email: email });
     } else {
@@ -2598,255 +2647,36 @@ $('#btn-auth-submit').click(() => {
     }
 });
 
-// --- AUTH LOGIC (REST API) ---
-const AUTH_API = (window.location.protocol === 'file:' ? 'http://localhost:3000' : window.location.origin) + '/api/auth';
-
-async function fetchWithAuth(url, options = {}) {
-    let token = sessionStorage.getItem('accessToken');
-    // Note: We use sessionStorage for access token for better security (cleared on close), 
-    // but we can use localStorage for refreshToken to persist "remember me" behavior if desired.
-    // For now we persist seamless login via existing localStorage mechanism adapted.
-
-    // Backwards compat with existing code using 'chess_token' in localStorage
-    if (!token) token = localStorage.getItem('chess_token');
-
-    const headers = Object.assign({}, options.headers, {
-        'Content-Type': 'application/json'
-    });
-
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    let response = await fetch(url, { ...options, headers });
-
-    if (response.status === 401 || response.status === 403) {
-        // Try refresh
-        const refreshToken = localStorage.getItem('chess_refresh_token');
-        if (refreshToken) {
-            const refreshRes = await fetch(`${AUTH_API}/refresh`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: refreshToken })
-            });
-
-            if (refreshRes.ok) {
-                const data = await refreshRes.json();
-                sessionStorage.setItem('accessToken', data.accessToken);
-                localStorage.setItem('chess_token', data.accessToken); // Sync for legacy checks
-                headers['Authorization'] = `Bearer ${data.accessToken}`;
-                response = await fetch(url, { ...options, headers });
-            } else {
-                // Refresh failed - Logout
-                logout();
-            }
-        }
-    }
-    return response;
-}
-
-$('#btn-auth-submit').off('click').on('click', async function () {
-    const user = $('#auth-user').val().trim();
-    const pass = $('#auth-pass').val().trim();
-    const email = $('#auth-email').val().trim();
-    const isRegister = $('#auth-switch').text().includes('Iniciar');
-
-    if (!user || !pass) return showToast("Faltan datos", "⚠️");
-
-    $('#btn-auth-submit').prop('disabled', true).text("Cargando...");
-
-    try {
-        const route = isRegister ? '/register' : '/login';
-        const body = { user, pass };
-        if (isRegister) body.email = email;
-
-        const res = await fetch(`${AUTH_API}${route}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) throw new Error(data.error || 'Error en autenticación');
-
-        // SUCCESS
-        handleAuthSuccess(data);
-        $('#auth-modal').hide();
-        showToast(`Bienvenido ${user}`, "👋");
-
-    } catch (e) {
-        showToast(e.message, "❌");
-    } finally {
-        $('#btn-auth-submit').prop('disabled', false).text(isRegister ? "REGISTRARSE" : "ENTRAR");
-    }
-});
-
-function handleAuthSuccess(data) {
-    localStorage.setItem('chess_token', data.accessToken);
-    localStorage.setItem('chess_refresh_token', data.refreshToken); // New Refresh Token
-    sessionStorage.setItem('accessToken', data.accessToken);
-
-    localStorage.setItem('chess_is_auth', 'true');
-    localStorage.setItem('chess_username', data.user);
-
-    // Sync User Vars
-    userName = data.user;
-    isAuth = true;
-    userElo = data.elo;
-
-    // UI Updates
-    updateUserDisplay();
-
-    // RECONNECT SOCKET with new token
-    if (socket) {
-        socket.auth = { token: data.accessToken };
-        socket.disconnect().connect();
-    }
-}
-
-function logout() {
-    // Call API logout if efficient, but mainly clear client
-    const rt = localStorage.getItem('chess_refresh_token');
-    if (rt) {
-        fetch(`${AUTH_API}/logout`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: rt })
-        }).catch(console.error);
-    }
-
-    localStorage.removeItem('chess_token');
-    localStorage.removeItem('chess_refresh_token');
-    sessionStorage.removeItem('accessToken');
-    localStorage.setItem('chess_is_auth', 'false');
-    localStorage.removeItem('chess_username');
-
-    isAuth = false;
-    userName = "Invitado";
-    updateUserDisplay();
-
-    if (socket) {
-        socket.auth = {};
-        socket.disconnect().connect();
-    }
-    showToast("Sesión cerrada", "👋");
-    $('#drawer-user-card').hide(); // updateUI handles this usually?
-    $('#btn-logout-drawer').hide();
-}
-
-
-$('#auth-switch').off('click').on('click', function () {
-    const isReg = $(this).text().includes('Regístrate');
-    if (isReg) {
-        $('#auth-title').text("REGISTRO");
-        $('#reg-group').slideDown();
-        $('#btn-auth-submit').text("REGISTRARSE");
-        $(this).html('¿Ya tienes cuenta? <span style="color:var(--accent)">Iniciar Sesión</span>');
-    } else {
-        $('#auth-title').text("INICIAR SESIÓN");
-        $('#reg-group').slideUp();
-        $('#btn-auth-submit').text("ENTRAR");
-        $(this).html('¿No tienes cuenta? <span style="color:var(--accent)">Regístrate</span>');
-    }
-});
-
-// --- UPDATE UI USER DISPLAY ---
-function updateUserDisplay() {
-    if (isAuth) {
-        $('#my-name-display').text(userName + ` (${userElo})`);
-        $('#drawer-user-name').text(userName);
-        $('#drawer-user-elo').text("ELO: " + userElo);
-        $('#btn-auth-trigger').hide(); // Hide login icon in header
-        $('#btn-auth-drawer').hide();
-        $('#btn-logout-drawer').show();
-        $('#btn-delete-account').show();
-        $('#guest-access-section').hide();
-    } else {
-        $('#my-name-display').text("Invitado");
-        $('#drawer-user-name').text("Invitado");
-        $('#btn-auth-trigger').show();
-        $('#btn-auth-drawer').show();
-        $('#btn-logout-drawer').hide();
-        $('#btn-delete-account').hide();
-        // Show guest prompt only in menu
-        if ($('#menu-root').hasClass('active')) $('#guest-access-section').show();
-    }
-}
-
-// ON LOAD
-updateUserDisplay();
-
-// --- SOCKET AUTH HANDLERS (LEGACY COMPAT FOR UPDATE_ELO ETC) ---
-socket.on('auth_error', (msg) => {
-    showToast(msg.message || msg, '❌');
+$('#btn-show-pass').mousedown(function () {
+    $('#auth-pass').attr('type', 'text');
+}).mouseup(function () {
+    $('#auth-pass').attr('type', 'password');
+}).mouseleave(function () {
+    $('#auth-pass').attr('type', 'password');
 });
 
 socket.on('auth_success', (data) => {
-    // Sync data if socket auto-reconnects with token
-    console.log("Socket Auth Verified for:", data.user);
-    // Don't overwrite tokens here unless server sends new ones, just update stats
-    userElo = data.elo;
+    userName = data.user;
+    userElo = data.elo || 500;
+    userPuzzleElo = data.puzElo || 500;
+    isAuth = true;
 
-    // Sync specific ELOs if present
-    userPuzzleElo = data.puzElo || userPuzzleElo;
-    // ... (update other Elos)
-    updateUserDisplay();
-});
-socket.on('game_start', (data) => {
-    console.log("🎮 Game started:", data);
-    gameId = data.gameId;
-    myColor = data.white === userName ? 'w' : 'b';
+    localStorage.setItem('chess_username', userName);
+    localStorage.setItem('chess_is_auth', 'true');
+    localStorage.setItem('chess_elo_1', userEloBullet);
+    localStorage.setItem('chess_elo_3', userEloBlitz);
+    localStorage.setItem('chess_elo_10', userEloRapid);
+    localStorage.setItem('chess_elo_daily', userEloDaily);
+    localStorage.setItem('chess_puz_elo', userPuzzleElo);
+    if (data.token) localStorage.setItem('chess_token', data.token);
 
-    game.reset();
-    board.position('start');
-    board.orientation(myColor === 'w' ? 'white' : 'black');
-
-    whiteTime = data.time * 60;
-    blackTime = whiteTime;
-
-    $('#my-timer').text(formatTime(myColor === 'w' ? whiteTime : blackTime));
-    $('#opp-timer').text(formatTime(myColor === 'w' ? blackTime : whiteTime));
-
-    setMode('local');
-    startClock();
-    showToast("¡Partida iniciada!", "⚔️");
+    updateAuthUI();
+    $('#auth-modal').hide();
+    showToast("¡Bienvenido, " + userName + "!", "👋");
 });
 
-socket.on('opponent_joined', (data) => {
-    console.log("👥 Opponent joined:", data);
-    gameId = data.gameId;
-    myColor = data.white === userName ? 'w' : 'b';
-
-    board.orientation(myColor === 'w' ? 'white' : 'black');
-
-    whiteTime = data.time * 60;
-    blackTime = whiteTime;
-
-    $('#my-timer').text(formatTime(myColor === 'w' ? whiteTime : blackTime));
-    $('#opp-timer').text(formatTime(myColor === 'w' ? blackTime : whiteTime));
-
-    if (data.fen && data.fen !== 'start') {
-        game.load(data.fen);
-        board.position(data.fen);
-    }
-
-    startClock();
-    showToast("Oponente conectado", "👥");
-});
-
-socket.on('move', (data) => {
-    console.log("♟️ Move received:", data);
-    game.move(data.move);
-    board.position(game.fen());
-
-    whiteTime = data.whiteTime;
-    blackTime = data.blackTime;
-
-    $('#my-timer').text(formatTime(myColor === 'w' ? whiteTime : blackTime));
-    $('#opp-timer').text(formatTime(myColor === 'w' ? blackTime : whiteTime));
-
-    updateUI(true);
-    checkGameOver();
-});
+// Redundant ready block merged into the main one at line 1254.
+// Socket listeners for online play removed.
 
 updateAuthUI();
 
@@ -2862,7 +2692,7 @@ const opHtml = ACTIVE_OPENINGS.map((group, groupIdx) => {
     return optgroup + `</optgroup>`;
 }).join('');
 
-$('#opening-sel, #opening-sel-main, #ai-opening-practice, #maestro-opening-sel, #opening-sel-universal').append(opHtml);
+$('#opening-sel, #opening-sel-main, #ai-opening-practice, #maestro-opening-sel').append(opHtml);
 
 var studyMoves = [];
 var studyIndex = 0;
@@ -2917,47 +2747,30 @@ $('#btn-study-prev').click(() => {
 
 // NEW UNIFIED HINT TOGGLE (Study & AI)
 const toggleHints = (btn) => {
-    // BUG #5 FIX: Only allow hints in specific modes
-    const allowedModes = ['local', 'ai', 'maestro', 'study', 'pass-and-play'];
-    if (!allowedModes.includes(currentMode)) {
-        showToast("Pistas no disponibles en este modo", "⚠️");
-        return;
-    }
+    if (currentMode === 'exercises') return; // No hints in puzzles
     hintsActive = !hintsActive;
     const txt = hintsActive ? "💡 PISTAS: ON" : "💡 ACTIVAR PISTAS";
-
-    // Actualizar todos los botones de pistas posibles
-    $('#btn-ai-hint, #btn-suggest-move, #btn-toggle-hints-study, #btn-hint-main, #btn-hint-mobile-bar').text(txt).toggleClass('active', hintsActive);
+    $('#btn-ai-hint, #btn-suggest-move').text(txt).toggleClass('active', hintsActive);
 
     if (hintsActive) {
-        if (!window.currentEval) $('#coach-txt').text("Analizando posición...");
+        $('#coach-txt').text("Analizando posición...");
         if (stockfish) {
-            updateUI(false); // No, don't move, just analyze
-            // Actually updateUI triggers analysis. But updateUI(true) triggers sounds and stuff.
-            // We need a way to just trigger analysis.
-            // But updateUI call stockfish go.
-
-            // Let's just force a re-analysis
-            stockfish.postMessage('stop');
-            stockfish.postMessage('position fen ' + game.fen());
-            stockfish.postMessage('go depth 15');
+            updateUI(true); // Force re-analysis
         }
     } else {
         $('.square-55d63').removeClass('highlight-hint');
         $('#best-move-display').hide();
-        drawBestMoveArrow(null); // Clear arrow
-
-        // Solo restaurar texto si no estamos en un modo que genera comentarios automáticos
-        if (!analysisActive && currentMode !== 'ai' && currentMode !== 'maestro' && currentMode !== 'study') {
-            $('#coach-txt').text("Bienvenido. Juega una partida o analiza una posición para recibir mis consejos.");
-        }
+        if (!analysisActive) $('#coach-txt').text("Bienvenido. Juega una partida o analiza una posición para recibir mis consejos.");
     }
 };
 
 // Unbind old handlers and bind new one
 $('#btn-suggest-move, #btn-ai-hint, #btn-hint-main, #btn-hint-mobile-bar').off('click').on('click', function () { toggleHints(this); });
 
-
+$('#btn-flip, #btn-flip-mobile, #btn-flip-pc').off('click').on('click', function () {
+    board.flip();
+    if ($('#mobile-actions-menu').is(':visible')) $('#mobile-actions-menu').fadeOut();
+});
 
 
 // El manejador antiguo de .mode-pill ha sido eliminado porque ahora usamos setMode() y showSubMenu()
@@ -2967,21 +2780,13 @@ $('#btn-hint-main').click(function () {
 });
 
 // NEW MENU LOGIC
-window.showSubMenu = function (id, addToHistory) {
-    if (addToHistory === undefined) addToHistory = true;
-    console.log("Showing submenu:", id);
+window.showSubMenu = function (id, addToHistory = true) {
     $('.menu-step').removeClass('active');
+    $('#menu-' + id).addClass('active');
 
-    // Si el id ya tiene 'menu-', usarlo tal cual, si no, prepender 'menu-'
-    const finalId = id.startsWith('menu-') ? id : 'menu-' + id;
-    $('#' + finalId).addClass('active');
-
+    // Manage History
     if (addToHistory) {
-        history.pushState({ view: 'menu', id: id }, '', '#' + id);
-    }
-
-    if (id === 'root' || id === 'menu-root') {
-        exitGameView();
+        history.pushState({ view: 'menu', id: id }, '', '#menu-' + id);
     }
 
     if (id === 'lobby') {
@@ -2993,22 +2798,15 @@ window.showSubMenu = function (id, addToHistory) {
 };
 
 window.exitGameView = function () {
-    console.log("Exiting game view, returning to menu...");
     $('body').removeClass('board-active');
-    $('.game-sidebar-controls').hide();
+    $('#game-sidebar-controls').hide();
     $('#master-coach-panel').hide();
     $('#analysis-report-container').hide();
-    $('#study-extra-controls').hide();
-    $('.tab-content').removeClass('active');
+    $('#main-menu-container').show();
 
-    // Asegurar que el contenedor del menú principal se vea
-    $('#main-menu-container').fadeIn();
-
-    if (board) {
-        board.resize();
-        board.start();
-    }
+    // Al salir, resetear el tablero para que la próxima vez esté limpio
     game.reset();
+    board.start();
     aiPracticeLine = null;
     studyMoves = null;
 };
@@ -3018,13 +2816,6 @@ window.setMode = function (mode, addToHistory = true) {
 
     if (addToHistory) {
         history.pushState({ view: 'game', mode: mode }, '', '#game-' + mode);
-    }
-
-    // Mostrar/Ocultar controles extra de estudio (ahora también en modo AI)
-    if (mode === 'study' || mode === 'maestro' || mode === 'ai') {
-        $('#study-extra-controls').css('display', 'flex');
-    } else {
-        $('#study-extra-controls').hide();
     }
 
     // UI Mode Classes for CSS targeting
@@ -3041,7 +2832,7 @@ window.setMode = function (mode, addToHistory = true) {
     $('#main-menu-container').hide();
 
     // Activar controles laterales (PC) - SOLO botones de control
-    $('.game-sidebar-controls').fadeIn().css('display', 'flex');
+    $('#game-sidebar-controls').fadeIn().css('display', 'flex');
     $('body').addClass('board-active');
 
     // PC transition: Ensure board is visible and properly sized
@@ -3097,46 +2888,33 @@ window.setMode = function (mode, addToHistory = true) {
     } else if (mode === 'pass-and-play') {
         $('#opp-name').text('Oponente Local');
     } else {
-        $('#opp-name').text('Estudio Teórico');
-    }
-
-    // Gestionar visibilidad de tiempos (Ocultar en modo estudio)
-    if (mode === 'study') {
-        $('#my-timer, #opp-timer').fadeOut();
-    } else {
-        $('#my-timer, #opp-timer').fadeIn();
+        $('#opp-name').text('Oponente (Estudio)');
     }
 
     if (mode === 'ai' || mode === 'study' || mode === 'exercises' || mode === 'maestro') {
-        $('#master-coach-panel, #current-moves-sidebar').css('display', 'flex').hide().fadeIn();
+        $('#master-coach-panel').css('display', 'flex').hide().fadeIn();
         $('#btn-hint-main').css('display', 'flex').fadeIn();
         $('#btn-hint-mobile-bar').show();
 
-        // Auto-activar modo automático si entramos en AI o Maestro
-        if (mode === 'ai' || mode === 'maestro') {
-            opponentAutoMode = true;
-            syncOpponentModeUI();
-        }
+        // Ensure analysis starts immediately
+        setTimeout(() => {
+            isJ = true;
+            if (stockfish) {
+                stockfish.postMessage('stop');
+                stockfish.postMessage('position fen ' + game.fen());
+                stockfish.postMessage('go depth 15');
+            }
+        }, 300);
 
         if (mode === 'study' || mode === 'maestro') {
             hintsActive = true;
-            $('#btn-hint-main, #btn-ai-hint, #btn-toggle-hints-study, #btn-hint-mobile-bar').addClass('active').text("💡 PISTAS: ON");
+            $('#btn-hint-main, #btn-ai-hint, #btn-suggest-move').addClass('active').text("💡 PISTAS: ON");
         }
     } else {
         $('#master-coach-panel').hide();
         $('#btn-hint-main').hide();
         $('#btn-hint-mobile-bar').hide();
     }
-
-    // Ensure analysis starts immediately
-    setTimeout(() => {
-        isJ = true;
-        if (stockfish) {
-            stockfish.postMessage('stop');
-            stockfish.postMessage('position fen ' + game.fen());
-            stockfish.postMessage('go depth 15');
-        }
-    }, 300);
 
     // ADJUST MOBILE ACTIONS BAR BASED ON MODE
     if (mode === 'maestro' || mode === 'study') {
@@ -3164,7 +2942,9 @@ window.setMode = function (mode, addToHistory = true) {
         $('#puzzle-controls-bottom').hide();
     }
 
-    // Ensure board is CLEAN (no spare pieces) after being in editor
+    // Ensure board is properly initialized
+    // Note: Chessboard.js doesn't have a config() method, so we skip this check
+    /*
     if (board && board.config().sparePieces) {
         board.destroy();
         board = Chessboard('myBoard', {
@@ -3176,6 +2956,7 @@ window.setMode = function (mode, addToHistory = true) {
         });
         $(window).resize(board.resize);
     }
+    */
 };
 
 window.setPuzzleCat = function setPuzzleCat(cat) {
@@ -3198,11 +2979,14 @@ window.setPuzzleCat = function setPuzzleCat(cat) {
 
 
 window.startMaestroModeReal = function () {
+    console.log("🎮 Iniciando Modo Maestro...");
+
     const color = $('#maestro-color-sel').val();
     const mins = parseInt($('#maestro-time-sel').val());
 
     // Set myColor
     myColor = color === 'random' ? (Math.random() > 0.5 ? 'w' : 'b') : color;
+    console.log(`👤 Color del jugador configurado: ${myColor === 'w' ? 'Blancas' : 'Negras'}`);
 
     const diff = parseInt($('#maestro-diff-sel').val() || 15);
     $('#diff-sel').val(diff);
@@ -3212,6 +2996,8 @@ window.startMaestroModeReal = function () {
     board.orientation(myColor === 'w' ? 'white' : 'black');
     board.start();
     gameStarted = false;
+    aiThinking = false;
+    console.log("🔓 aiThinking reseteado a false");
 
     // Setup Timers
     whiteTime = mins * 60;
@@ -3246,10 +3032,14 @@ window.startMaestroModeReal = function () {
         currentOpeningName = null;
         currentOpeningComments = [];
         $('#coach-txt').html(`<div style="font-weight:bold; color:var(--text-main);">Maestro IA listo.</div><div style="font-size:0.75rem;">Modo de juego libre.</div>`);
+        console.log("🎲 Modo de juego libre (sin apertura específica)");
     }
 
     if (myColor === 'b') {
+        console.log("⚫ Jugador es Negras, IA moverá primero en 600ms");
         setTimeout(makeAIMove, 600);
+    } else {
+        console.log("⚪ Jugador es Blancas, esperando tu primer movimiento");
     }
 };
 
@@ -3361,6 +3151,10 @@ setInterval(function () {
     }
 }, 5000);
 
+// Definitive Flip Board Repair
+$(document).on('click', '#btn-flip, #btn-flip-mobile', function () {
+    if (typeof board !== 'undefined') board.flip();
+});
 
 // Manual Opening Handlers
 window.startTheoreticalStudy = function () {
@@ -3624,68 +3418,17 @@ $('#btn-pgn').click(function () {
 $('.menu-step').removeClass('active');
 $('#menu-root').addClass('active');
 
-socket.on('chat_message', (data) => {
-    const isMe = data.user === userName;
-    const cls = isMe ? 'me' : 'opp';
-    const sanitizedMsg = DOMPurify.sanitize(data.message);
-    const html = `<div class="chat-msg ${cls}"><b style="font-size:0.75rem;">${data.user}:</b> <span style="font-size:0.85rem;">${sanitizedMsg}</span></div>`;
-    $('#chat-box').append(html);
-    $('#chat-box').scrollTop($('#chat-box')[0].scrollHeight);
-    if (!isMe && currentMode === 'online') playSnd('move'); // Sound for chat
-});
-
-// Logout Handler using new function
+// Logout Handler
 $('#btn-logout-drawer').click(() => {
-    logout();
+    localStorage.removeItem('chess_token');
+    localStorage.removeItem('chess_username');
+    localStorage.removeItem('chess_is_auth');
+    location.reload();
 });
-
-// La función showSubMenu y exitGameView duplicada ha sido eliminada. Se usan las de arriba.
-
-window.syncOpponentModeUI = function () {
-    const $dot = $('#opp-mode-dot');
-    const $btn = $('#opp-move-toggle');
-    const $label = $('#opp-mode-label');
-    if (!$dot.length) return;
-
-    if (opponentAutoMode) {
-        $dot.css('left', 'calc(100% - 20px)');
-        $btn.css('background', 'var(--accent)');
-        $label.text('IA');
-    } else {
-        $dot.css('left', '2px');
-        $btn.css('background', '#475569');
-        $label.text('MANUAL');
-    }
-};
-
-window.toggleOpponentAutoMode = function () {
-    opponentAutoMode = !opponentAutoMode;
-    syncOpponentModeUI();
-
-    if (opponentAutoMode) {
-        showToast("El rival ahora moverá automáticamente", "🤖");
-        // Si es el turno de la IA, que mueva ya
-        if (game.turn() !== myColor) {
-            console.log("🤖 Triggering AI move from toggle");
-            setTimeout(makeAIMove, 300);
-        }
-    } else {
-        showToast("Mueve tú mismo por el rival", "👤");
-    }
-};
-
-window.resetGamePosition = function () {
-    if (confirm("¿Reiniciar tablero a la posición inicial?")) {
-        game.reset();
-        board.start();
-        historyPositions = ['start'];
-        currentHistoryIndex = 0;
-        updateUI();
-        showToast("Tablero reseteado", "🧹");
-    }
-};
 
 window.goBackToMenu = () => {
+    // If we have history, we might want to go back, but "Home" button usually means force root.
+    // We will push root state to be safe and clear view.
     exitGameView();
     showSubMenu('root');
 };
@@ -3695,11 +3438,13 @@ window.onpopstate = function (event) {
     if (event.state) {
         if (event.state.view === 'menu') {
             exitGameView();
-            showSubMenu(event.state.id, false);
+            showSubMenu(event.state.id, false); // false = don't push again
         } else if (event.state.view === 'game') {
+            // Restore game view if user goes forward to it
             setMode(event.state.mode, false);
         }
     } else {
+        // Root state (or initial)
         exitGameView();
         showSubMenu('root', false);
     }
@@ -3708,6 +3453,7 @@ window.onpopstate = function (event) {
 $('#btn-mobile-menu-back').click(function () {
     goBackToMenu();
 });
+
 
 // Helper para cambiar pestañas desde el drawer
 window.setTab = function (tabId) {
@@ -3721,100 +3467,6 @@ window.setTab = function (tabId) {
     }
 };
 
-// --- APERTURAS: TEORIA, ENTRENAMIENTO, EJERCICIOS ---
-let currentOpeningSubMode = 'theory';
-
-window.showOpeningLibrary = function (mode) {
-    currentOpeningSubMode = mode;
-    showSubMenu('menu-apertura-selector');
-
-    // Configurar UI del selector
-    const labels = {
-        theory: "📖 MODO TEORÍA: APRENDE LAS LÍNEAS",
-        training: "⚔️ ENTRENAMIENTO: JUEGA CONTRA IA",
-        exercises: "🧩 EJERCICIOS: TÁCTICA DE APERTURA"
-    };
-    $('#ap-sel-label').text(labels[mode]);
-
-    if (mode === 'training') {
-        $('#training-color-choice').show();
-    } else {
-        $('#training-color-choice').hide();
-    }
-};
-
-// Manejo de botones de color en el selector
-$(document).on('click', '.color-btn', function () {
-    $('.color-btn').removeClass('active');
-    $(this).addClass('active');
-});
-
-window.startOpeningModeFromSelector = function () {
-    const val = $('#opening-sel-universal').val();
-    if (!val) return alert("Selecciona una apertura.");
-
-    const parts = val.split('-');
-    const gIdx = parts[0];
-    const iIdx = parts[1];
-    const opening = ACTIVE_OPENINGS[gIdx].items[iIdx];
-
-    if (currentOpeningSubMode === 'theory') {
-        // Modo Teoría: Cargar y pasar a estudio
-        game.reset();
-        board.start();
-        studyMoves = opening.moves || opening.m;
-        studyIndex = 0;
-        currentOpeningName = opening.name;
-        currentOpeningComments = opening.comments || [];
-
-        setMode('study');
-
-        $('#coach-txt').html(`
-            <div style="font-size:1rem; font-weight:700; color:var(--accent); margin-bottom:8px;">${opening.name}</div>
-            <div style="font-size:0.85rem; line-height:1.5;">Usa las flechas (▶) para explorar la teoría. Te iré explicando cada jugada según avancemos.</div>
-        `);
-        showToast("Estudiando teoría", "📖");
-
-    } else if (currentOpeningSubMode === 'training') {
-        // Modo Entrenamiento: Configurar IA y color
-        const color = $('.color-btn.active').data('color') === 'white' ? 'w' : 'b';
-        myColor = color;
-
-        aiPracticeLine = opening.moves || opening.m;
-        aiPracticeIndex = 0;
-        currentOpeningName = opening.name;
-        currentOpeningComments = opening.comments || [];
-
-        game.reset();
-        board.orientation(color === 'w' ? 'white' : 'black');
-        board.start();
-
-        setMode('maestro');
-
-        $('#opp-name').text('Entrenamiento: ' + opening.name);
-        $('#coach-txt').html(`
-            <div style="font-size:0.9rem; font-weight:700; color:var(--accent); margin-bottom:10px;">CONFIGURACIÓN COMPLETADA</div>
-            <div style="font-size:0.85rem; line-height:1.5;">Estamos entrenando <b>${opening.name}</b>. Yo jugaré por mi bando siguiendo la teoría, ¡intenta recordarla!</div>
-        `);
-
-        if (color === 'b') {
-            setTimeout(makeAIMove, 600);
-        }
-        showToast("Entrenamiento iniciado", "⚔️");
-
-    } else if (currentOpeningSubMode === 'exercises') {
-        // Modo Ejercicios: Puzzles filtrados
-        const mappedTag = OPENING_TAG_MAP[opening.name] || opening.name.replace(/ /g, '_');
-        drillCategory = mappedTag;
-        setMode('exercises');
-        loadRandomPuzzle(0, mappedTag);
-        showToast("Retos de: " + opening.name, "🧩");
-    }
-
-    // Ya no llamamos a exitGameView() aquí porque queremos quedarnos en la partida.
-    // setMode ya ocultó el menú principal.
-};
-
 // PWA Service Worker Registration
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -3825,27 +3477,3 @@ if ('serviceWorker' in navigator) {
         });
     });
 }
-// --- DARSE DE BAJA ---
-window.confirmDeleteAccount = async function () {
-    if (confirm("🚨 ¿ESTÁS SEGURO? Esta acción es IRREVERSIBLE y borrará todos tus datos, partidas y ELO de forma permanente.")) {
-        const pass = prompt("Por favor, confirma tu contraseña para proceder con la baja:");
-        if (pass) {
-            // Usar la función de hash disponible en client_optimized.js
-            const hashed = (typeof hashPassword === 'function') ? await hashPassword(pass) : pass;
-            socket.emit('delete_account', { pass: hashed });
-        }
-    }
-};
-
-
-socket.on('account_deleted', (data) => {
-    alert(data.message);
-    localStorage.clear();
-    location.reload();
-});
-
-socket.on('auth_error', (data) => {
-    if (data.message.includes('borrar')) {
-        alert(data.message);
-    }
-});
