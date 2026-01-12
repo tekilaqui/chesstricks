@@ -1,0 +1,42 @@
+/* DOTS FOR LEGAL MOVES */
+.legal-dot {
+    width: 14px;
+    height: 14px;
+    background: rgba(33, 150, 243, 0.4);
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    /* Allows clicking through to the square */
+    z-index: 10;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+}
+
+.legal-dot:hover {
+    background: rgba(33, 150, 243, 0.8);
+}
+
+/* Ensure squares are positioned relatively so the absolute dot works */
+.square-55d63 {
+    position: relative !important;
+}
+
+/* Fix for potential board jitter */
+/* Sometimes adding elements or classes can shift layout if boundaries change. 
+   We ensure highlight classes don't add borders that change dimensions. */
+.highlight-selected {
+    box-shadow: inset 0 0 0 3px rgba(255, 255, 0, 0.7) !important;
+    /* Use box-shadow instead of border to prevent resizing */
+}
+
+.highlight-hint {
+    box-shadow: inset 0 0 0 3px rgba(255, 0, 0, 0.6) !important;
+}
+
+/* Ensure empty squares don't collapse or behave differently */
+.square-55d63 {
+    box-sizing: border-box;
+    /* This ensures passing or removing borders doesn't change outer width */
+}

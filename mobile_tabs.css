@@ -1,0 +1,73 @@
+/* Mobile Side Tabs - Floating on edges */
+.mobile-side-tab {
+    display: none;
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 35px;
+    height: 80px;
+    background: rgba(60, 60, 60, 0.85);
+    backdrop-filter: blur(10px);
+    border-radius: 6px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    z-index: 900;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mobile-side-tab:active {
+    transform: translateY(-50%) scale(0.95);
+    background: rgba(80, 80, 80, 0.9);
+}
+
+.mobile-tab-right {
+    right: 0;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right: none;
+}
+
+.mobile-tab-left {
+    left: 0;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left: none;
+}
+
+.tab-icon {
+    font-size: 18px;
+    opacity: 0.8;
+}
+
+.tab-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: rgba(255, 255, 255, 0.7);
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+}
+
+/* Show only on mobile when board is active */
+@media (max-width: 768px) {
+    body.board-active .mobile-side-tab {
+        display: flex;
+    }
+}
+
+/* Subtle hover effect */
+.mobile-side-tab:hover {
+    background: rgba(70, 70, 70, 0.9);
+    box-shadow: 0 3px 15px rgba(0, 0, 0, 0.4);
+}
+
+/* Hide when panel is open */
+.side-panel.mobile-open~.game-zone .mobile-side-tab {
+    opacity: 0.3;
+    pointer-events: none;
+}

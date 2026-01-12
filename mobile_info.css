@@ -1,0 +1,12 @@
+/* Mobile Info Button Visibility */
+.mobile-show-info {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .mobile-show-info {
+        display: inline-flex;
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--accent);
+    }
+}

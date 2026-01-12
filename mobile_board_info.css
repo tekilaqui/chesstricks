@@ -1,0 +1,160 @@
+/* Mobile Board Info Card - Above the board */
+.mobile-board-info {
+    display: none;
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.1), rgba(0, 188, 212, 0.1));
+    border: 1px solid rgba(33, 150, 243, 0.3);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    backdrop-filter: blur(10px);
+}
+
+.mobile-opening-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.opening-icon {
+    font-size: 14px;
+}
+
+.mobile-coach-comment {
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--text-muted);
+    font-style: italic;
+    padding-left: 20px;
+}
+
+/* Show only on mobile when board is active */
+@media (max-width: 768px) {
+    body.board-active .mobile-board-info {
+        display: block;
+    }
+}
+
+/* Mobile Move Quality Timeline */
+.mobile-move-timeline {
+    display: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    padding: 8px 0;
+    margin-bottom: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(33, 150, 243, 0.5) transparent;
+}
+
+.mobile-move-timeline::-webkit-scrollbar {
+    height: 4px;
+}
+
+.mobile-move-timeline::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.mobile-move-timeline::-webkit-scrollbar-thumb {
+    background: rgba(33, 150, 243, 0.5);
+    border-radius: 2px;
+}
+
+.move-pair {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    margin: 0 4px;
+    padding: 4px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.move-pair-number {
+    font-size: 10px;
+    color: #888;
+    margin-right: 6px;
+    font-weight: 800;
+    font-family: 'Outfit', sans-serif;
+}
+
+.move-chip {
+    display: inline-block;
+    padding: 4px 8px;
+    margin: 0 3px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: monospace;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.2s;
+}
+
+.move-chip:active {
+    transform: scale(0.95);
+}
+
+.move-chip.active-move {
+    outline: 2px solid #fff;
+    outline-offset: 1px;
+    z-index: 2;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+}
+
+.move-chip.hidden {
+    opacity: 0;
+    pointer-events: none;
+    width: 0;
+    padding: 0;
+    margin: 0;
+}
+
+/* Move quality colors */
+.move-chip.brilliant {
+    background: linear-gradient(135deg, #00ffff, #00bcd4);
+    color: #000;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
+.move-chip.excellent {
+    background: linear-gradient(135deg, #4caf50, #8bc34a);
+    color: #fff;
+}
+
+.move-chip.good {
+    background: linear-gradient(135deg, #2196f3, #03a9f4);
+    color: #fff;
+}
+
+.move-chip.inaccuracy {
+    background: linear-gradient(135deg, #ff9800, #ffc107);
+    color: #000;
+}
+
+.move-chip.mistake {
+    background: linear-gradient(135deg, #ff5722, #ff9800);
+    color: #fff;
+}
+
+.move-chip.blunder {
+    background: linear-gradient(135deg, #f44336, #e91e63);
+    color: #fff;
+    box-shadow: 0 0 10px rgba(244, 67, 54, 0.5);
+}
+
+.move-chip.book {
+    background: linear-gradient(135deg, #9c27b0, #673ab7);
+    color: #fff;
+}
+
+/* Show on mobile */
+@media (max-width: 768px) {
+    body.board-active .mobile-move-timeline {
+        display: block;
+    }
+}

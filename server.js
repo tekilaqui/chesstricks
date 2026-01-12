@@ -13,17 +13,7 @@ require('dotenv').config();
 const app = express();
 app.use(cors());
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
-
-// Log de inicio para depuración en Render
-console.log("🚀 Iniciando servidor...");
-console.log("📁 Directorio actual:", __dirname);
-console.log("🌍 Entorno:", process.env.NODE_ENV || 'development');
+const io = new Server(server);
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -37,86 +27,27 @@ const authLimiter = rateLimit({
   message: { error: "Demasiados intentos de acceso, intente de nuevo en una hora" }
 });
 
-app.use(helmet({
+/* app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: [
-        "'self'",
-        "'unsafe-inline'",
-        "'unsafe-eval'",
-        "https://unpkg.com",
-        "https://cdn.jsdelivr.net",
-        "https://cdnjs.cloudflare.com",
-        "https://code.jquery.com",
-        "https://cdn.socket.io",
-        "blob:"
-      ],
-      scriptSrcAttr: ["'unsafe-inline'"], // Permitir event handlers inline
-      styleSrc: [
-        "'self'",
-        "'unsafe-inline'",
-        "https://fonts.googleapis.com",
-        "https://cdnjs.cloudflare.com"
-      ],
-      imgSrc: [
-        "'self'",
-        "data:",
-        "https:",
-        "http:",
-        "https://raw.githubusercontent.com"
-      ],
-      connectSrc: [
-        "'self'",
-        "wss:",
-        "ws:",
-        "https:",
-        "http:",
-        "https://explorer.lichess.ovh",
-        "https://unpkg.com"
-      ],
-      mediaSrc: [
-        "'self'",
-        "https:",
-        "http:",
-        "https://github.com"
-      ],
-      fontSrc: [
-        "'self'",
-        "https://fonts.gstatic.com",
-        "https://cdnjs.cloudflare.com"
-      ],
-      workerSrc: [
-        "'self'",
-        "blob:",
-        "https://unpkg.com",
-        "https:"
-      ],
-      childSrc: [
-        "'self'",
-        "blob:",
-        "https://unpkg.com",
-        "https:"
-      ],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:", "http:", "blob:"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https:", "http:"],
+      imgSrc: ["'self'", "data:", "https:", "http:"],
+      connectSrc: ["'self'", "wss:", "https:", "http:"],
+      mediaSrc: ["'self'", "https:", "http:"],
+      fontSrc: ["'self'", "https:", "http:"],
+      workerSrc: ["'self'", "blob:"],
       objectSrc: ["'none'"],
-      baseUri: ["'self'"],
-      formAction: ["'self'"],
-      upgradeInsecureRequests: null, // Desactivar para permitir carga en redes locales sin HTTPS
     },
   },
-  crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
-}));
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+})); */
 app.use(express.json({ limit: '10kb' }));
 app.get('/*', (req, res, next) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
-  // Permitir que el navegador cargue recursos de otros orígenes
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   next();
 });
 app.use(express.static(__dirname, { dotfiles: 'allow' }));
@@ -218,9 +149,6 @@ function saveGames() {
 
 loadGames();
 
-// El servidor ahora solo maneja Autenticación, ELO y un Proxy para Puzzles.
-// Se ha eliminado toda la lógica de partidas online (Socket.IO multiplayer).
-
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
   if (token) {
@@ -236,15 +164,19 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
   console.log('Usuario conectado:', socket.id);
 
+  // Auto-login if token was valid
   if (socket.authenticated && users[socket.username]) {
     const u = users[socket.username];
     socket.emit('auth_success', {
       user: socket.username,
-      elo: u.elo || 500,
+      elo: u.elo || 500, // Ensure updated to 500 default
       puzElo: u.puzElo || 500,
-      token: socket.handshake.auth.token
+      token: socket.handshake.auth.token // Echo back
     });
+    connectedUsers.set(socket.id, socket.username);
   }
+
+  socket.emit('lobby_update', Array.from(activeChallenges.values()));
 
   socket.on('register', (data) => {
     try {
@@ -265,7 +197,11 @@ io.on('connection', (socket) => {
 
       saveUsers();
       const token = generateToken(data.user);
-      socket.emit('auth_success', { user: data.user, elo: 500, puzElo: 500, token });
+      socket.username = data.user;
+      socket.authenticated = true;
+      connectedUsers.set(socket.id, data.user);
+
+      socket.emit('auth_success', { user: data.user, elo: 1200, puzElo: 1200, token });
     } catch (error) {
       console.error('Error en registro:', error);
       socket.emit('auth_error', 'Error en el servidor');
@@ -281,12 +217,10 @@ io.on('connection', (socket) => {
       const inputHash = hashPassword(data.pass, u.salt);
       if (inputHash === u.hash) {
         const token = generateToken(data.user);
-        socket.emit('auth_success', {
-          user: data.user,
-          elo: u.elo || 500,
-          puzElo: u.puzElo || 500,
-          token, stats: u.stats || {}
-        });
+        socket.username = data.user;
+        socket.authenticated = true;
+        connectedUsers.set(socket.id, data.user);
+        socket.emit('auth_success', { user: data.user, elo: u.elo, puzElo: u.puzElo, token, stats: u.stats || {} });
       } else {
         socket.emit('auth_error', 'Credenciales incorrectas');
       }
@@ -299,15 +233,180 @@ io.on('connection', (socket) => {
   socket.on('update_elo', (data) => {
     if (!socket.authenticated || socket.username !== data.user) return;
     if (users[data.user]) {
-      users[data.user].elo = Math.max(0, Math.min(3000, data.elo || 500));
-      users[data.user].puzElo = Math.max(0, Math.min(3000, data.puzElo || 500));
+      users[data.user].elo = Math.max(0, Math.min(3000, data.elo));
+      users[data.user].puzElo = Math.max(0, Math.min(3000, data.puzElo));
       saveUsers();
+    }
+  });
+
+  socket.on('create_challenge', (data) => {
+    if (!socket.authenticated) return socket.emit('error', 'Debes iniciar sesión');
+    // Use the ID provided by the client to ensure sync
+    const challengeId = data.id || crypto.randomBytes(16).toString('hex');
+    const challenge = {
+      id: challengeId,
+      user: socket.username, // Changed from creator to user to match client expectation
+      creatorElo: users[socket.username]?.elo || 1200, // Keep this for backend logic if needed
+      elo: users[socket.username]?.elo || 1200, // Add this for client display consistency
+      timeControl: data.timeControl || '10+0',
+      time: data.time || 10, // Ensure 'time' property exists as client expects
+      createdAt: Date.now()
+    };
+    activeChallenges.set(challengeId, challenge);
+    socket.join(`game_${challengeId}`);
+    socket.broadcast.emit('new_challenge', challenge);
+  });
+
+  socket.on('get_lobby', () => {
+    socket.emit('lobby_update', Array.from(activeChallenges.values()));
+    if (socket.username) {
+      const userGames = Object.values(activeGames).filter(g => g.white === socket.username || g.black === socket.username);
+      socket.emit('active_games_update', userGames);
+    }
+  });
+
+  socket.on('join_game', (data) => {
+    const game = activeGames[data.gameId];
+    if (game && (game.white === socket.username || game.black === socket.username)) {
+      socket.join(`game_${data.gameId}`);
+      socket.emit('game_resume', {
+        id: game.id,
+        fen: game.fen,
+        white: game.white,
+        black: game.black,
+        whiteTime: game.whiteTime,
+        blackTime: game.blackTime,
+        turn: game.turn,
+        moves: game.moves
+      });
+    }
+  });
+
+  socket.on('join_challenge', (data) => {
+    if (!socket.authenticated) return socket.emit('error', 'Debes iniciar sesión');
+    const challenge = activeChallenges.get(data.id);
+    if (!challenge) return socket.emit('error', 'Reto no encontrado');
+    if (challenge.user === socket.username) return socket.emit('error', 'No puedes unirte a tu propio reto');
+
+    activeChallenges.delete(data.id);
+    socket.join(`game_${data.id}`);
+
+    const isWhite = Math.random() > 0.5;
+    const gameTime = (challenge.time || 10) * 60;
+
+    activeGames[data.id] = {
+      id: data.id,
+      white: isWhite ? challenge.user : socket.username,
+      black: isWhite ? socket.username : challenge.user,
+      startTime: Date.now(),
+      moves: [],
+      fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+      turn: 'w',
+      whiteTime: gameTime,
+      blackTime: gameTime,
+      lastUpdate: Date.now()
+    };
+
+    saveGames();
+    io.emit('lobby_update', Array.from(activeChallenges.values()));
+
+    // Notificar a ambos jugadores el inicio y sus colores
+    io.to(`game_${data.id}`).emit('game_start', {
+      gameId: data.id,
+      white: activeGames[data.id].white,
+      black: activeGames[data.id].black,
+      time: challenge.time || 10
+    });
+  });
+
+  socket.on('get_my_games', () => {
+    if (!socket.authenticated) return;
+    const myGames = Object.values(activeGames).filter(g =>
+      g.white === socket.username || g.black === socket.username
+    );
+    socket.emit('my_games_list', myGames);
+  });
+
+  socket.on('move', (data) => {
+    if (!socket.authenticated) return;
+    const game = activeGames[data.gameId];
+    if (game) {
+      const now = Date.now();
+      const elapsed = Math.floor((now - game.lastUpdate) / 1000);
+
+      // Update time of the player who just moved
+      if (game.turn === 'w') {
+        game.whiteTime = Math.max(0, game.whiteTime - elapsed);
+      } else {
+        game.blackTime = Math.max(0, game.blackTime - elapsed);
+      }
+
+      game.moves.push(data.move);
+      game.fen = data.fen || game.fen;
+      game.turn = game.turn === 'w' ? 'b' : 'w';
+      game.lastUpdate = now;
+      saveGames();
+
+      // Emit with updated server times to keep clients in sync
+      const moveData = {
+        ...data,
+        whiteTime: game.whiteTime,
+        blackTime: game.blackTime,
+        turn: game.turn
+      };
+      socket.to(`game_${data.gameId}`).emit('move', moveData);
+      socket.emit('move_ack', moveData); // Confirm to the sender too
+    }
+  });
+
+  socket.on('chat_message', (data) => {
+    if (!socket.authenticated) return;
+    const sanitizedMessage = {
+      user: socket.username,
+      message: sanitize(data.message).substring(0, 500),
+      gameId: data.gameId,
+      timestamp: Date.now()
+    };
+    if (data.gameId) {
+      io.to(`game_${data.gameId}`).emit('chat_message', sanitizedMessage);
+    } else {
+      io.emit('chat_message', sanitizedMessage);
+    }
+  });
+
+  socket.on('resign_game', (data) => {
+    if (!socket.authenticated) return;
+    const game = activeGames[data.gameId];
+    if (game) {
+      if (users[game.white]) users[game.white].stats.wins++;
+      if (users[game.black]) users[game.black].stats.losses++;
+      saveUsers();
+      delete activeGames[data.gameId];
+      saveGames();
+    }
+    socket.to(`game_${data.gameId}`).emit('player_resigned', { user: socket.username });
+  });
+
+  socket.on('abort_online_game', (data) => {
+    if (!socket.authenticated) return;
+
+    let wasChallenge = false;
+    if (activeChallenges.has(data.gameId)) {
+      activeChallenges.delete(data.gameId);
+      io.emit('lobby_update', Array.from(activeChallenges.values()));
+      wasChallenge = true;
+    }
+
+    if (activeGames[data.gameId]) {
+      delete activeGames[data.gameId];
+      saveGames();
+      socket.to(`game_${data.gameId}`).emit('game_aborted', { user: socket.username });
     }
   });
 
   socket.on('get_leaderboard', () => {
     const top10 = Object.keys(users)
-      .map(u => ({ user: u, elo: users[u].elo || 500, puzElo: users[u].puzElo || 500 }))
+      .map(u => ({ user: u, elo: users[u].elo, stats: users[u].stats || {} }))
       .sort((a, b) => b.elo - a.elo)
       .slice(0, 10);
     socket.emit('leaderboard_data', top10);
@@ -315,6 +414,7 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('Usuario desconectado:', socket.id);
+    connectedUsers.delete(socket.id);
   });
 });
 
@@ -349,18 +449,7 @@ app.get('/', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-
-// Manejo de errores globales para evitar "Status 1" sin info
-process.on('uncaughtException', (err) => {
-  console.error('❌ ERROR NO CAPTURADO:', err.message);
-  console.error(err.stack);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ PROMESA RECHAZADA NO MANEJADA:', reason);
-});
-
 server.listen(PORT, () => {
   console.log(`🔥 Servidor corriendo en puerto ${PORT}`);
-  console.log(`🔗 URL: http://localhost:${PORT}`);
+  console.log(`🔒 Modo: ${process.env.NODE_ENV || 'development'}`);
 });
