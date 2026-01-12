@@ -1,22 +1,62 @@
-/* Mobile Board Info Card - Above the board */
+/* Mobile Board Info Card - Single Line Docket */
 .mobile-board-info {
-    display: none;
-    background: linear-gradient(135deg, rgba(33, 150, 243, 0.1), rgba(0, 188, 212, 0.1));
+    display: none !important;
+    /* Usuario solicitó eliminarlo por completo */
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    right: 5px;
+    z-index: 50;
+
+    background: rgba(18, 18, 20, 0.95);
     border: 1px solid rgba(33, 150, 243, 0.3);
-    border-radius: 12px;
-    padding: 10px 12px;
-    margin-bottom: 10px;
+    border-radius: 25px;
+    /* Pill shape */
+    padding: 0 15px;
+    /* Horizontal padding only */
+
+    height: 45px !important;
+    max-height: 45px !important;
+    overflow: hidden !important;
+
+    display: flex !important;
+    align-items: center !important;
+    flex-direction: row !important;
+    gap: 10px;
+
     backdrop-filter: blur(10px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+}
+
+/* Expansion Logic */
+body.board-active .mobile-board-info.expanded {
+    height: 100px !important;
+    max-height: 100px !important;
+    border-radius: 12px;
+    padding: 10px 15px;
+    flex-wrap: wrap;
+    display: block !important;
+    border-color: var(--accent);
+    overflow-y: auto !important;
+}
+
+body.board-active .mobile-board-info.expanded .mobile-opening-badge {
+    margin-bottom: 5px;
 }
 
 .mobile-opening-badge {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-bottom: 6px;
-    font-size: 12px;
-    font-weight: 600;
+    gap: 5px;
+    margin: 0;
+    /* Remove margin */
+    font-size: 11px;
+    font-weight: 800;
     color: var(--accent);
+    white-space: nowrap;
+    flex-shrink: 0;
+    /* Don't shrink badge */
 }
 
 .opening-icon {
@@ -24,23 +64,48 @@
 }
 
 .mobile-coach-comment {
+    flex: 1;
+    /* Take remaining space */
     font-size: 11px;
+    line-height: 45px;
+    /* Center vertically in collapsed state */
+    color: #ddd;
+    font-style: normal;
+    padding: 0;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    padding-left: 10px;
+    height: 45px;
+}
+
+/* Expanded styles */
+body.board-active .mobile-board-info.expanded .mobile-coach-comment {
+    white-space: normal !important;
+    overflow: visible !important;
     line-height: 1.4;
-    color: var(--text-muted);
-    font-style: italic;
-    padding-left: 20px;
+    height: auto;
+    margin-top: 5px;
+    border: none;
+    border-left: none;
+    padding-left: 0;
+    width: 100%;
 }
 
 /* Show only on mobile when board is active */
 @media (max-width: 768px) {
     body.board-active .mobile-board-info {
-        display: block;
+        display: flex !important;
+        /* Enforce flex */
     }
 }
 
 /* Mobile Move Quality Timeline */
 .mobile-move-timeline {
     display: none;
+    margin-top: 65px;
+    /* Spacer for absolute info card */
     overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;

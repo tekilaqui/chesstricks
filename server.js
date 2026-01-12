@@ -412,6 +412,18 @@ io.on('connection', (socket) => {
     socket.emit('leaderboard_data', top10);
   });
 
+  // AI GATEWAY VIA SOCKETS (CORS-FREE)
+  socket.on('ai_request', async (data) => {
+    const { provider, apiKey, prompt } = data;
+    if (!provider || !apiKey || !prompt) {
+      return socket.emit('ai_response', { error: 'Missing data' });
+    }
+
+    console.log(`🤖 AI Request received from ${socket.username || 'Guest'} via Socket`);
+    const result = await processAIRequest(provider, apiKey, prompt);
+    socket.emit('ai_response', result);
+  });
+
   socket.on('disconnect', () => {
     console.log('Usuario desconectado:', socket.id);
     connectedUsers.delete(socket.id);
@@ -443,6 +455,141 @@ app.get('/puzzles', (req, res) => {
     res.status(500).json({ error: 'Failed to fetch puzzles' });
   });
 });
+
+// AI PROXY ENDPOINT - Resolve CORS issues
+app.post('/api/ai-proxy', express.json(), async (req, res) => {
+  try {
+    const { provider, apiKey, prompt } = req.body;
+
+    if (!provider || !apiKey || !prompt) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    let response;
+    const aiData = await processAIRequest(provider, apiKey, prompt);
+
+    if (aiData.error) {
+      return res.status(aiData.status || 500).json({ error: aiData.error });
+    }
+
+    return res.json({ text: aiData.text });
+
+  } catch (error) {
+    console.error('AI Proxy Error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Función centralizada para procesar IA (compartida por HTTP y Sockets)
+async function processAIRequest(provider, apiKey, prompt) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 segundos máximo
+
+  try {
+    console.log(`📡 Llamando a ${provider}...`);
+    let response;
+
+    switch (provider) {
+      case 'openai':
+        response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: 'Eres un maestro de ajedrez experto y didáctico. Explica la posición de forma muy breve (2 frases).' },
+              { role: 'user', content: prompt }
+            ],
+            max_tokens: 150,
+            temperature: 0.7
+          })
+        });
+
+        clearTimeout(timeoutId);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`❌ OpenAI Error: ${response.status}`, errorText);
+          return { error: `OpenAI: ${response.status} - Verifica tu clave y saldo.` };
+        }
+
+        const openaiData = await response.json();
+        return { text: openaiData.choices[0].message.content };
+
+      case 'claude':
+        response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01'
+          },
+          body: JSON.stringify({
+            model: 'claude-3-haiku-20240307',
+            max_tokens: 150,
+            messages: [{ role: 'user', content: prompt }]
+          })
+        });
+
+        clearTimeout(timeoutId);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`❌ Claude Error: ${response.status}`, errorText);
+          return { error: `Claude: ${response.status} - Verifica tu configuración.` };
+        }
+
+        const claudeData = await response.json();
+        return { text: claudeData.content[0].text };
+
+      case 'perplexity':
+        response = await fetch('https://api.perplexity.ai/chat/completions', {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: 'sonar', // Modelo más estable y actual
+            messages: [
+              { role: 'system', content: 'Eres un maestro de ajedrez experto.' },
+              { role: 'user', content: prompt }
+            ],
+            max_tokens: 150
+          })
+        });
+
+        clearTimeout(timeoutId);
+        if (!response.ok) {
+          const errorMsg = await response.text();
+          let parsedError;
+          try { parsedError = JSON.parse(errorMsg); } catch (e) { parsedError = { error: { message: errorMsg } }; }
+
+          const detail = parsedError.error?.message || errorMsg;
+          console.error(`❌ Perplexity Error Detail:`, detail);
+          return { error: `Perplexity: ${detail}` };
+        }
+
+        const perplexityData = await response.json();
+        return { text: perplexityData.choices[0].message.content };
+
+      default:
+        clearTimeout(timeoutId);
+        return { error: 'Proveedor no reconocido' };
+    }
+  } catch (e) {
+    clearTimeout(timeoutId);
+    console.error(`❌ Error en el proceso de IA:`, e.message);
+    if (e.name === 'AbortError') return { error: 'La IA tardó demasiado en responder (Timeout).' };
+    return { error: `Error de conexión: ${e.message}` };
+  }
+}
+
+
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));

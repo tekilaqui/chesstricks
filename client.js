@@ -59,10 +59,25 @@ const openAuth = () => {
     $('#side-drawer-overlay').fadeOut();
 };
 
-const showToast = (msg, icon = '✅') => {
-    const toast = $(`<div class="toast"><span>${icon}</span> <span>${msg}</span></div>`);
+const showToast = (msg, icon = '✅', type = 'default') => {
+    // Si es un mensaje de entrenador o táctica, limpiamos los anteriores para no saturar
+    if (type === 'suggestion' || type === 'coach') {
+        $('.toast-coach, .toast-suggestion').remove();
+    }
+
+    // En móvil, ser más agresivos: solo una notificación de cualquier tipo a la vez
+    if (window.innerWidth <= 768) {
+        $('.toast').remove();
+    }
+
+    const toast = $(`<div class="toast toast-${type}"><span>${icon}</span> <span>${msg}</span></div>`);
     $('#toast-container').append(toast);
-    setTimeout(() => toast.remove(), 3200);
+
+    // Animación de salida
+    setTimeout(() => {
+        toast.css({ 'opacity': '0', 'transform': 'translateY(-10px)', 'transition': '0.4s' });
+        setTimeout(() => toast.remove(), 400);
+    }, 3500);
 };
 
 var gameId = null;
@@ -72,6 +87,8 @@ var hintsActive = false; // Unified hints toggle
 var aiThinking = false;
 var opponentAutoMode = true;
 var isJ = false;
+var moveQualityHistory = []; // Para el informe final
+
 var lastEv = 0; // Legacy var, prefer window.lastEval
 window.lastEval = undefined;
 window.currentEval = undefined;
@@ -98,6 +115,8 @@ var userName = localStorage.getItem('chess_username') || "Invitado";
 var isAuth = localStorage.getItem('chess_is_auth') === 'true';
 
 // SOUND SYSTEM
+var lastAIProcessedMove = null; // Para evitar repetir peticiones de IA en la misma jugada
+var evalHistory = [0]; // Historial para el gráfico de Fase 1
 var soundOn = localStorage.getItem('chess_sound') !== 'false';
 const sounds = {
     move: new Audio('https://github.com/lichess-org/lila/raw/master/public/sound/standard/Move.mp3'),
@@ -148,13 +167,13 @@ const LANGS = {
 
 function getQualityMsg(diff, isMate) {
     const t = LANGS[currentLang];
-    if (isMate) return { text: t.mate, class: 'excellent', symbol: '#' };
-    if (diff < 0.1) return { text: t.best, class: 'brilliant', symbol: '!!' };
-    if (diff < 0.3) return { text: t.great, class: 'excellent', symbol: '!' };
-    if (diff < 0.6) return { text: t.good, class: 'good', symbol: '' };
-    if (diff < 1.2) return { text: t.inaccuracy, class: 'inaccuracy', symbol: '?!' };
-    if (diff < 2.5) return { text: t.mistake, class: 'mistake', symbol: '?' };
-    return { text: t.blunder, class: 'blunder', symbol: '??' };
+    if (isMate) return { text: t.mate, class: 'excellent', symbol: '#', color: '#4CAF50' };
+    if (diff < 0.1) return { text: t.best, class: 'brilliant', symbol: '!!', color: '#00BCD4' };
+    if (diff < 0.3) return { text: t.great, class: 'excellent', symbol: '!', color: '#4CAF50' };
+    if (diff < 0.6) return { text: t.good, class: 'good', symbol: '', color: '#8BC34A' };
+    if (diff < 1.2) return { text: t.inaccuracy, class: 'inaccuracy', symbol: '?!', color: '#FFEB3B' };
+    if (diff < 2.5) return { text: t.mistake, class: 'mistake', symbol: '?', color: '#FF9800' };
+    return { text: t.blunder, class: 'blunder', symbol: '??', color: '#F44336' };
 }
 
 function setLanguage(l) {
@@ -356,13 +375,21 @@ function updatePuzzleStats(themes, success, rating) {
     const themeList = themes.split(',').map(t => t.trim());
 
     themeList.forEach(theme => {
-        if (!puzStats[theme]) puzStats[theme] = { attempts: 0, success: 0 };
+        if (!puzStats[theme]) puzStats[theme] = { attempts: 0, success: 0, ratingSum: 0 };
         puzStats[theme].attempts++;
-        if (success) puzStats[theme].success++;
+        if (success) {
+            puzStats[theme].success++;
+            puzStats[theme].ratingSum += rating;
+        }
     });
 
     if (success) {
-        puzHistory.unshift({ rating: rating, themes: themeList.slice(0, 2).join(', '), date: new Date().getTime() });
+        // Guardar en el historial reciente
+        puzHistory.unshift({
+            rating: rating,
+            themes: themeList.slice(0, 2).map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(', '),
+            date: new Date().getTime()
+        });
         if (puzHistory.length > 20) puzHistory.pop();
     }
 
@@ -374,7 +401,12 @@ function updatePuzzleStats(themes, success, rating) {
 function renderPuzzleUI() {
     $('#puz-elo-display').text(userPuzzleElo + "🧩");
 
-    // Render Stats
+    // Si estamos en modo ejercicios, actualizamos el panel derecho también
+    if (currentMode === 'exercises') {
+        renderTacticalDashboard();
+    }
+
+    // Render Stats (Mini en el menú de configuración)
     let statsHtml = '';
     const sortedThemes = Object.keys(puzStats).sort((a, b) => puzStats[b].attempts - puzStats[a].attempts).slice(0, 6);
 
@@ -402,6 +434,85 @@ function renderPuzzleUI() {
         `;
     });
     $('#puz-history-list').html(histHtml || '<div style="font-size: 0.7rem; color: var(--text-dim); text-align: center;">Aún no hay historial</div>');
+}
+
+function renderTacticalDashboard(msg = "") {
+    const $panel = $('#tactic-dashboard-container');
+    const $mobilePanel = $('#mobile-tactics-stats');
+    if (!$panel.length) return;
+
+    // Actualizar ELO en cabeceras
+    $('#puz-elo-display, #header-elo-puz, #mobile-tactics-elo').text(userPuzzleElo);
+
+    const themes = Object.keys(puzStats).sort((a, b) => puzStats[b].attempts - puzStats[a].attempts);
+    if (themes.length === 0) {
+        html += `<div style="text-align:center; padding:20px; color:var(--text-dim); font-size:0.8rem;">Completa puzzles para ver tu progreso analítico.</div>`;
+    }
+
+    themes.forEach(theme => {
+        const s = puzStats[theme];
+        const perc = Math.round((s.success / s.attempts) * 100);
+        const avgRating = s.ratingSum > 0 ? Math.round(s.ratingSum / s.success) : "--";
+
+        let colorClass = 'success';
+        if (perc < 40) colorClass = 'danger';
+        else if (perc < 70) colorClass = 'warning';
+
+        // Traducción simple o capitalización
+        const themeDisplayName = theme.charAt(0).toUpperCase() + theme.slice(1);
+
+        html += `
+            <div class="theme-progress-item">
+                <div class="theme-info-row">
+                    <span style="font-weight:700;">${themeDisplayName}</span>
+                    <span style="color:var(--accent)">Nivel: ${avgRating}</span>
+                    <span>${perc}%</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill ${colorClass}" style="width: ${perc}%"></div>
+                </div>
+                <div style="font-size:0.6rem; opacity:0.5; margin-top:4px;">${s.success} aciertos de ${s.attempts} intentos</div>
+            </div>
+        `;
+    });
+
+    html += `
+            </div>
+            <h4 style="margin-top:15px; font-size:0.8rem; color:var(--text-dim);">ÚLTIMA ACTIVIDAD</h4>
+            <div class="puz-history-list" style="max-height: 200px; overflow-y:auto;">
+    `;
+
+    puzHistory.slice(0, 10).forEach(item => {
+        html += `
+            <div class="puz-hist-item" style="border-bottom: 1px solid var(--border-light); padding: 8px 0;">
+                <div style="display:flex; justify-content:space-between; width:100%;">
+                    <span style="font-size:0.7rem;">${item.themes}</span>
+                    <span class="puz-hist-rating" style="background:var(--bg-side); padding:2px 6px; border-radius:4px;">${item.rating}</span>
+                </div>
+            </div>
+        `;
+    });
+
+    html += `</div></div>`;
+    $panel.html(html);
+
+    // Sincronizar con móvil si existe el contenedor
+    if ($mobilePanel.length) {
+        // En móvil lo hacemos colapsable si lo desea el usuario
+        let mobileHtml = `
+            <div class="mobile-tactics-collapsible">
+                <div class="collapsible-header" onclick="$(this).next().slideToggle()">
+                    <span>📈 Ver Estadísticas Detalladas</span>
+                    <span class="icon">▼</span>
+                </div>
+                <div class="collapsible-body" style="display:none; padding-top:10px;">
+                    ${html}
+                </div>
+            </div>
+        `;
+        $mobilePanel.find('.stats-bars-container').html(html); // Actualizar los datos
+    }
+    $('#coach-txt').hide();
 }
 
 // Initial render
@@ -557,22 +668,34 @@ try {
 
                 if (idx === 1) {
                     window.currentEval = ev;
-
-                    // --- ENTORNO DIDÁCTICO ---
-                    var diff = 0;
-                    if (window.lastEval !== undefined) {
-                        const turn = game.turn();
-                        diff = (turn === 'b') ? (window.lastEval - ev) : (ev - window.lastEval);
-                    }
-                    window.lastEval = ev;
-
+                    const depth = depthMatch ? parseInt(depthMatch[1]) : 0;
+                    const isNewMove = window.isNewMoveAnalysis || false;
                     const isMate = l.includes('mate');
-                    const quality = getQualityMsg(Math.abs(diff), isMate);
-                    let theoryInfo = detectOpeningTheory();
-                    let tacticalAdvice = generateTacticalAdvice(diff, ev, isMate);
 
-                    updateCoachDashboard(quality, theoryInfo, tacticalAdvice, firstMove);
-                    updateMaestroInsight(theoryInfo); // New Maestro Insight Sync
+                    if (isNewMove) {
+                        window.coachUpdateLocked = false;
+                        window.isNewMoveAnalysis = false;
+                        const initialQuality = { text: "Analizando...", class: "good", color: "#ccc", symbol: "⏳" };
+                        const initialTheory = detectOpeningTheory();
+                        updateCoachDashboard(initialQuality, initialTheory, "Calculando variantes...", firstMove, ev, isMate, true);
+                    }
+
+                    if (depth >= 12 && !window.coachUpdateLocked) {
+                        window.coachUpdateLocked = true;
+                        var diff = 0;
+                        if (window.lastEval !== undefined) {
+                            const turn = game.turn();
+                            diff = (turn === 'b') ? (window.lastEval - ev) : (ev - window.lastEval);
+                        }
+                        window.stableLastEval = ev;
+
+                        const quality = getQualityMsg(Math.abs(diff), isMate);
+                        const theoryInfo = detectOpeningTheory();
+                        const tacticalAdvice = generateTacticalAdvice(diff, ev, isMate);
+
+                        updateCoachDashboard(quality, theoryInfo, tacticalAdvice, firstMove, ev, isMate, false);
+                        updateMaestroInsight(theoryInfo);
+                    }
                 }
 
                 if (!window.topMoves) window.topMoves = [];
@@ -581,30 +704,69 @@ try {
             }
         }
 
-        // 2. PROCESAR MOVIMIENTO DE LA IA
+        if (openingSubMode === 'training' && currentOpening) {
+            // IA follows the opening theory
+            const moves = currentOpening.moves || currentOpening.m || [];
+            const historyLen = game.history().length;
+            if (historyLen < moves.length) {
+                const theoryMove = moves[historyLen];
+                const m = game.move(theoryMove);
+                if (m) {
+                    board.position(game.fen());
+                    playSnd('move');
+                    updateUI(true);
+                    return;
+                }
+            }
+        }
+
+        // 2. PROCESAR MOVIMIENTO DE LA IA (Modo Normal)
         if (l.startsWith('bestmove') && currentMode === 'ai' && game.turn() !== myColor) {
             var bestMove = l.split(' ')[1];
             if (bestMove === '(none)') return;
 
-            const diffLvl = parseInt($('#diff-sel').val());
+            // Dificultad REAL: Calcular blunder chance basado en nivel
+            const diffLvl = typeof gameConfig !== 'undefined' ? gameConfig.difficulty : 5;
             let blunderChance = 0;
-            if (diffLvl === 1) blunderChance = 0.5;
-            else if (diffLvl === 3) blunderChance = 0.35;
-            else if (diffLvl === 5) blunderChance = 0.15;
+
+            if (diffLvl <= 0) blunderChance = 0.65; // Principiante: 65% fallos
+            else if (diffLvl === 1) blunderChance = 0.50;
+            else if (diffLvl === 2) blunderChance = 0.40;
+            else if (diffLvl === 3) blunderChance = 0.25;
+            else if (diffLvl === 4) blunderChance = 0.15;
+            else if (diffLvl === 5) blunderChance = 0.08;
+            else if (diffLvl < 10) blunderChance = 0.04;
 
             if (Math.random() < blunderChance) {
+                console.log("🎲 IA provocando error intencionado (Nivel " + diffLvl + ")");
                 const legalMoves = game.moves({ verbose: true });
                 if (legalMoves.length > 0) {
+                    // Elegir un movimiento aleatorio pero filtrar los "mejores" para asegurar un error
+                    // O simplemente uno aleatorio si estamos en nivel muy bajo
                     const randomM = legalMoves[Math.floor(Math.random() * legalMoves.length)];
                     bestMove = randomM.from + randomM.to + (randomM.promotion || '');
                 }
             }
 
-            game.move({ from: bestMove.substring(0, 2), to: bestMove.substring(2, 4), promotion: 'q' });
-            board.position(game.fen());
-            updateUI(true);
-            updateMaestroInsight(detectOpeningTheory());
-            checkGameOver();
+            // Pausa humana: La IA espera un momento antes de mover para no generar ansiedad
+            const thinkDelay = diffLvl < 5 ? 1800 : 1200; // Más pausa en niveles bajos
+
+            setTimeout(() => {
+                const moveObj = game.move({ from: bestMove.substring(0, 2), to: bestMove.substring(2, 4), promotion: 'q' });
+                if (moveObj) {
+                    board.position(game.fen());
+                    updateUI(true);
+                    updateMaestroInsight(detectOpeningTheory());
+
+                    // Almacenar calidad si estamos en modo análisis (o IA)
+                    if (window.lastMoveQuality) {
+                        moveQualityHistory.push(window.lastMoveQuality);
+                    }
+
+                    checkGameOver();
+                }
+                aiThinking = false;
+            }, thinkDelay);
         }
     };
 } catch (e) {
@@ -667,21 +829,29 @@ function detectOpeningTheory() {
  * Generador de Lenguaje Natural para el Entrenador
  */
 function generateTacticalAdvice(diff, ev, isMate) {
-    if (isMate) return "🎯 ¡Hay un mate en la posición! Búscalo con cuidado.";
+    if (isMate) return "🎯 Hay una red de mate en esta posición.";
 
     const absDiff = Math.abs(diff);
 
-    if (absDiff > 2.5) return "⚠️ ¡Cuidado! Esa jugada es un error decisivo. Pierdes material importante.";
-    if (absDiff > 1.0) return "📉 Imprecisión notable. Concedes demasiada iniciativa al rival.";
+    // Priorizar narrativa de variantes y estructura
+    const theory = detectOpeningTheory();
+    const history = game.history();
 
-    if (Math.abs(ev) < 0.4) return "⚖️ La posición es de tablas. Manten la presión táctica.";
-    if (ev > 1.8) return "📈 Tienes una ventaja ganadora. ¡No te precipites y asegura el ataque!";
-    if (ev < -1.8) return "📉 Tu posición es crítica. Busca refugio para el rey o errores del rival.";
+    if (history.length < 15 && theory.name !== "Posición Personalizada") {
+        return `🎓 En esta variante de la ${theory.name}, el plan suele centrarse en la estructura de peones y el desarrollo armónico.`;
+    }
 
-    return "🧩 Posición equilibrada. Mejora la ubicación de tus piezas menos activas.";
+    if (absDiff > 2.0) return "⚠️ Has permitido una variante muy favorable para el rival. Revisa el plan estratégico.";
+    if (absDiff > 0.8) return "📉 Imprecisión teórica. Estás desviándote de la línea principal de esta defensa.";
+
+    if (Math.abs(ev) < 0.5) return "⚖️ Posición teóricamente equilibrada. Ambos bandos mantienen sus ventajas dinámicas.";
+    if (ev > 1.5) return "📈 Tu posición es superior. El rival está sufriendo para encontrar variantes de defensa.";
+    if (ev < -1.5) return "📉 El rival ha logrado consolidar una mejor variante defensiva.";
+
+    return "🧩 Posición sólida. Desarrolla tus piezas buscando variantes centrales.";
 }
 
-function updateCoachDashboard(quality, theory, tactical, bestMove) {
+function updateCoachDashboard(quality, theory, tactical, bestMove, ev, isMate, moved = false) {
     // 1. Detección de Apertura
     $('#maestro-opening-name').text(theory.name || "Posición Inicial");
 
@@ -689,30 +859,88 @@ function updateCoachDashboard(quality, theory, tactical, bestMove) {
     let descText = theory.comments ? theory.comments[0] : (theory.name ? "Línea teórica detectada." : "Analizando estructura de peones...");
     $('#maestro-plan').text(descText);
 
-    // 2. Logs del Entrenador (Coach Text)
+    // Preparar variables de calidad antes del sistema de estabilidad
     const qText = quality.text || "Analizando...";
     const qClass = quality.class || "good";
-    let logHtml = `<div class="quality-label ${qClass}" style="margin-bottom:5px; font-weight:bold; cursor:pointer;" onclick="showMoveType('${qText}')">${qText}</div>`;
-    logHtml += `<div style="font-size:0.9em; opacity:0.9;">${tactical}</div>`;
+    const symbol = quality.symbol || "";
 
-    $('#coach-txt').html(logHtml);
+    // --- SISTEMA DE ESTABILIDAD (THROTTLE) ---
+    const now = Date.now();
+    // No actualizar el texto más de una vez cada 2 segundos, a menos que sea un movimiento nuevo
+    const shouldUpdateText = (moved || !window.lastCoachTextUpdateTime || (now - window.lastCoachTextUpdateTime > 2000));
 
-    // Save to detailed history
+    if (shouldUpdateText) {
+        window.lastCoachTextUpdateTime = now;
+
+        const $coachTxt = $('#coach-txt');
+        let logHtml = `<div class="quality-label ${qClass}" style="margin-bottom:10px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:8px;" onclick="showMoveType('${qText}')">
+            <span style="background:${quality.color}; color:#000; padding:2px 6px; border-radius:4px; font-size:0.8rem;">${symbol}</span>
+            <span>${qText}</span>
+        </div>`;
+        logHtml += `<div style="font-size:0.9em; opacity:0.9; line-height:1.4;" id="coach-tactical-text">${tactical}</div>`;
+
+        $coachTxt.html(logHtml);
+    }
+
+
+    // AI GENERATIVA: Solo si la profundidad es suficiente y no estamos ya procesando
+    if (window.aiConfig?.enabled && window.aiConfig?.apiKey && lastAIProcessedMove !== currentFen) {
+        if (!moved) {
+            const lastMove = game.history({ verbose: true }).pop();
+            const lastMoveSan = lastMove ? lastMove.san : null;
+            lastAIProcessedMove = currentFen;
+
+            enhanceCoachWithAI(quality, theory, tactical, currentFen, lastMoveSan, ev).then(aiExplanation => {
+                if (aiExplanation) {
+                    const $target = $('#coach-tactical-text');
+                    if ($target.length) {
+                        $target.html(`<div style="background:rgba(33,150,243,0.1); padding:10px; border-radius:8px; border-left:3px solid var(--accent); margin-top:10px;">
+                            <div style="font-size:0.7rem; opacity:0.6; margin-bottom:5px;">🤖 EXPLICACIÓN IA</div>
+                            ${aiExplanation}
+                        </div>`);
+                    }
+                }
+            }).catch(err => console.error('AI Error:', err));
+        }
+    }
+
+    // 3. Sistema de Amenazas (FASE 1)
+    if (Math.abs(ev) > 1.5 || isMate) {
+        const side = ev > 0 ? 'Blancas' : 'Negras';
+        const severity = Math.abs(ev) > 4 ? 'CRÍTICA' : 'IMPORTANTE';
+        $('#threats-panel').fadeIn();
+        $('#threats-list').html(`<span style="color:#ef4444;">[${severity}]</span> Ventaja decisiva para ${side}. <br> <small>Próxima mejor jugada: ${bestMove}</small>`);
+    } else {
+        if ($('#threats-panel').length) $('#threats-panel').fadeOut();
+    }
+
+    // 4. FLECHAS INTELIGENTES
+    if (hintsActive && window.showBestMoves) {
+        drawBestMoveArrow(bestMove, '#4CAF50');
+        if (quality.class === 'blunder' && window.topMoves && window.topMoves[0]) {
+            setTimeout(() => {
+                if (window.showBestMoves) drawBestMoveArrow(window.topMoves[0].move, '#F44336');
+            }, 1000);
+        }
+    } else {
+        clearArrowCanvas();
+    }
+
+    // Guardar en historial detallado (Permitir sobrescribir para actualizar calidad)
     const history = game.history();
     const moveIndex = history.length;
-    if (moveIndex > 0 && !moveHistoryDetails[moveIndex]) {
+    if (moveIndex > 0 && typeof moveHistoryDetails !== 'undefined') {
         moveHistoryDetails[moveIndex] = {
             san: history[moveIndex - 1],
             quality: quality,
             theory: theory,
             tactical: tactical
         };
-        renderMoveHistory();
+        if (typeof renderMoveHistory === 'function') renderMoveHistory();
     }
 
-    // 3. Evaluación Visual
+    // 5. Evaluación Visual
     if (window.currentEval !== undefined) {
-        const ev = window.currentEval;
         const barW = Math.max(5, Math.min(95, 50 + (ev * 10)));
         $('#eval-bar-fill, #mobile-eval-fill').css('width', barW + '%');
         $('#eval-text-overlay, #mobile-eval-text').text((ev > 0 ? '+' : '') + ev.toFixed(1));
@@ -721,38 +949,60 @@ function updateCoachDashboard(quality, theory, tactical, bestMove) {
         $('#eval-accuracy, #mobile-accuracy').text(acc + "%");
     }
 
-    if (hintsActive && window.showBestMoves) {
-        drawBestMoveArrow(bestMove, '#2196F3');
-    } else {
-        clearArrowCanvas();
+    // 6. INFO RÁPIDA MÓVIL (SISTEMA ESTABLE)
+    if (shouldUpdateText) {
+        const stableOpening = theory.name || "Apertura Abierta";
+        const stablePlan = theory.comments ? theory.comments[0] : (theory.trap ? "🚨 ¡CUIDADO! Trampa detectada." : tactical);
+
+        $('#mobile-opening-quick').text(stableOpening);
+        const $mobCoach = $('#mobile-coach-quick');
+        if (theory.trap) $mobCoach.css('color', 'var(--trap-color)');
+        else $mobCoach.css('color', '');
+        $mobCoach.text(stablePlan);
     }
 
-    // 4. Update Mobile Quick Info Card (above board on mobile)
-    if (currentMode !== 'exercises') {
-        $('#mobile-opening-quick, #mobile-opening-name').text(theory.name || "Posición Inicial");
-        $('#mobile-opening-desc').text(theory.comments ? theory.comments[0] : "Analizando...");
-    }
-
-    // Combine quality and tactical for mobile comment
-    let mobileComment = theory.isExact ? LANGS[currentLang].book : qText;
-    if (tactical && !theory.isExact) {
-        mobileComment = `${qText} - ${tactical}`;
-    }
-    $('#mobile-coach-quick').text(mobileComment);
-
-    // Update Mobile Coach Logs
+    // Actualizar logs móviles
     let mobileLogHtml = `<div class="quality-label ${qClass}">${qText}</div><p>${tactical}</p>`;
     $('#mobile-coach-logs').html(mobileLogHtml);
 
-    // 5. Add move to timeline (mobile)
-    const lastMove = game.history({ verbose: true }).pop();
-    if (lastMove) {
-        let finalQuality = quality;
-        if (theory.isExact) {
-            finalQuality = { text: LANGS[currentLang].book, class: 'book', symbol: '📖' };
+    // 7. ACTUALIZAR GRÁFICO DE EVALUACIÓN
+    if (window.currentEval !== undefined) {
+        evalHistory.push(window.currentEval);
+        if (evalHistory.length > 100) evalHistory.shift();
+
+        if (!window.chartUpdatePending) {
+            window.chartUpdatePending = true;
+            requestAnimationFrame(() => {
+                if (typeof drawEvalChart === 'function') {
+                    drawEvalChart('evalChart');
+                    drawEvalChart('evalChartMobile');
+                }
+                window.chartUpdatePending = false;
+            });
         }
-        addMoveToTimeline(lastMove.san, finalQuality);
     }
+
+    // 8. Feedback visual en móvil mediante Toasts
+    if (window.innerWidth <= 768) {
+        const lastMoveObj = game.history({ verbose: true }).pop();
+        if (lastMoveObj) {
+            if (['brilliant', 'excellent', 'blunder', 'mistake'].includes(quality.class)) {
+                setTimeout(() => {
+                    let icon = quality.symbol || "ℹ️";
+                    if (quality.class === 'brilliant') icon = "💎";
+                    if (quality.class === 'blunder') icon = "💀";
+                    showToast(`${qText}`, icon, 'coach');
+                }, 600);
+            }
+        }
+    }
+
+    let finalQuality = quality;
+    if (theory.isExact) {
+        finalQuality = { text: LANGS[currentLang].book, class: 'book', symbol: '📖' };
+    }
+    const lastM = game.history({ verbose: true }).pop();
+    if (lastM) addMoveToTimeline(lastM.san, finalQuality);
 }
 
 // VISUAL SETTINGS
@@ -1047,8 +1297,16 @@ function updateMaterial() {
 
 function updateUI(moved = false) {
     if (typeof initializeArrowCanvas === 'function') initializeArrowCanvas();
-    $('.square-55d63').removeClass('highlight-selected highlight-hint');
+    $('.square-55d63').removeClass('highlight-selected highlight-hint highlight-last-move');
     $('.legal-dot').remove(); // Clean up old dots
+
+    // Marcar último movimiento si existe
+    const history = game.history({ verbose: true });
+    if (history.length > 0) {
+        const lastM = history[history.length - 1];
+        $(`.square-${lastM.from}`).addClass('highlight-last-move');
+        $(`.square-${lastM.to}`).addClass('highlight-last-move');
+    }
 
     updateMaterial();
     if (typeof highlightActiveMoveChip === 'function') highlightActiveMoveChip(currentHistoryIndex);
@@ -1086,25 +1344,29 @@ function updateUI(moved = false) {
         if (currentMode !== 'exercises' && currentMode !== 'study') updateTimerVisuals();
 
         // SAVE LAST EVAL BEFORE NEW ANALYSIS
-        if (window.currentEval !== undefined) {
-            window.lastEval = window.currentEval;
+        if (window.stableLastEval !== undefined) {
+            window.lastEval = window.stableLastEval;
         }
 
         // STOCKFISH ANALYSIS ON EVERY MOVE
         // Trigger if: AI Mode OR Hints are Active (Study/Local)
         if (stockfish && (currentMode === 'ai' || hintsActive)) {
+            window.isNewMoveAnalysis = true;
+            window.coachUpdateLocked = false;
             stockfish.postMessage('stop');
             stockfish.postMessage('position fen ' + game.fen());
+            stockfish.postMessage('go depth 18');
+        }
 
-            const diff = parseInt($('#diff-sel').val()) || 5;
-            // AI Turn: Use selected difficulty
-            // But if HintsActive and it's NOT AI mode, use max depth
-            if (currentMode === 'ai' && game.turn() !== myColor) {
-                stockfish.postMessage('go depth ' + diff);
-            } else {
-                // Player Turn or Analysis/Hints
-                stockfish.postMessage('go depth 15');
-            }
+        const diff = parseInt($('#diff-sel').val()) || 5;
+        // AI Turn: Use selected difficulty
+        if (currentMode === 'ai' && game.turn() !== myColor) {
+            // Boost max difficulty to depth 22 (near SF18 JS limit)
+            const aiDepth = diff >= 20 ? 22 : (diff + 2);
+            stockfish.postMessage('go depth ' + aiDepth);
+        } else {
+            // Player Turn or Analysis/Hints
+            stockfish.postMessage('go depth 18');
         }
     }
 }
@@ -1284,7 +1546,7 @@ function handlePuzzleMove(move) {
 
         if (puzzleStep >= currentPuzzle.sol.length) {
             clearInterval(puzTimerInterval);
-            $('#coach-txt').html(`<b style='color:var(--success)'>¡EXCELENTE! Puzzle resuelto.</b>`);
+            renderTacticalDashboard(`<b style='color:var(--success); font-size:1.1rem;'>✅ ¡EXCELENTE!<br><span style="font-size:0.8rem; font-weight:400; opacity:0.8;'>Puzzle resuelto con éxito.</span></b>`);
             playSnd('end');
             if (currentPuzzle.id && !solvedPuzzles.includes(currentPuzzle.id)) {
                 solvedPuzzles.push(currentPuzzle.id);
@@ -1293,7 +1555,7 @@ function handlePuzzleMove(move) {
             updatePuzzleStats(currentPuzzle.themes, true, currentPuzzle.rating);
             updateElo(currentPuzzle.rating, 1, true);
 
-            setTimeout(() => board.position(game.fen()), 50); // Small delay to avoid drop conflict
+            setTimeout(() => board.position(game.fen()), 50);
             setTimeout(loadRandomPuzzle, 2000);
         } else {
             // Opponent Counter-move in puzzle
@@ -1306,19 +1568,27 @@ function handlePuzzleMove(move) {
                 });
                 board.position(game.fen());
                 puzzleStep++;
-                if (m.flags.includes('c')) playSnd('capture'); else playSnd('move');
-                updateUI();
+
+                if (puzzleStep >= currentPuzzle.sol.length) {
+                    clearInterval(puzTimerInterval);
+                    renderTacticalDashboard(`<b style='color:var(--success); font-size:1.1rem;'>✅ ¡EXCELENTE!<br><span style="font-size:0.8rem; font-weight:400; opacity:0.8;'>Puzzle resuelto con éxito.</span></b>`);
+                    playSnd('end');
+                    updatePuzzleStats(currentPuzzle.themes, true, currentPuzzle.rating);
+                    updateElo(currentPuzzle.rating, 1, true);
+                    setTimeout(loadRandomPuzzle, 2000);
+                } else {
+                    playSnd('move');
+                    updateUI();
+                }
             }, 600);
         }
         updateUI(true);
-        setTimeout(() => board.position(game.fen()), 100);
         return actualMove;
     } else {
         // Wrong Move
         console.log("❌ Incorrecto");
         showToast("⚠️ Movimiento Incorrecto", "error");
-        $('#coach-txt').html("<b style='color:var(--trap-color)'>¡MOVIMIENTO INCORRECTO!</b>");
-        // ...
+        renderTacticalDashboard("<b style='color:var(--trap-color); font-size:1.1rem;'>❌ ¡INCORRECTO!<br><span style='font-size:0.8rem; font-weight:400; opacity:0.8;'>Sigue intentándolo, el Maestro ha devuelto la pieza.</span></b>");
         playSnd('error');
         updatePuzzleStats(currentPuzzle.themes, false, currentPuzzle.rating);
         updateElo(currentPuzzle.rating, 0, true);
@@ -1482,6 +1752,11 @@ $(document).ready(() => {
     });
     syncSquaresWithData(); // Ensure data-square is present
 
+    // Load AI Configuration
+    if (typeof loadAIConfig === 'function') {
+        loadAIConfig();
+    }
+
     // Theme Handlers
     $('#board-theme-sel').change(function () {
         const theme = $(this).val();
@@ -1550,6 +1825,11 @@ $(document).ready(() => {
         if (tab === 'tab-ranking') {
             if (socket && socket.connected) socket.emit('get_leaderboard');
         }
+        if ($(this).hasClass('mobile-tab-right')) {
+            openMobileInfo();
+            // Call update mode directly
+            updateMobileViewMode();
+        }
         if (tab === 'tab-history') {
             renderHistory();
         }
@@ -1590,8 +1870,17 @@ $(document).ready(() => {
     });
 
     // Side Drawer
-    $('#hamburger-menu').off('click').click(() => { $('#side-drawer').addClass('open'); $('#side-drawer-overlay').fadeIn(); });
-    $('#side-drawer-overlay').off('click').click(() => { $('#side-drawer').removeClass('open'); $('#side-drawer-overlay').fadeOut(); });
+    // Side Drawer / Sidebar Toggles
+    $('#hamburger-menu').off('click').click(() => {
+        $('.sidebar').addClass('open');
+        $('#mobile-panel-overlay').fadeIn();
+    });
+
+    $('#mobile-panel-overlay').off('click').click(() => {
+        $('.sidebar').removeClass('open');
+        $('.side-panel').removeClass('mobile-open'); // Also close side panel if overlay clicked
+        $('#mobile-panel-overlay').fadeOut();
+    });
 
 }); // END READY
 
@@ -2055,8 +2344,52 @@ function syncMobileInfo() {
         $('#mobile-maestro-trap-box').hide();
     }
 
+    // FASE 2: Sync Stats
+    if ($('#maestro-stats-container').is(':visible')) {
+        $('#mobile-maestro-stats-container').show();
+        $('#mobile-stat-white').css('width', $('#stat-white').css('width'));
+        $('#mobile-stat-draw').css('width', $('#stat-draw').css('width'));
+        $('#mobile-stat-black').css('width', $('#stat-black').css('width'));
+
+        $('#mobile-txt-white').text($('#txt-white').text());
+        $('#mobile-txt-draw').text($('#txt-draw').text());
+        $('#mobile-txt-black').text($('#txt-black').text());
+    } else {
+        $('#mobile-maestro-stats-container').hide();
+    }
+
     // Sync coach logs
     $('#mobile-coach-logs').html($('#coach-txt').html());
+
+    // Sync Threats (Fase 1 Mobile)
+    if ($('#threats-panel').is(':visible')) {
+        $('#mobile-threats-section').show();
+        $('#mobile-threats-list').html($('#threats-list').html());
+    } else {
+        $('#mobile-threats-section').hide();
+    }
+
+    // Refresh chart on open
+    setTimeout(() => drawEvalChart('evalChartMobile'), 100);
+}
+
+// Nueva función extraída para limpiar lógica
+function updateMobileViewMode() {
+    if (currentMode === 'exercises') {
+        $('#mobile-modal-title').text("Tus Estadísticas en Táctica");
+        $('.game-info-only').hide(); // Hide analysis, logs
+        $('#mobile-tactics-stats').show();
+
+        // Update Dummy Stats if real not available
+        $('#mobile-tactics-elo').text(userPuzzleElo);
+        // Here we could update the solved/failed counters if we had session tracking
+        // For now let's just use what we have in UI or simple placeholders
+        // We will just read from current session vars if we add them later
+    } else {
+        $('#mobile-modal-title').text("Información de Partida");
+        $('.game-info-only').show();
+        $('#mobile-tactics-stats').hide();
+    }
 }
 
 async function updateMaestroInsight(theory) {
@@ -2092,7 +2425,100 @@ async function updateMaestroInsight(theory) {
         $('#maestro-trap-container').hide();
     }
 
+    // 4. Update Stats (FASE 2)
+    // If late game, try Tablebase instead of Opening Stats
+    if (game.history().length > 20) {
+        checkEndgameTablebase(game.fen());
+    } else {
+        updateOpeningStats(game.fen());
+    }
+
     syncMobileInfoIfOpen();
+}
+
+// FASE 2: SYZYGY TABLEBASES (FINALES)
+async function checkEndgameTablebase(fen) {
+    // Count pieces
+    const pieces = fen.split(' ')[0].replace(/\//g, '').replace(/\d/g, '').length;
+
+    // Syzygy works best with 7 pieces or less
+    if (pieces > 7) {
+        $('#maestro-stats-container').hide();
+        return;
+    }
+
+    try {
+        const response = await fetch(`https://tablebase.lichess.ovh/standard?fen=${encodeURIComponent(fen)}`);
+        const data = await response.json();
+
+        // category: win, loss, draw, unknown
+        if (data.category) {
+            let label = "";
+            let color = "#fff";
+
+            // Interpret WDL (Win-Draw-Loss)
+            // Lichess API returns category for the side to move? Need to verify wdl.
+            // wdl: 2 (Win), 1 (Blessed Loss/Draw?), 0 (Draw), -2 (Loss)
+
+            const wdl = data.wdl;
+            const turn = game.turn() === 'w' ? 'Blancas' : 'Negras';
+
+            if (wdl === 2) { label = `Victoria forzada para ${turn}`; color = "#4CAF50"; }
+            else if (wdl === -2) { label = `Derrota forzada para ${turn}`; color = "#F44336"; }
+            else if (wdl === 0) { label = "Tablas teóricas"; color = "#9E9E9E"; }
+            else { label = "Final complejo"; color = "#FFC107"; }
+
+            let details = "";
+            if (data.dtm) details = `Mate en ${Math.abs(data.dtm)} jugadas.`;
+            else if (data.dtz) details = `Regla 50 mov en: ${data.dtz}`;
+
+            // Update UI Reuse Maestro Card
+            $('#maestro-stats-container').hide(); // Hide opening stats
+            $('#maestro-opening-name').html(`<span style="color:${color}">🏁 ${label}</span>`);
+            $('#maestro-plan').text(details || "Juega con precisión absoluta.");
+
+            // Sync Mobile
+            $('#mobile-maestro-opening').html(`<span style="color:${color}">🏁 ${label}</span>`);
+            $('#mobile-maestro-plan').text(details || "Final teórico.");
+        }
+    } catch (e) {
+        console.warn("Tablebase Error", e);
+    }
+}
+
+async function updateOpeningStats(fen) {
+    // Solo consultar si estamos en apertura/temprano medio juego
+    if (game.history().length > 25) {
+        $('#maestro-stats-container').hide();
+        return;
+    }
+
+    try {
+        const response = await fetch(`https://explorer.lichess.ovh/lichess?fen=${encodeURIComponent(fen)}&speeds=blitz,rapid,classical`);
+        const data = await response.json();
+
+        if (data.white + data.black + data.draws > 0) {
+            const total = data.white + data.black + data.draws;
+            const wPct = Math.round((data.white / total) * 100);
+            const dPct = Math.round((data.draws / total) * 100);
+            const bPct = Math.round((data.black / total) * 100);
+
+            $('#stat-white').css('width', wPct + '%');
+            $('#stat-draw').css('width', dPct + '%');
+            $('#stat-black').css('width', bPct + '%');
+
+            $('#txt-white').text(`B: ${wPct}%`);
+            $('#txt-draw').text(`T: ${dPct}%`);
+            $('#txt-black').text(`N: ${bPct}%`);
+
+            $('#maestro-stats-container').fadeIn();
+        } else {
+            $('#maestro-stats-container').hide();
+        }
+    } catch (e) {
+        // Fail silently
+        $('#maestro-stats-container').hide();
+    }
 }
 
 async function fetchLichessOpening(fen) {
@@ -2179,10 +2605,16 @@ window.makeAIMove = function () {
 
     $('#coach-txt').html('<div style="color:var(--text-muted); font-style:italic;">🤔 El Maestro está pensando...</div>');
 
-    const diff = gameConfig.difficulty || 5;
-    let depth = 5;
+    const diff = (typeof gameConfig !== 'undefined' ? gameConfig.difficulty : 5) || 0;
+
+    // Sincronizar Skill Level antes de calcular
+    stockfish.postMessage("setoption name Skill Level value " + diff);
+
+    let depth = 2; // Profundidad bajísima para niveles iniciales
+    if (diff > 2) depth = 5;
     if (diff > 5) depth = 10;
-    if (diff > 15) depth = 18;
+    if (diff > 12) depth = 15;
+    if (diff > 18) depth = 20;
 
     stockfish.postMessage('stop');
     stockfish.postMessage('position fen ' + game.fen());
@@ -2541,12 +2973,27 @@ window.startOpeningModule = function (submode) {
         board.position(historyPositions[0]);
         updateUI();
     } else if (submode === 'training') {
+        // Use the color selected in the UI Toggle
+        myColor = (window.trainingColor || 'w');
+        gameConfig.side = myColor === 'w' ? 'white' : 'black';
+
         setMode('ai');
-        myColor = 'w';
-        gameConfig.side = 'white';
-        board.orientation('white');
+        $('.player-top, .player-bottom').addClass('hidden-in-tactics'); // Ocultar en entrenamiento de aprender
+        board.orientation(gameConfig.side);
+
+        // If playing Black, AI moves first
+        if (myColor === 'b') {
+            setTimeout(() => {
+                // If opening has a first move defined, use it. Otherwise standard e4/d4
+                const firstMove = (currentOpening.moves && currentOpening.moves[0]) ? currentOpening.moves[0] : 'e4';
+                game.move(firstMove);
+                board.position(game.fen());
+                updateUI();
+            }, 500);
+        }
+
         showToast(`Entrenamiento: ${opening.name}`, "🎯");
-        $('#coach-txt').html(`<b style="color:var(--accent)">MODO ENTRENAMIENTO:</b> Juega contra la IA. Ella seguirá la ${opening.name} y te avisará si te desvías.`);
+        $('#coach-txt').html(`<b style="color:var(--accent)">MODO ENTRENAMIENTO:</b> Juegas con ${myColor === 'w' ? 'Blancas' : 'Negras'}. La IA te pondrá a prueba en la ${opening.name}.`);
     }
 }
 
@@ -2614,12 +3061,44 @@ async function loadOpeningSpecificPuzzle(name, forceTrap = false) {
             puzzleStep = 1;
             board.position(game.fen());
             updateUI();
+
+            // Mobile Task Display (Disabled per user request for clean UI in tactics)
+            if (window.innerWidth <= 768) {
+                const taskText = p.Themes.includes("MateIn") ? `Jaque Mate en ${p.Themes.match(/MateIn(\d)/)?.[1] || '?'}` : "Encuentra la mejor jugada";
+                $('#mobile-opening-quick').text("Entrenamiento Táctico");
+                $('#mobile-coach-quick').text(taskText);
+                // $('.mobile-board-info').show(); // Mantener oculto para limpieza total
+            }
+
             return;
         }
     }
     // Si no, cargamos uno genérico con aviso
     showToast("No hay retos específicos, cargando táctica general", "info");
     loadRandomPuzzle();
+
+    // Mobile Task update for generic puzzles
+    if (window.innerWidth <= 768 && currentPuzzle) {
+        updateMobilePuzzleTaskDisplay(currentPuzzle.fen, currentPuzzle.themes);
+    }
+}
+
+// Helper to show puzzle task
+function updateMobilePuzzleTaskDisplay(fen, themes) {
+    if (currentMode !== 'exercises') return;
+
+    // Default task
+    let task = "Encuentra la mejor jugada";
+    if (themes && themes.includes("MateIn")) {
+        const moves = themes.match(/MateIn(\d)/);
+        if (moves) task = `🏁 JAQUE MATE EN ${moves[1]}`;
+    }
+
+    $('#mobile-opening-quick').text("🧩 Táctica");
+    $('#mobile-coach-quick').text(task);
+
+    // Keep hidden per user feedback (quitar de la pantalla)
+    $('.mobile-board-info').hide();
 }
 
 $('#opening-sel').change(function () {
@@ -2696,6 +3175,9 @@ function toggleHints(btn) {
 
 // Unbind old handlers and bind new one
 $('#btn-suggest-move, #btn-ai-hint, #btn-hint-main, #btn-hint-mobile-bar').off('click').on('click', function () { toggleHints(this); });
+$('#btn-hint-main').click(function () {
+    toggleHints(this);
+});
 
 function handleFlipBoard() {
     if (typeof board !== 'undefined') {
@@ -2713,6 +3195,14 @@ $('#btn-flip, #btn-flip-mobile, .btn-flip-universal').off('click').on('click', h
 $('#btn-hint-main').click(function () {
     toggleHints(this);
 });
+
+// Color Toggle Logic for Training
+window.trainingColor = 'w';
+window.toggleOpeningColor = function (color) {
+    window.trainingColor = color;
+    $('.pill-opt').removeClass('active');
+    $(`#pill-${color}`).addClass('active');
+};
 
 // NEW MENU LOGIC
 window.showSubMenu = function (id) {
@@ -2760,6 +3250,9 @@ window.setMode = function (mode) {
     moveHistoryGlobal = [];
     window.currentEval = 0.0;
     window.lastEval = 0.0;
+    evalHistory = [0];
+    drawEvalChart('evalChart');
+    drawEvalChart('evalChartMobile');
     clearArrowCanvas();
     $('.legal-dot').remove();
 
@@ -2775,27 +3268,47 @@ window.setMode = function (mode) {
     // Toggle board-specific puzzle controls
     if (mode === 'exercises') {
         $('#puzzle-controls').fadeIn().css('display', 'block');
+        // OCULTAR SECCIONES QUE MOLESTAN EN TÁCTICA (Imágenes 2 y 3 del usuario)
+        $('#side-opening-info, #side-eval-viz, #side-top-moves, #threats-panel, .panel-tabs, #coach-txt, .mobile-board-info').hide();
+        $('#tactic-dashboard-container').show();
+        renderTacticalDashboard();
     } else {
         $('#puzzle-controls').hide();
+        $('#side-opening-info, #side-eval-viz, #side-top-moves, .panel-tabs, #coach-txt').show();
+        $('.mobile-board-info').show(); // Restore if needed
+        $('#tactic-dashboard-container').hide();
         currentPuzzle = null;
         clearInterval(puzTimerInterval);
     }
 
     // Set Game Mode Active (Triggers CSS mobile layout)
     $('body').addClass('board-active');
+
+    // FASE 2: UI CLEANUP FOR LEARN/TACTICS (Mobile & PC)
+    if (mode === 'exercises' || mode === 'study') {
+        $('body').addClass('mode-exercises');
+        // Ocultar info móvil solo en táctica, en estudio la mantenemos para ver la apertura
+        if (mode === 'exercises') $('.mobile-board-info').hide();
+        $('.player-top, .player-bottom').addClass('hidden-in-tactics');
+    } else {
+        $('body').removeClass('mode-exercises');
+        $('.mobile-board-info').show(); // Restaurar
+        $('.player-top, .player-bottom').removeClass('hidden-in-tactics');
+    }
+
     $('.sidebar').removeClass('open'); // Auto close sidebar
 
     setTimeout(function () {
         if (typeof board !== 'undefined' && board.resize) board.resize();
     }, 150);
 
-    $('.mode-section').removeClass('active');
-    var targetSec = mode;
-    if (mode === 'pass-and-play') targetSec = 'study';
-    if (mode === 'exercises') targetSec = 'exercises';
+    let targetSec = 'jugar';
     if (mode === 'local') targetSec = 'local';
     if (mode === 'ai') targetSec = 'ai';
     if (mode === 'study') targetSec = 'study';
+    if (mode === 'exercises') targetSec = 'exercises';
+
+    $('.mode-section').removeClass('active');
     $('#sec-' + targetSec).addClass('active');
 
     if (mode === 'ai') {
@@ -2804,24 +3317,35 @@ window.setMode = function (mode) {
     } else if (mode === 'local') {
         $('#opp-name').text('Oponente Online');
     } else if (mode === 'exercises') {
-        loadRandomPuzzle();
-    } else if (mode === 'pass-and-play') {
-        $('#opp-name').text('Oponente Local');
-    } else {
-        $('#opp-name').text('Oponente (Estudio)');
+        $('#opp-name').text('Entrenamiento Táctico');
     }
 
-    // Refresh Maestro Insight when changing mode
-    updateMaestroInsight(detectOpeningTheory());
+    // Refresh Maestro Insight when changing mode (Solo si no es táctica para evitar lo de las fotos 2 y 3)
+    if (mode !== 'exercises') {
+        updateMaestroInsight(detectOpeningTheory());
+    }
 
     if (mode === 'ai' || mode === 'study' || mode === 'exercises') {
         $('#btn-hint-main').css('display', 'flex').fadeIn();
     } else {
         $('#btn-hint-main').hide();
+
     }
 
     if (window.resetTimers) resetTimers();
     updateUI();
+    updateUI();
+};
+
+window.toggleMobileInfoExpand = function () {
+    $('.mobile-board-info').removeClass('new-content'); // Remove pulse hint
+    $('.mobile-board-info').toggleClass('expanded');
+};
+
+window.selectPuzzleCategory = function (cat) {
+    $('#puz-cat-sel').val(cat);
+    setMode('exercises');
+    loadRandomPuzzle();
 };
 
 window.startMaestroModeReal = function (level = 10, userColor = 'white') {
@@ -3039,4 +3563,217 @@ window.showPuzzleSolution = function () {
         handlePuzzleMove(m);
         showToast("🔓 Solución aplicada", "warning");
     }
+};
+
+// FASE 1: DIBUJAR GRÁFICO DE EVALUACIÓN (CANVAS)
+function drawEvalChart(canvasId = 'evalChart') {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // Solo dibujar si es visible para ahorrar recursos
+    if (canvas.offsetParent === null) return;
+
+    // Ajustar resolución para Retina/High DPI
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    const w = rect.width;
+    const h = rect.height;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Eje central (Igualdad)
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.setLineDash([5, 5]);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, h / 2);
+    ctx.lineTo(w, h / 2);
+    ctx.stroke();
+    ctx.setLineDash([]); // Reset dash
+
+    if (evalHistory.length < 2) return;
+
+    // Normalizar valores: +/- 5 ELO es el máximo visible normalmente
+    const maxEval = 5;
+    const points = evalHistory.map((ev, i) => {
+        const x = (i / (evalHistory.length - 1)) * w;
+        let normalizedEv = Math.max(-maxEval, Math.min(maxEval, ev));
+        const y = (h / 2) - (normalizedEv / maxEval) * (h / 2.5);
+        return { x, y };
+    });
+
+    // Dibujar Gradiente de Área
+    ctx.beginPath();
+    ctx.moveTo(0, h / 2);
+    points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(points[points.length - 1].x, h / 2);
+    ctx.closePath();
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, h);
+    gradient.addColorStop(0, 'rgba(33, 150, 243, 0.4)'); // Ventaja blancas
+    gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.05)');
+    gradient.addColorStop(1, 'rgba(156, 163, 175, 0.2)'); // Ventaja negras
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    // Dibujar Línea de Tendencia
+    ctx.strokeStyle = 'var(--primary)';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.stroke();
+
+    // Punto actual (Último movimiento)
+    const last = points[points.length - 1];
+    ctx.fillStyle = 'var(--primary)';
+    ctx.beginPath();
+    ctx.arc(last.x, last.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.stroke();
+}
+
+// Redibujar gráfico al cambiar tamaño de ventana
+window.addEventListener('resize', drawEvalChart);
+
+// --- MAESTRO IA: NEW SYSTEMS ---
+
+function showGameReport() {
+    // moveHistoryDetails guarda { quality, theory, tactical ... }
+    const details = Object.values(moveHistoryDetails);
+    if (details.length < 3) return;
+
+    const counts = { brilliant: 0, excellent: 0, good: 0, inaccuracy: 0, mistake: 0, blunder: 0, best: 0, book: 0 };
+    let totalScore = 0;
+    let movesWithScore = 0;
+
+    details.forEach(m => {
+        const q = m.quality.class;
+        if (counts[q] !== undefined) counts[q]++;
+
+        let score = 0;
+        if (q === 'brilliant' || q === 'excellent' || q === 'best' || q === 'book') score = 100;
+        else if (q === 'good') score = 80;
+        else if (q === 'inaccuracy') score = 50;
+        else if (q === 'mistake') score = 20;
+        else if (q === 'blunder') score = 0;
+
+        totalScore += score;
+        movesWithScore++;
+    });
+
+    const accuracy = movesWithScore > 0 ? (totalScore / movesWithScore).toFixed(1) : 0;
+    $('#report-accuracy').text(accuracy + "%");
+
+    const breakdownHtml = `
+        <div class="breakdown-item"><span style="color:#00ffff">💎 Brillantes</span> <b>${counts.brilliant}</b></div>
+        <div class="breakdown-item"><span style="color:#4CAF50">⭐ Excelentes</span> <b>${counts.excellent}</b></div>
+        <div class="breakdown-item"><span style="color:#8BC34A">✅ Buenas</span> <b>${counts.good}</b></div>
+        <div class="breakdown-item"><span style="color:#FFEB3B">?! Imprecisiones</span> <b>${counts.inaccuracy}</b></div>
+        <div class="breakdown-item"><span style="color:#FF9800">? Errores</span> <b>${counts.mistake}</b></div>
+        <div class="breakdown-item"><span style="color:#F44336">?? Graves</span> <b>${counts.blunder}</b></div>
+    `;
+    $('#report-move-breakdown').html(breakdownHtml);
+    $('#game-report-modal').fadeIn().css('display', 'flex');
+}
+
+window.exportPGN = function () {
+    const pgn = game.pgn();
+    const blob = new Blob([pgn], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'partida_maestro_ia.pgn';
+    a.click();
+    showToast("PGN Exportado", "💾");
+};
+
+// Enlazar el reporte al final de la partida
+const originalCheckGameOver = window.checkGameOver;
+window.checkGameOver = function () {
+    const isOver = game.game_over() || game.in_draw();
+    if (isOver && currentMode !== 'exercises') {
+        setTimeout(showGameReport, 1500);
+    }
+    if (typeof originalCheckGameOver === 'function') originalCheckGameOver();
+};
+// --- BOARD EDITOR LOGIC ---
+function showBoardEditor() {
+    $('#editor-fen-input').val(game.fen());
+    $('#editor-pgn-input').val(game.pgn());
+    $('#board-editor-modal').fadeIn();
+}
+
+function loadEditorPosition(type) {
+    if (type === 'start') {
+        $('#editor-fen-input').val('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+    } else if (type === 'clear') {
+        $('#editor-fen-input').val('8/8/8/8/8/8/8/8 w - - 0 1');
+    }
+}
+
+function applyEditorPosition() {
+    const fen = $('#editor-fen-input').val().trim();
+    const pgn = $('#editor-pgn-input').val().trim();
+
+    $('#board-editor-modal').fadeOut();
+    setMode('study');
+
+    if (pgn) {
+        if (!game.load_pgn(pgn)) {
+            showToast("PGN inválido, cargando FEN si es posible...", "⚠️");
+        } else {
+            board.position(game.fen());
+            updateUI(true);
+            return;
+        }
+    }
+
+    if (fen) {
+        if (!game.load(fen)) {
+            showToast("FEN inválido / Posición ilegal", "❌");
+        } else {
+            board.position(game.fen());
+            updateUI(true);
+            showToast("Posición cargada", "✅");
+        }
+    }
+}
+
+// NAVIGATION STATE UPDATE
+function updateNavigationTabs(mode) {
+    $('.nav-center-link').removeClass('active');
+
+    let activeSection = 'jugar'; // default
+    if (mode === 'exercises' || mode === 'puzzles') activeSection = 'puzzles';
+    else if (mode === 'study' && (openingSubMode === 'theory' || openingSubMode === 'training')) activeSection = 'aperturas';
+    else if (mode === 'study' && !openingSubMode) activeSection = 'analisis';
+    else activeSection = 'jugar';
+
+    $(`.nav-center-link[data-section="${activeSection}"]`).addClass('active');
+}
+
+// Hook into setMode to update tabs
+const originalSetMode = setMode;
+setMode = function (mode, subMode) {
+    originalSetMode(mode, subMode);
+    // Special handling for analysis vs openings view which setMode might not cover fully if subMode isn't passed
+    // We defer to updateNavigationTabs logic
+    setTimeout(() => updateNavigationTabs(currentMode), 50);
+};
+
+// Also hook existing subMenu navigation
+const originalShowSubMenu = showSubMenu;
+showSubMenu = function (menuId) {
+    originalShowSubMenu(menuId);
+    // Update tabs based on manual menu click
+    $('.nav-center-link').removeClass('active');
+    $(`.nav-center-link[data-section="${menuId}"]`).addClass('active');
 };

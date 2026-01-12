@@ -36,24 +36,22 @@
                 <img src="logo.jpg" alt="Logo" class="logo-img">
                 <span class="logo-text">Chess <span class="accent-text">Drez</span></span>
             </div>
-        </div>
-
-        <nav class="header-center desktop-only">
-            <div class="nav-center-link active" onclick="goBackToMenu()">Inicio</div>
-            <div class="nav-center-link" onclick="showSubMenu('jugar')">Jugar</div>
-            <div class="nav-center-link" onclick="showSubMenu('estudio')">Aprender</div>
-            <div class="nav-center-link" onclick="showSubMenu('puzzles')">Tácticas</div>
-        </nav>
-
-        <div class="header-right">
+            <!-- Navegación estilo pestañas -->
+            <nav class="header-center desktop-only" id="main-nav">
+                <div class="nav-center-link active" data-section="jugar" onclick="showSubMenu('jugar')">JUGAR</div>
+                <div class="nav-center-link" data-section="puzzles" onclick="showSubMenu('puzzles')">TÁCTICAS</div>
+                <div class="nav-center-link" data-section="aperturas" onclick="showSubMenu('aperturas')">APERTURAS</div>
+                <div class="nav-center-link" data-section="analisis" onclick="showSubMenu('analisis')">ANÁLISIS</div>
+            </nav>
             <div class="user-stats">
-                <div class="stat-item">
+                <!-- Rango oculto si es confuso, solo Elo -->
+                <div class="stat-item" style="display:none;">
                     <span class="stat-label">Rango</span>
                     <span class="stat-val" style="color:var(--warning)">Grandmaster</span>
                 </div>
                 <div class="stat-item">
-                    <span class="stat-label">Elo</span>
-                    <span class="stat-val" id="header-elo">500</span>
+                    <span class="stat-label">ELO</span>
+                    <span class="stat-val" id="header-elo" style="font-size:1.1rem; color:var(--accent);">500</span>
                 </div>
             </div>
             <div id="btn-auth-trigger" class="auth-btn">👤 Acceder</div>
@@ -110,13 +108,46 @@
                         <option value="uscf">USCF</option>
                     </select>
 
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-                        <label style="margin-bottom:0;">MEJORES JUGADAS</label>
-                        <label class="toggle-switch-small">
-                            <input type="checkbox" id="sidebar-toggle-best-moves" checked
-                                onchange="toggleBestMoves(this.checked)">
-                            <span class="slider-small"></span>
+
+                    <!-- AI GENERATIVA CONFIGURATION (DESACTIVADO TEMPORALMENTE) -->
+                    <div
+                        style="display:none; margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <label
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <span>🤖 IA GENERATIVA</span>
+                            <label class="toggle-switch-small">
+                                <input type="checkbox" id="ai-enabled-toggle"
+                                    onchange="toggleAIExplanations(this.checked)">
+                                <span class="slider-small"></span>
+                            </label>
                         </label>
+
+                        <div id="ai-config-panel" style="display:none; margin-top:10px;">
+                            <label
+                                style="font-size:0.65rem; opacity:0.7; margin-bottom:5px; display:block;">PROVEEDOR</label>
+                            <select id="ai-provider-sel" class="custom-select"
+                                style="margin-bottom:10px; font-size:0.8rem;">
+                                <option value="openai">OpenAI (GPT-4)</option>
+                                <option value="claude">Claude (Anthropic)</option>
+                                <option value="perplexity">Perplexity</option>
+                            </select>
+
+                            <label style="font-size:0.65rem; opacity:0.7; margin-bottom:5px; display:block;">API
+                                KEY</label>
+                            <div class="input-container" style="position:relative;">
+                                <input type="password" id="ai-api-key-input" placeholder="sk-..."
+                                    style="width:100%; padding:8px; background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:6px; color:#fff; font-size:0.75rem;"
+                                    onchange="saveAIConfig()">
+                                <span class="password-toggle" onclick="togglePasswordVisibility('ai-api-key-input')"
+                                    style="position:absolute; right:8px; top:50%; transform:translateY(-50%); cursor:pointer; font-size:1rem;">👁️</span>
+                            </div>
+
+                            <p style="font-size:0.6rem; opacity:0.6; margin-top:8px; line-height:1.3;">
+                                💡 Tu clave se guarda localmente y nunca se comparte.
+                                <a href="#" onclick="showAIHelp(); return false;" style="color:var(--accent);">¿Cómo
+                                    obtener una?</a>
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -273,17 +304,32 @@
                 <div class="menu-step" id="menu-estudio">
                     <div class="menu-header-mobile">
                         <button class="btn-back-arrow" onclick="goBackToMenu()">←</button>
-                        <h3 class="menu-title">Estudio y Teoría</h3>
+                        <h3 class="menu-title">Estudio y Teoría de Aperturas</h3>
                     </div>
-                    <div class="grid-menu">
+                    <div class="grid-menu" style="grid-template-columns: 1fr;"> <!-- Una sola columna para centrar -->
                         <div class="card-option" onclick="showSubMenu('aperturas')">
                             <span class="opt-icon">📋</span>
-                            <h4>Aperturas</h4>
-                            <p style="font-size:0.6rem; opacity:0.6;">Teoría, Entrenamiento y Retos</p>
+                            <h4>Módulo de Aperturas</h4>
+                            <p style="font-size:0.6rem; opacity:0.6;">Aprende y practica tus líneas favoritas</p>
                         </div>
+                    </div>
+                </div>
+
+                <div class="menu-step" id="menu-analisis">
+                    <div class="menu-header-mobile">
+                        <button class="btn-back-arrow" onclick="goBackToMenu()">←</button>
+                        <h3 class="menu-title">Herramientas de Análisis</h3>
+                    </div>
+                    <div class="grid-menu">
                         <div class="card-option" onclick="setMode('study')">
                             <span class="opt-icon">🔍</span>
                             <h4>Análisis Libre</h4>
+                            <p style="font-size:0.6rem; opacity:0.6;">Explora posiciones con el motor</p>
+                        </div>
+                        <div class="card-option" onclick="showBoardEditor()">
+                            <span class="opt-icon">✏️</span>
+                            <h4>Editor de Tablero</h4>
+                            <p style="font-size:0.6rem; opacity:0.6;">Configura posiciones, FEN y PGN</p>
                         </div>
                     </div>
                 </div>
@@ -306,7 +352,19 @@
                             </select>
                         </div>
 
-                        <div class="sel-group" style="padding-top:10px; border-top:1px solid rgba(255,255,255,0.05);">
+                        <!-- Color Toggle for Training -->
+                        <div class="sel-group"
+                            style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
+                            <label style="font-size:0.7rem; color:var(--text-dim); margin-bottom:0;">JUGAR CON:</label>
+                            <div class="pill-toggle">
+                                <span class="pill-opt active" id="pill-w"
+                                    onclick="toggleOpeningColor('w')">Blancas</span>
+                                <span class="pill-opt" id="pill-b" onclick="toggleOpeningColor('b')">Negras</span>
+                            </div>
+                        </div>
+
+                        <div class="sel-group"
+                            style="padding-top:10px; border-top:1px solid rgba(255,255,255,0.05); display:none;">
                             <label
                                 style="font-size:0.6rem; color:var(--trap-color); font-weight:800; display:block; margin-bottom:8px;">2.
                                 TRAMPAS Y MATES TÍPICOS</label>
@@ -342,24 +400,57 @@
                         <h3 class="menu-title">Entrenar Tácticas</h3>
                     </div>
                     <!-- Configuración de Puzzles (Restaurada a formato simple) -->
+                    <!-- Configuración de Puzzles (Grid Directo) -->
                     <div class="puzzles-config" style="margin-top: 20px;">
                         <label
-                            style="font-size: 0.7rem; color: var(--text-dim); font-weight: 800; display: block; margin-bottom: 8px;">CATEGORÍA
-                            DE PUZZLE</label>
-                        <select id="puz-cat-sel" class="custom-select" style="padding: 12px; margin-bottom: 15px;">
-                            <option value="all">Mezclados (Todos)</option>
-                            <option value="mate">Mate</option>
-                            <option value="fork">Doble / Horquilla</option>
-                            <option value="pin">Clavada</option>
-                            <option value="sacrifice">Sacrificio</option>
-                            <option value="opening">Apertura</option>
-                            <option value="middlegame">Medio Juego</option>
-                            <option value="endgame">Finales</option>
+                            style="font-size: 0.7rem; color: var(--text-dim); font-weight: 800; display: block; margin-bottom: 15px;">
+                            SELECCIONA TIPO DE ENTRENAMIENTO
+                        </label>
+
+                        <div class="grid-menu" id="puz-grid-options">
+                            <div class="card-option" onclick="selectPuzzleCategory('all')">
+                                <span class="opt-icon">🎲</span>
+                                <h4>Mezclado</h4>
+                                <p style="font-size:0.6rem; opacity:0.6;">Dificultad progresiva</p>
+                            </div>
+                            <div class="card-option" onclick="selectPuzzleCategory('mate')">
+                                <span class="opt-icon">🏁</span>
+                                <h4>Jaque Mate</h4>
+                                <p style="font-size:0.6rem; opacity:0.6;">Encuentra el remate</p>
+                            </div>
+                            <div class="card-option" onclick="selectPuzzleCategory('fork')">
+                                <span class="opt-icon">🍴</span>
+                                <h4>Ataque Doble</h4>
+                                <p style="font-size:0.6rem; opacity:0.6;">Gana material</p>
+                            </div>
+                            <div class="card-option" onclick="selectPuzzleCategory('pin')">
+                                <span class="opt-icon">📌</span>
+                                <h4>Clavada</h4>
+                                <p style="font-size:0.6rem; opacity:0.6;">Inmoviliza al rival</p>
+                            </div>
+                            <div class="card-option" onclick="selectPuzzleCategory('endgame')">
+                                <span class="opt-icon">⏳</span>
+                                <h4>Finales</h4>
+                                <p style="font-size:0.6rem; opacity:0.6;">Técnica precisa</p>
+                            </div>
+                            <div class="card-option" onclick="selectPuzzleCategory('opening')">
+                                <span class="opt-icon">📖</span>
+                                <h4>Apertura</h4>
+                                <p style="font-size:0.6rem; opacity:0.6;">Castiga errores</p>
+                            </div>
+                        </div>
+
+                        <!-- Hidden select for compatibility logic -->
+                        <select id="puz-cat-sel" style="display:none;">
+                            <option value="all">all</option>
+                            <option value="mate">mate</option>
+                            <option value="fork">fork</option>
+                            <option value="pin">pin</option>
+                            <option value="sacrifice">sacrifice</option>
+                            <option value="opening">opening</option>
+                            <option value="middlegame">middlegame</option>
+                            <option value="endgame">endgame</option>
                         </select>
-                        <button class="btn-action-primary" style="width: 100%; border-radius: 12px; padding: 15px;"
-                            onclick="setMode('exercises'); loadRandomPuzzle();">
-                            EMPEZAR ENTRENAMIENTO
-                        </button>
                     </div>
 
                     <!-- Puzzles Statistics & History -->
@@ -386,16 +477,6 @@
                     <!-- Moves will be added here dynamically -->
                 </div>
 
-                <!-- Mobile Info Card (above board) -->
-                <div class="mobile-board-info">
-                    <div class="mobile-opening-badge">
-                        <span class="opening-icon">📖</span>
-                        <span id="mobile-opening-quick">Posición Inicial</span>
-                    </div>
-                    <div class="mobile-coach-comment" id="mobile-coach-quick">
-                        Comienza la partida...
-                    </div>
-                </div>
 
                 <div class="player-top">
                     <div class="user-meta">
@@ -467,12 +548,28 @@
         <!-- Mobile Info Modal -->
         <div id="mobile-info-modal" class="mobile-info-modal">
             <div class="mobile-info-header">
-                <h3>Información de Partida</h3>
+                <h3 id="mobile-modal-title">Información de Partida</h3>
                 <button class="mobile-close-btn" onclick="closeMobileInfo()">✕</button>
             </div>
             <div class="mobile-info-content">
+                <!-- TACTICS STATS SECTION (Visible only in Tactics Mode) -->
+                <div id="mobile-tactics-stats" style="display:none;">
+                    <div style="text-align:center; padding:20px 0;">
+                        <h1 id="mobile-tactics-elo" style="font-size:3em; color:var(--accent); margin:0;">1240</h1>
+                        <span
+                            style="font-size:0.9em; color:var(--text-dim); letter-spacing:1px; text-transform:uppercase;">Rating
+                            Táctico</span>
+                    </div>
+
+                    <div id="puz-feedback-mobile" style="text-align:center; margin-bottom:15px;"></div>
+
+                    <div class="stats-bars-container">
+                        <!-- Se inyecta dinámicamente el dashboard colapsable -->
+                    </div>
+                </div>
+
                 <!-- Analysis Section -->
-                <div class="mobile-info-section">
+                <div class="mobile-info-section game-info-only">
                     <h4>📊 Análisis</h4>
                     <div id="mobile-eval-display">
                         <div class="eval-bar-horizontal">
@@ -483,6 +580,11 @@
                             <span>Precisión: <strong id="mobile-accuracy">--</strong></span>
                             <span>Profundidad: <strong id="mobile-depth">--</strong></span>
                         </div>
+                    </div>
+                    <!-- GRÁFICO MÓVIL -->
+                    <div class="eval-graph-container"
+                        style="margin-top:10px; background:#000; border-radius:8px; height:60px; position:relative; overflow:hidden; border:1px solid var(--border);">
+                        <canvas id="evalChartMobile" style="width:100%; height:100%;"></canvas>
                     </div>
                 </div>
 
@@ -513,11 +615,33 @@
                             <strong style="color:#ef4444;">🚨 Trampa Detectada:</strong>
                             <p id="mobile-maestro-trap" style="font-size:0.8rem; margin:5px 0 0 0;"></p>
                         </div>
+                        <!-- FASE 2: STATS MOBILE -->
+                        <div id="mobile-maestro-stats-container" style="display:none; margin-top:10px;">
+                            <div class="stats-bar"
+                                style="display:flex; height:10px; border-radius:4px; overflow:hidden; width:100%;">
+                                <div id="mobile-stat-white" style="background:#fff; width:33%;"></div>
+                                <div id="mobile-stat-draw" style="background:#777; width:33%;"></div>
+                                <div id="mobile-stat-black" style="background:#222; width:34%;"></div>
+                            </div>
+                            <div
+                                style="display:flex; justify-content:space-between; font-size:0.6rem; color:var(--text-dim); margin-top:2px;">
+                                <span id="mobile-txt-white">W: --%</span>
+                                <span id="mobile-txt-draw">D: --%</span>
+                                <span id="mobile-txt-black">B: --%</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
+                <!-- Threats Section Mobile -->
+                <div class="mobile-info-section" id="mobile-threats-section"
+                    style="display:none; border-left: 4px solid #ef4444; background: rgba(239, 68, 68, 0.05); margin-top:10px;">
+                    <h4 style="color:#ef4444;">🚨 Amenazas</h4>
+                    <div id="mobile-threats-list" style="font-size:0.8rem; font-weight:600;"></div>
+                </div>
+
                 <!-- Coach Logs Section -->
-                <div class="mobile-info-section">
+                <div class="mobile-info-section game-info-only">
                     <h4>💬 Logs del Maestro</h4>
                     <div id="mobile-coach-logs"></div>
                 </div>
@@ -530,13 +654,15 @@
                 <div class="section-header">
                     <h3>🧩 Modo Táctico</h3>
                 </div>
-                <div id="puz-side-stats"
-                    style="padding:10px; font-size:0.75rem; color:var(--text-dim); border-top:1px solid var(--border); margin-top:10px;">
-                    Estás en modo de entrenamiento táctico. Mejora tu agudeza visual analizando cada posición.
+                <div id="tactic-dashboard-container" style="padding:15px;">
+                    <!-- Se inyecta dinámicamente: ELO, Gráficos y Estadísticas -->
+                    <div style="font-size:0.75rem; color:var(--text-dim); text-align:center; padding:20px;">
+                        Cargando estadísticas de entrenamiento...
+                    </div>
                 </div>
             </section>
 
-            <div class="panel-section opening-info">
+            <div class="panel-section opening-info" id="side-opening-info">
                 <div class="panel-header">
                     <h3>💡 Perspectiva del Maestro</h3>
                 </div>
@@ -553,10 +679,27 @@
                         <span class="insight-label">🚨 ALERTA:</span>
                         <div id="maestro-trap" class="insight-val warning-text">Ninguna amenaza detectada.</div>
                     </div>
+
+                    <!-- FASE 2: ESTADÍSTICAS LICHESS -->
+                    <div class="insight-group" id="maestro-stats-container" style="display:none; margin-top:5px;">
+                        <span class="insight-label">ESTADÍSTICAS GLOBALES (LICHESS)</span>
+                        <div class="stats-bar"
+                            style="display:flex; height:12px; border-radius:4px; overflow:hidden; margin-top:5px; width:100%;">
+                            <div id="stat-white" style="background:#fff; width:33%;"></div>
+                            <div id="stat-draw" style="background:#777; width:33%;"></div>
+                            <div id="stat-black" style="background:#222; width:34%;"></div>
+                        </div>
+                        <div
+                            style="display:flex; justify-content:space-between; font-size:0.6rem; color:var(--text-dim); margin-top:2px;">
+                            <span id="txt-white">W: --%</span>
+                            <span id="txt-draw">D: --%</span>
+                            <span id="txt-black">B: --%</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="panel-section evaluation-viz">
+            <div class="panel-section evaluation-viz" id="side-eval-viz">
                 <div class="panel-header">
                     <h3>Análisis en Tiempo Real</h3>
                     <div id="engine-status" class="status-indicator">ON</div>
@@ -577,9 +720,33 @@
                         <span class="stat-value" id="eval-depth">18</span>
                     </div>
                 </div>
+
+                <!-- GRÁFICO DE EVALUACIÓN DINÁMICO -->
+                <div class="eval-graph-container"
+                    style="margin-top:15px; background:#000; border-radius:8px; height:80px; position:relative; overflow:hidden; border:1px solid var(--border);">
+                    <canvas id="evalChart" style="width:100%; height:100%;"></canvas>
+                </div>
+
+                <!-- BOTONERA DE HERRAMIENTAS (NUEVO) -->
+                <div class="analysis-tools-grid"
+                    style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:15px;">
+                    <button class="btn-tool"
+                        onclick="toggleBestMoves(!window.showBestMoves); $(this).toggleClass('active');">
+                        <span>🎯</span> Mejor Jugada
+                    </button>
+                    <button class="btn-tool" onclick="$('#threats-panel').toggle()">
+                        <span>⚠️</span> Amenazas
+                    </button>
+                    <button class="btn-tool" onclick="showSubMenu('estudio')">
+                        <span>📚</span> Libro
+                    </button>
+                    <button class="btn-tool" onclick="game.undo(); board.position(game.fen()); updateUI();">
+                        <span>↩️</span> Deshacer
+                    </button>
+                </div>
             </div>
 
-            <div class="panel-section top-moves">
+            <div class="panel-section top-moves" id="side-top-moves">
                 <div class="panel-header">
                     <h3>Mejores Jugadas</h3>
                     <label class="toggle-switch-small">
@@ -593,6 +760,16 @@
             </div>
 
 
+            <div class="panel-section threats-panel" id="threats-panel"
+                style="display:none; border-left: 4px solid #ef4444; background: rgba(239, 68, 68, 0.05);">
+                <div class="panel-header">
+                    <h3 style="color:#ef4444;">🚨 Amenazas Detectadas</h3>
+                </div>
+                <div id="threats-list" style="padding:10px; font-size:0.8rem; font-weight:600;">
+                    Ninguna amenaza inmediata.
+                </div>
+            </div>
+
             <div class="panel-tabs">
                 <button class="tab-btn active" onclick="switchSideTab('analysis')">LOGS</button>
                 <button class="tab-btn" onclick="switchSideTab('chat')">CHAT</button>
@@ -600,10 +777,13 @@
             </div>
 
             <div id="tab-analysis" class="tab-content active">
-                <div id="coach-txt" style="padding: 15px; min-height: 100px;">
+                <div id="coach-txt" class="coach-stable-container">
                     <div style="font-size:0.75rem; color:var(--text-muted); text-align:center; padding:20px;">
                         Posición inicial. Realiza un movimiento para ver el análisis del Maestro.
                     </div>
+                </div>
+                <div id="tactic-stats-panel" style="display:none; padding: 15px;">
+                    <!-- Se inyecta dinámicamente en client.js -->
                 </div>
             </div>
 
@@ -671,7 +851,66 @@
         </div>
     </div>
 
+    <!-- Toast Container for Notifications -->
+    <div id="toast-container"></div>
+
+    <script src="ai_module.js"></script>
     <script src="client.js?v=2"></script>
+    <!-- MODAL DE INFORME DE PARTIDA -->
+    <div id="game-report-modal" class="modal-overlay">
+        <div class="modal-card report-card">
+            <h2 style="text-align:center; color:var(--accent); margin-bottom:10px;">Resumen de Partida</h2>
+            <div class="report-main-stats">
+                <div class="report-stat-big">
+                    <span id="report-accuracy">0%</span>
+                    <label>PRECISIÓN</label>
+                </div>
+            </div>
+            <div id="report-move-breakdown" class="report-breakdown">
+                <!-- Se llena dinámicamente -->
+            </div>
+            <div class="report-actions">
+                <button class="btn-primary-auth" onclick="$('#game-report-modal').fadeOut()">Cerrar</button>
+                <button class="btn-secondary" onclick="exportPGN()">Exportar PGN</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUDIO PARA TTS (HIDDEN) -->
+    <div id="tts-anchor"></div>
+
+    <!-- MODAL EDITOR DE TABLERO -->
+    <div id="board-editor-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 500px;">
+            <h2 style="text-align:center; color:var(--accent); margin-bottom:15px;">Editor de Posición</h2>
+
+            <label
+                style="font-size:0.7rem; color:var(--text-dim); font-weight:800; display:block; margin-bottom:5px;">IMPORTAR
+                FEN</label>
+            <div class="input-container" style="margin-bottom:15px;">
+                <input type="text" id="editor-fen-input"
+                    placeholder="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1">
+            </div>
+
+            <label
+                style="font-size:0.7rem; color:var(--text-dim); font-weight:800; display:block; margin-bottom:5px;">IMPORTAR
+                PGN</label>
+            <div class="input-container" style="margin-bottom:15px;">
+                <textarea id="editor-pgn-input" rows="4" placeholder="1. e4 e5 2. Nf3..."
+                    style="resize:none; background:transparent; color:white; width:100%; border:none; outline:none; font-family:inherit;"></textarea>
+            </div>
+
+            <div class="editor-actions"
+                style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
+                <button class="btn-secondary" onclick="loadEditorPosition('start')">Posición Inicial</button>
+                <button class="btn-secondary" onclick="loadEditorPosition('clear')">Limpiar Tablero</button>
+            </div>
+
+            <button class="btn-primary-auth" onclick="applyEditorPosition()">ANALIZAR ESTA POSICIÓN</button>
+            <button class="btn-secondary" style="width:100%; margin-top:8px;"
+                onclick="$('#board-editor-modal').fadeOut()">CANCELAR</button>
+        </div>
+    </div>
 </body>
 
 </html>
