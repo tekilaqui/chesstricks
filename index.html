@@ -36,13 +36,18 @@
                 <img src="logo.jpg" alt="Logo" class="logo-img">
                 <span class="logo-text">Chess <span class="accent-text">Drez</span></span>
             </div>
-            <!-- Navegación estilo pestañas -->
-            <nav class="header-center desktop-only" id="main-nav">
-                <div class="nav-center-link active" data-section="jugar" onclick="showSubMenu('jugar')">JUGAR</div>
-                <div class="nav-center-link" data-section="puzzles" onclick="showSubMenu('puzzles')">TÁCTICAS</div>
-                <div class="nav-center-link" data-section="aperturas" onclick="showSubMenu('aperturas')">APERTURAS</div>
-                <div class="nav-center-link" data-section="analisis" onclick="showSubMenu('analisis')">ANÁLISIS</div>
-            </nav>
+        </div>
+
+        <!-- Navegación estilo pestañas (Centro) -->
+        <nav class="header-center desktop-only" id="main-nav">
+            <div class="nav-center-link active" data-section="jugar" onclick="showSubMenu('jugar')">JUGAR</div>
+            <div class="nav-center-link" data-section="puzzles" onclick="showSubMenu('puzzles')">TÁCTICAS</div>
+            <div class="nav-center-link" data-section="aperturas" onclick="showSubMenu('aperturas')">APERTURAS</div>
+            <div class="nav-center-link" data-section="analisis" onclick="showSubMenu('analisis')">ANÁLISIS</div>
+        </nav>
+
+        <!-- Stats y Auth (Derecha) -->
+        <div class="header-right">
             <div class="user-stats">
                 <!-- Rango oculto si es confuso, solo Elo -->
                 <div class="stat-item" style="display:none;">
@@ -70,13 +75,17 @@
                     <span class="nav-icon">⚔️</span>
                     <span class="nav-text">Jugar</span>
                 </div>
-                <div class="nav-item" onclick="showSubMenu('estudio')" id="nav-aprender">
+                <div class="nav-item" onclick="showSubMenu('aperturas')" id="nav-aperturas">
                     <span class="nav-icon">🎓</span>
-                    <span class="nav-text">Aprender</span>
+                    <span class="nav-text">Aperturas</span>
                 </div>
                 <div class="nav-item" onclick="showSubMenu('puzzles')" id="nav-tacticas">
                     <span class="nav-icon">🧩</span>
                     <span class="nav-text">Tácticas</span>
+                </div>
+                <div class="nav-item" onclick="showSubMenu('historial')" id="nav-historial">
+                    <span class="nav-icon">📈</span>
+                    <span class="nav-text">Historial</span>
                 </div>
             </div>
 
@@ -174,7 +183,7 @@
 
                             <div class="hero-actions mobile-hidden">
                                 <button class="btn-hero-primary" onclick="showSubMenu('jugar')">Empezar a Jugar</button>
-                                <button class="btn-hero-secondary" onclick="showSubMenu('estudio')">Ver
+                                <button class="btn-hero-secondary" onclick="showSubMenu('aperturas')">Ver
                                     Tutoriales</button>
                             </div>
 
@@ -183,8 +192,8 @@
                                 <button class="btn-mobile-menu primary" onclick="showSubMenu('jugar')">
                                     <span class="icon">⚔️</span> JUGAR
                                 </button>
-                                <button class="btn-mobile-menu" onclick="showSubMenu('estudio')">
-                                    <span class="icon">🎓</span> APRENDER
+                                <button class="btn-mobile-menu" onclick="showSubMenu('aperturas')">
+                                    <span class="icon">🎓</span> APERTURAS
                                 </button>
                                 <button class="btn-mobile-menu" onclick="showSubMenu('puzzles')">
                                     <span class="icon">🧩</span> TÁCTICAS
@@ -469,6 +478,47 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- NUEVO: MENÚ DE HISTORIAL Y ESTADÍSTICAS -->
+                <div class="menu-step" id="menu-historial">
+                    <div class="menu-header-mobile">
+                        <button class="btn-back-arrow" onclick="goBackToMenu()">←</button>
+                        <h3 class="menu-title">Historial y Estadísticas</h3>
+                    </div>
+
+                    <!-- Historial de Partidas -->
+                    <div style="padding: 20px;">
+                        <h3 style="font-size:1.2rem; margin-bottom:15px; color:var(--accent);">♟️ Historial de Partidas
+                        </h3>
+                        <div id="game-history-container"
+                            style="background:var(--bg-panel); border-radius:12px; padding:15px; border:1px solid var(--border); min-height:200px;">
+                            <div style="text-align:center; color:var(--text-dim); padding:40px 20px;">
+                                <p>📋 Aquí aparecerá el historial de tus partidas</p>
+                                <p style="font-size:0.8rem; margin-top:10px;">Juega algunas partidas para ver tu
+                                    progreso</p>
+                            </div>
+                        </div>
+
+                        <!-- Estadísticas de Puzzles -->
+                        <h3 style="font-size:1.2rem; margin:25px 0 15px; color:var(--accent);">🧩 Estadísticas de
+                            Tácticas</h3>
+                        <div class="puzzles-stats-container">
+                            <div class="puz-stats-header">
+                                <span>📊 TUS ESTADÍSTICAS</span>
+                                <span id="puz-elo-display-main"
+                                    style="color:var(--accent); font-weight:800;">500🧩</span>
+                            </div>
+                            <div id="puz-stats-list-main" class="puz-stats-grid">
+                                <!-- Themes stats will be injected here -->
+                            </div>
+
+                            <div class="puz-history-header">🕒 ÚLTIMOS ACERTADOS</div>
+                            <div id="puz-history-list-main" class="puz-history-list">
+                                <!-- History items will be injected here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div id="board-layout" class="board-wrapper">
@@ -648,118 +698,123 @@
             </div>
         </div>
 
-        <!-- PANEL LATERAL (DERECHA) -->
+        <!-- PANEL LATERAL (DERECHA) - REDISEÑADO CON SECCIONES COLAPSABLES -->
         <aside class="side-panel">
+            <!-- SECCIÓN TÁCTICAS (Solo visible en modo ejercicios) -->
             <section id="sec-exercises" class="mode-section">
                 <div class="section-header">
                     <h3>🧩 Modo Táctico</h3>
                 </div>
                 <div id="tactic-dashboard-container" style="padding:15px;">
-                    <!-- Se inyecta dinámicamente: ELO, Gráficos y Estadísticas -->
                     <div style="font-size:0.75rem; color:var(--text-dim); text-align:center; padding:20px;">
                         Cargando estadísticas de entrenamiento...
                     </div>
                 </div>
             </section>
 
-            <div class="panel-section opening-info" id="side-opening-info">
-                <div class="panel-header">
+            <!-- 1. PERSPECTIVA DEL MAESTRO (Colapsable) -->
+            <div class="panel-section collapsible-panel">
+                <div class="panel-header clickable" onclick="togglePanelSection('maestro-content')">
                     <h3>💡 Perspectiva del Maestro</h3>
+                    <span class="collapse-arrow">▼</span>
                 </div>
-                <div class="maestro-insight-card">
-                    <div class="insight-group">
-                        <span class="insight-label">📊 APERTURA:</span>
-                        <div id="maestro-opening-name" class="insight-val">Analizando...</div>
-                    </div>
-                    <div class="insight-group">
-                        <span class="insight-label">🧠 PLAN:</span>
-                        <div id="maestro-plan" class="insight-val">Desarrollando estructura...</div>
-                    </div>
-                    <div class="insight-group trap-alert" id="maestro-trap-container" style="display:none;">
-                        <span class="insight-label">🚨 ALERTA:</span>
-                        <div id="maestro-trap" class="insight-val warning-text">Ninguna amenaza detectada.</div>
-                    </div>
-
-                    <!-- FASE 2: ESTADÍSTICAS LICHESS -->
-                    <div class="insight-group" id="maestro-stats-container" style="display:none; margin-top:5px;">
-                        <span class="insight-label">ESTADÍSTICAS GLOBALES (LICHESS)</span>
-                        <div class="stats-bar"
-                            style="display:flex; height:12px; border-radius:4px; overflow:hidden; margin-top:5px; width:100%;">
-                            <div id="stat-white" style="background:#fff; width:33%;"></div>
-                            <div id="stat-draw" style="background:#777; width:33%;"></div>
-                            <div id="stat-black" style="background:#222; width:34%;"></div>
+                <div id="maestro-content" class="panel-content">
+                    <div class="maestro-insight-card">
+                        <div class="insight-group">
+                            <span class="insight-label">📊 APERTURA:</span>
+                            <div id="maestro-opening-name" class="insight-val">Analizando...</div>
                         </div>
-                        <div
-                            style="display:flex; justify-content:space-between; font-size:0.6rem; color:var(--text-dim); margin-top:2px;">
-                            <span id="txt-white">W: --%</span>
-                            <span id="txt-draw">D: --%</span>
-                            <span id="txt-black">B: --%</span>
+                        <div class="insight-group">
+                            <span class="insight-label">🧠 PLAN:</span>
+                            <div id="maestro-plan" class="insight-val">Desarrollando estructura...</div>
+                        </div>
+                        <div class="insight-group trap-alert" id="maestro-trap-container" style="display:none;">
+                            <span class="insight-label">🚨 ALERTA:</span>
+                            <div id="maestro-trap" class="insight-val warning-text">Ninguna amenaza detectada.</div>
+                        </div>
+                        <div class="insight-group" id="maestro-stats-container" style="display:none; margin-top:5px;">
+                            <span class="insight-label">ESTADÍSTICAS GLOBALES (LICHESS)</span>
+                            <div class="stats-bar"
+                                style="display:flex; height:12px; border-radius:4px; overflow:hidden; margin-top:5px; width:100%;">
+                                <div id="stat-white" style="background:#fff; width:33%;"></div>
+                                <div id="stat-draw" style="background:#777; width:33%;"></div>
+                                <div id="stat-black" style="background:#222; width:34%;"></div>
+                            </div>
+                            <div
+                                style="display:flex; justify-content:space-between; font-size:0.6rem; color:var(--text-dim); margin-top:2px;">
+                                <span id="txt-white">W: --%</span>
+                                <span id="txt-draw">D: --%</span>
+                                <span id="txt-black">B: --%</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="panel-section evaluation-viz" id="side-eval-viz">
-                <div class="panel-header">
-                    <h3>Análisis en Tiempo Real</h3>
-                    <div id="engine-status" class="status-indicator">ON</div>
+            <!-- 2. ANÁLISIS EN TIEMPO REAL (Colapsable) -->
+            <div class="panel-section collapsible-panel">
+                <div class="panel-header clickable" onclick="togglePanelSection('analysis-content')">
+                    <h3>📊 Análisis en Tiempo Real</h3>
+                    <span class="collapse-arrow">▼</span>
                 </div>
-
-                <div class="eval-bar-horizontal">
-                    <div id="eval-bar-fill" class="eval-fill-h"></div>
-                    <span id="eval-text-overlay">0.0</span>
-                </div>
-
-                <div class="eval-stats-grid">
-                    <div class="eval-stat">
-                        <span class="stat-label">Precisión</span>
-                        <span class="stat-value" id="eval-accuracy">--</span>
+                <div id="analysis-content" class="panel-content">
+                    <div class="eval-bar-horizontal">
+                        <div id="eval-bar-fill" class="eval-fill-h"></div>
+                        <span id="eval-text-overlay">0.0</span>
                     </div>
-                    <div class="eval-stat">
-                        <span class="stat-label">Profundidad</span>
-                        <span class="stat-value" id="eval-depth">18</span>
+                    <div class="eval-stats-grid">
+                        <div class="eval-stat">
+                            <span class="stat-label">Precisión</span>
+                            <span class="stat-value" id="eval-accuracy">--</span>
+                        </div>
+                        <div class="eval-stat">
+                            <span class="stat-label">Profundidad</span>
+                            <span class="stat-value" id="eval-depth">18</span>
+                        </div>
                     </div>
-                </div>
-
-                <!-- GRÁFICO DE EVALUACIÓN DINÁMICO -->
-                <div class="eval-graph-container"
-                    style="margin-top:15px; background:#000; border-radius:8px; height:80px; position:relative; overflow:hidden; border:1px solid var(--border);">
-                    <canvas id="evalChart" style="width:100%; height:100%;"></canvas>
-                </div>
-
-                <!-- BOTONERA DE HERRAMIENTAS (NUEVO) -->
-                <div class="analysis-tools-grid"
-                    style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:15px;">
-                    <button class="btn-tool"
-                        onclick="toggleBestMoves(!window.showBestMoves); $(this).toggleClass('active');">
-                        <span>🎯</span> Mejor Jugada
-                    </button>
-                    <button class="btn-tool" onclick="$('#threats-panel').toggle()">
-                        <span>⚠️</span> Amenazas
-                    </button>
-                    <button class="btn-tool" onclick="showSubMenu('estudio')">
-                        <span>📚</span> Libro
-                    </button>
-                    <button class="btn-tool" onclick="game.undo(); board.position(game.fen()); updateUI();">
-                        <span>↩️</span> Deshacer
-                    </button>
+                    <div class="eval-graph-container"
+                        style="margin-top:15px; background:#000; border-radius:8px; height:80px; position:relative; overflow:hidden; border:1px solid var(--border);">
+                        <canvas id="evalChart" style="width:100%; height:100%;"></canvas>
+                    </div>
                 </div>
             </div>
 
-            <div class="panel-section top-moves" id="side-top-moves">
-                <div class="panel-header">
-                    <h3>Mejores Jugadas</h3>
-                    <label class="toggle-switch-small">
-                        <input type="checkbox" id="toggle-best-moves" checked onchange="toggleBestMoves(this.checked)">
-                        <span class="slider-small"></span>
-                    </label>
+            <!-- 3. MEJORES JUGADAS (Colapsable) -->
+            <div class="panel-section collapsible-panel">
+                <div class="panel-header clickable" onclick="togglePanelSection('moves-content')">
+                    <h3>🎯 Mejores Jugadas</h3>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <label class="toggle-switch-small" onclick="event.stopPropagation();">
+                            <input type="checkbox" id="toggle-best-moves-main" checked
+                                onchange="toggleBestMoves(this.checked)">
+                            <span class="slider-small"></span>
+                        </label>
+                        <span class="collapse-arrow">▼</span>
+                    </div>
                 </div>
-                <div id="best-moves-list" class="moves-list">
-                    <div class="move-item placeholder">Calculando líneas...</div>
+                <div id="moves-content" class="panel-content">
+                    <div id="best-moves-list" class="moves-list">
+                        <div class="move-item placeholder">Calculando líneas...</div>
+                    </div>
                 </div>
             </div>
 
+            <!-- 4. LOGS DEL MAESTRO (Colapsable) -->
+            <div class="panel-section collapsible-panel">
+                <div class="panel-header clickable" onclick="togglePanelSection('logs-content')">
+                    <h3>💬 Comentarios del Maestro</h3>
+                    <span class="collapse-arrow">▼</span>
+                </div>
+                <div id="logs-content" class="panel-content">
+                    <div id="coach-txt" class="coach-stable-container">
+                        <div style="font-size:0.75rem; color:var(--text-muted); text-align:center; padding:20px;">
+                            Posición inicial. Realiza un movimiento para ver el análisis del Maestro.
+                        </div>
+                    </div>
+                </div>
+            </div>
 
+            <!-- Amenazas (Oculto por defecto) -->
             <div class="panel-section threats-panel" id="threats-panel"
                 style="display:none; border-left: 4px solid #ef4444; background: rgba(239, 68, 68, 0.05);">
                 <div class="panel-header">
@@ -767,41 +822,6 @@
                 </div>
                 <div id="threats-list" style="padding:10px; font-size:0.8rem; font-weight:600;">
                     Ninguna amenaza inmediata.
-                </div>
-            </div>
-
-            <div class="panel-tabs">
-                <button class="tab-btn active" onclick="switchSideTab('analysis')">LOGS</button>
-                <button class="tab-btn" onclick="switchSideTab('chat')">CHAT</button>
-                <button class="tab-btn" onclick="switchSideTab('history')">MOVIMIENTOS</button>
-            </div>
-
-            <div id="tab-analysis" class="tab-content active">
-                <div id="coach-txt" class="coach-stable-container">
-                    <div style="font-size:0.75rem; color:var(--text-muted); text-align:center; padding:20px;">
-                        Posición inicial. Realiza un movimiento para ver el análisis del Maestro.
-                    </div>
-                </div>
-                <div id="tactic-stats-panel" style="display:none; padding: 15px;">
-                    <!-- Se inyecta dinámicamente en client.js -->
-                </div>
-            </div>
-
-            <div id="tab-history" class="tab-content">
-                <div id="move-history-list" style="padding: 15px;">
-                    <!-- Moves will appear here -->
-                </div>
-            </div>
-
-            <div id="tab-chat" class="tab-content">
-                <div class="chat-area" id="chat-msgs">
-                    <div class="chat-empty">Conéctate para empezar a chatear...</div>
-                </div>
-                <div class="chat-input-row" style="padding: 15px; border-top: 1px solid var(--border);">
-                    <input type="text" id="chat-input" placeholder="Escribe un mensaje..."
-                        style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; color: #fff; padding: 10px; flex: 1;">
-                    <button id="btn-chat-send"
-                        style="background: var(--primary); color: #fff; border: none; padding: 10px 15px; border-radius: 8px; margin-left:10px; cursor:pointer;">➤</button>
                 </div>
             </div>
         </aside>

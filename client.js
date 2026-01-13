@@ -693,7 +693,7 @@ try {
                         const theoryInfo = detectOpeningTheory();
                         const tacticalAdvice = generateTacticalAdvice(diff, ev, isMate);
 
-                        updateCoachDashboard(quality, theoryInfo, tacticalAdvice, firstMove, ev, isMate, false);
+                        updateCoachDashboard(quality, theoryInfo, tacticalAdvice, firstMove, ev, isMate, true); // Pasar true para forzar actualización final
                         updateMaestroInsight(theoryInfo);
                     }
                 }
@@ -798,9 +798,9 @@ function detectOpeningTheory() {
 
     let match = { name: "Posición Personalizada", comments: ["Analizando estructura de piezas..."] };
 
-    // 1. Check Lichess-style LAN from knowledge base
+    // 1. Check SAN-style from knowledge base
     if (typeof MAESTRO_KNOWLEDGE !== 'undefined' && MAESTRO_KNOWLEDGE.eco) {
-        const key = historyLAN;
+        const key = historySAN;
         if (MAESTRO_KNOWLEDGE.eco[key]) {
             match = { name: MAESTRO_KNOWLEDGE.eco[key], comments: ["Línea teórica principal."] };
         }
@@ -852,6 +852,7 @@ function generateTacticalAdvice(diff, ev, isMate) {
 }
 
 function updateCoachDashboard(quality, theory, tactical, bestMove, ev, isMate, moved = false) {
+    const currentFen = game.fen();
     // 1. Detección de Apertura
     $('#maestro-opening-name').text(theory.name || "Posición Inicial");
 
@@ -867,7 +868,7 @@ function updateCoachDashboard(quality, theory, tactical, bestMove, ev, isMate, m
     // --- SISTEMA DE ESTABILIDAD (THROTTLE) ---
     const now = Date.now();
     // No actualizar el texto más de una vez cada 2 segundos, a menos que sea un movimiento nuevo
-    const shouldUpdateText = (moved || !window.lastCoachTextUpdateTime || (now - window.lastCoachTextUpdateTime > 2000));
+    const shouldUpdateText = (moved || !window.lastCoachTextUpdateTime || (now - window.lastCoachTextUpdateTime > 1500));
 
     if (shouldUpdateText) {
         window.lastCoachTextUpdateTime = now;
@@ -3777,3 +3778,58 @@ showSubMenu = function (menuId) {
     $('.nav-center-link').removeClass('active');
     $(`.nav-center-link[data-section="${menuId}"]`).addClass('active');
 };
+
+// --- CRITICAL RESTORATION: CHESSBOARD LOGIC ---
+// Las funciones onDragStart, onDrop y onSnapEnd ya están definidas arriba con la lógica completa.
+
+function initBoard() {
+    console.log("Initializing Board (Restored)...");
+
+    if ($('#myBoard').length === 0) {
+        console.error("CRITICAL: #myBoard element not found in DOM");
+        return;
+    }
+
+    var config = {
+        draggable: true,
+        position: 'start',
+        onDragStart: onDragStart,
+        onDrop: onDrop,
+        onSnapEnd: onSnapEnd,
+        pieceTheme: getPieceTheme
+    };
+    board = Chessboard('myBoard', config);
+    $(window).resize(board.resize);
+    console.log("Board Initialized Success.");
+}
+
+// FORCE START
+$(document).ready(function () {
+    setTimeout(initBoard, 500);
+});
+
+// --- COLLAPSIBLE PANEL SECTIONS TOGGLE (FIXED) ---
+window.togglePanelSection = function (contentId) {
+    const content = document.getElementById(contentId);
+    const header = content.previousElementSibling;
+
+    if (content.classList.contains('collapsed')) {
+        content.classList.remove('collapsed');
+        header.classList.remove('collapsed');
+    } else {
+        content.classList.add('collapsed');
+        header.classList.add('collapsed');
+    }
+};
+
+// Sync puzzle stats to the new historial page
+const originalUpdatePuzzleStats = window.updatePuzzleStats;
+if (typeof originalUpdatePuzzleStats === 'function') {
+    window.updatePuzzleStats = function (...args) {
+        originalUpdatePuzzleStats(...args);
+        // Sync to historial page
+        $('#puz-elo-display-main').html($('#puz-elo-display').html());
+        $('#puz-stats-list-main').html($('#puz-stats-list').html());
+        $('#puz-history-list-main').html($('#puz-history-list').html());
+    };
+}
