@@ -8,7 +8,9 @@
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
     <link rel="stylesheet" href="kids.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="../puzzles_data.js"></script>
 </head>
+
 
 <body class="kids-body theme-space">
     <div class="kids-header">
@@ -27,7 +29,19 @@
         <div id="kids-home">
             <h1 class="kids-title">¿A qué quieres jugar hoy?</h1>
 
+            <!-- Daily Challenge Banner -->
+            <div id="daily-challenge-banner" onclick="startDailyChallenge()"
+                style="background: linear-gradient(45deg, var(--kids-purple), var(--kids-blue)); border-radius: 20px; padding: 20px; margin-bottom: 30px; border: 4px solid var(--kids-yellow); cursor: pointer; display: none; width: 100%; box-sizing: border-box; text-align: left; position: relative; overflow: hidden;">
+                <div style="font-weight: 900; color: var(--kids-yellow); font-size: 0.8rem; letter-spacing: 1px;">⚡ RETO
+                    DEL DÍA</div>
+                <div id="daily-challenge-name" style="font-size: 1.5rem; font-weight: 900; margin-top: 5px;">Cargando
+                    reto...</div>
+                <div style="font-size: 0.8rem; margin-top: 5px; opacity: 0.9;">¡Consigue +150 estrellas extra hoy!</div>
+                <div style="position: absolute; right: 20px; bottom: 10px; font-size: 4rem; opacity: 0.3;">🎯</div>
+            </div>
+
             <div class="kids-menu-grid">
+
                 <div class="kids-card learn" onclick="showWorlds()">
                     <div class="card-icon">📚</div>
                     <div class="card-text">ESCUELA (NIVELES)</div>
@@ -40,7 +54,12 @@
                     <div class="card-icon">🎮</div>
                     <div class="card-text">MINI-JUEGOS</div>
                 </div>
+                <div class="kids-card tactical" onclick="showKidsPuzzles()">
+                    <div class="card-icon">🧩</div>
+                    <div class="card-text">PUZZLES MÁGICOS</div>
+                </div>
                 <div class="kids-card progress" onclick="showProgress()">
+
                     <div class="card-icon">🏆</div>
                     <div class="card-text">MI PROGRESO</div>
                 </div>
@@ -199,17 +218,39 @@
                             SI</button>
                     </div>
                 </div>
-
                 <div id="aiBoard" class="kids-board-styled"></div>
 
                 <div class="game-footer" style="margin-top:20px; display:flex; justify-content:center; gap:15px;">
-                    <button onclick="resetKidsGame()" class="btn-back" style="background:var(--kids-green);">🔄
-                        NUEVA PARTIDA</button>
+                    <button onclick="resetKidsGame()" class="btn-back" style="background:var(--kids-green);">🔄 NUEVA
+                        PARTIDA</button>
                     <button onclick="showHome()" class="btn-back" style="background:var(--kids-orange);">🚩
                         SALIR</button>
                 </div>
             </div>
         </div>
+
+        <!-- TACTICS ARREA (PUZZLES) -->
+        <div id="kids-tactics" style="display:none;">
+            <div class="game-container">
+                <div class="game-info">
+                    <h2 style="font-size:1.8rem; color:var(--kids-purple);">🧩 Puzzles Mágicos</h2>
+                    <div id="kids-puz-task" class="level-task"
+                        style="font-size:1.5rem; margin-bottom:15px; background:rgba(255,255,255,0.2); border-radius:15px; padding:15px;">
+                        ¡Encuentra el mejor movimiento!
+                    </div>
+                </div>
+
+                <div id="kidsPuzBoard" class="kids-board-styled"></div>
+
+                <div class="game-footer" style="margin-top:20px; display:flex; justify-content:center; gap:15px;">
+                    <button class="btn-back" style="background:var(--kids-green);" onclick="loadKidsPuzzle()">⏩
+                        SIGUIENTE</button>
+                    <button onclick="showHome()" class="btn-back" style="background:var(--kids-orange);">🚩
+                        SALIR</button>
+                </div>
+            </div>
+        </div>
+
 
         <!-- MINIGAMES AREA -->
         <div id="kids-minigames" style="display:none;">

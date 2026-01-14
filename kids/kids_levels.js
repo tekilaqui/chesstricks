@@ -5,7 +5,7 @@ const KIDS_LEVELS = [
         description: "Aprende cómo caminan y capturan los soldados del ajedrez.",
         color: "#FFD700",
         puzzles: [
-            { fen: "8/8/8/8/8/8/4P3/8 w - - 0 1", moves: ["e3", "e4"], goal: "Mueve el peón hacia adelante.", hint: "Los peones caminan de frente." },
+            { fen: "8/8/8/8/8/8/4P3/8 w - - 0 1", moves: ["e3"], goal: "Mueve el peón hacia adelante.", hint: "Los peones caminan de frente." },
             { fen: "8/8/8/8/8/4P3/8/8 w - - 0 1", moves: ["e4"], goal: "¡Sigue avanzando!", hint: "Un paso más hacia la corona." },
             { fen: "8/8/8/4p3/3P4/8/8/8 w - - 0 1", moves: ["dxe5"], goal: "¡Captura el peón enemigo!", hint: "Los peones capturan en diagonal." },
             { fen: "8/8/8/8/6p1/5P2/8/8 w - - 0 1", moves: ["fxg4"], goal: "¡El peón g te está mirando! ¡Cómelo!", hint: "Captura de lado (diagonal)." },

@@ -1,6 +1,7 @@
-// ChessdreZ Kids - Main Logic
 let board = null;
 let aiBoard = null;
+let kidsPuzBoard = null;
+let currentKidPuzzle = null;
 let game = new Chess();
 let stars = 0;
 let aiDepth = 0;
@@ -8,6 +9,39 @@ let userColor = 'w';
 let kidsStockfish = null;
 let autoHelpEnabled = true;
 let isMinigame = false;
+let isKidsLoading = false; // Prevent multiple clicks during level load
+
+const ACHIEVEMENTS = {
+    first_win: { id: 'first_win', name: '🌟 Primer Triunfo', emoji: '🏆', reward: 10 },
+    speed_solver: { id: 'speed_solver', name: '⚡ Velocista', emoji: '🚀', reward: 25 },
+    puzzle_warrior: { id: 'puzzle_warrior', name: '🗡️ Guerrero', emoji: '⚔️', reward: 50 },
+    perfect_week: { id: 'perfect_week', name: '🔥 Semana Perfecta', emoji: '📅', reward: 100 }
+};
+
+const DAILY_CHALLENGES = {
+    monday: { name: '🎯 Lunes de Mate', theme: 'mate', reward: 150 },
+    tuesday: { name: '🛡️ Martes de Defensa', theme: 'defense', reward: 150 },
+    wednesday: { name: '🔱 Miércoles de Táctica', theme: 'tactic', reward: 150 },
+    thursday: { name: '👑 Jueves de Reyes', theme: 'king', reward: 150 },
+    friday: { name: '🎠 Viernes de Caballos', theme: 'knight', reward: 150 },
+    saturday: { name: '✨ Sábado Brillante', theme: 'brilliant', reward: 150 },
+    sunday: { name: '🏰 Domingo de Enroque', theme: 'castle', reward: 150 }
+};
+
+const KIDS_SOUNDS = {
+    move: new Audio('https://github.com/lichess-org/lila/raw/master/public/sound/standard/Move.mp3'),
+    win: new Audio('https://github.com/lichess-org/lila/raw/master/public/sound/standard/GenericNotify.mp3'),
+    loss: new Audio('https://github.com/lichess-org/lila/raw/master/public/sound/standard/Error.mp3'),
+    achievement: new Audio('https://github.com/lichess-org/lila/raw/master/public/sound/standard/Confirmation.mp3'),
+    checkmate: new Audio('https://github.com/lichess-org/lila/raw/master/public/sound/standard/Victory.mp3')
+};
+
+function playKidSound(s) {
+    if (kidsConfig.sound && KIDS_SOUNDS[s]) {
+        KIDS_SOUNDS[s].currentTime = 0;
+        KIDS_SOUNDS[s].play().catch(e => { });
+    }
+}
 
 // Settings with defaults
 let kidsConfig = JSON.parse(localStorage.getItem('kids_config') || '{"sound":true,"theme":"space","board":"classic","pieces":"wikipedia","moveMethod":"click"}');
@@ -23,12 +57,13 @@ $(document).ready(function () {
     applyInitialConfig();
 
     // Delegación de eventos para clics en el tablero (Click-to-move)
-    $(document).on('click', '#kidsBoard [data-square], #aiBoard [data-square]', function () {
+    $(document).on('click', '#kidsBoard [data-square], #aiBoard [data-square], #kidsPuzBoard [data-square]', function () {
         if (kidsConfig.moveMethod !== 'click') return;
         const square = $(this).attr('data-square');
         const boardId = $(this).closest('.kids-board-styled').attr('id');
         handleSquareClick(square, boardId);
     });
+
 
     $(document).on('click', '.kid-profile-card', function () {
         const id = $(this).attr('data-id');
@@ -234,7 +269,89 @@ function saveProfiles() {
 function updateStarDisplay() {
     $('#star-count').text(stars);
     saveProfiles();
+    checkAchievements();
 }
+
+function checkAchievements() {
+    if (!currentKid || !kidProfiles[currentKid]) return;
+    const kid = kidProfiles[currentKid];
+    if (!kid.achievements) kid.achievements = [];
+
+    // Simple conditions for now
+    if (!kid.achievements.includes('first_win') && stars >= 10) {
+        unlockAchievement('first_win');
+    }
+    if (!kid.achievements.includes('puzzle_warrior') && stars >= 100) {
+        unlockAchievement('puzzle_warrior');
+    }
+}
+
+function unlockAchievement(id) {
+    const kid = kidProfiles[currentKid];
+    if (kid.achievements.includes(id)) return;
+
+    const ach = ACHIEVEMENTS[id];
+    kid.achievements.push(id);
+    stars += ach.reward;
+    saveProfiles();
+    updateStarDisplay();
+
+    playKidSound('achievement');
+    showAchievementNotif(ach);
+}
+
+function showAchievementNotif(ach) {
+    const $notif = $(`
+        <div class="achievement-notif">
+            <span style="font-size: 2rem;">${ach.emoji}</span>
+            <div>
+                <div style="font-size: 0.7rem; opacity: 0.7;">¡LOGRO DESBLOQUEADO!</div>
+                <div style="font-size: 1.1rem;">${ach.name}</div>
+                <div style="color: #000; font-size: 0.8rem;">+${ach.reward} estrellas</div>
+            </div>
+        </div>
+    `);
+    $('body').append($notif);
+    setTimeout(() => $notif.addClass('show'), 100);
+    setTimeout(() => {
+        $notif.removeClass('show');
+        setTimeout(() => $notif.remove(), 500);
+    }, 4000);
+}
+
+function createConfetti() {
+    const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+    const confetti = $('<div class="confetti"></div>');
+    confetti.css({
+        left: Math.random() * 100 + 'vw',
+        backgroundColor: colors[Math.floor(Math.random() * colors.length)],
+        width: Math.random() * 10 + 5 + 'px',
+        height: Math.random() * 10 + 5 + 'px',
+        opacity: Math.random()
+    });
+    $('body').append(confetti);
+    setTimeout(() => confetti.remove(), 3000);
+}
+
+function createFloatingStar() {
+    const star = $('<div class="kids-reward-star">⭐</div>');
+    star.css({
+        left: (Math.random() * 60 + 20) + 'vw',
+        top: (Math.random() * 60 + 20) + 'vh'
+    });
+    $('body').append(star);
+    setTimeout(() => star.remove(), 1000);
+}
+
+function showKidsReward(amount) {
+    playKidSound('win');
+    for (let i = 0; i < 30; i++) setTimeout(createConfetti, i * 50);
+    for (let i = 0; i < 5; i++) setTimeout(createFloatingStar, i * 200);
+
+    stars += amount;
+    updateStarDisplay();
+}
+
 
 // NAVIGATION
 function goBackStep() {
@@ -249,7 +366,29 @@ function showHome() {
     $('.kids-main > div').hide();
     $('#kids-home').show();
     isMinigame = false;
+    initDailyChallenge();
 }
+
+function initDailyChallenge() {
+    const challenge = getTodayChallenge();
+    if (challenge) {
+        $('#daily-challenge-name').text(challenge.name);
+        $('#daily-challenge-banner').fadeIn();
+    }
+}
+
+function getTodayChallenge() {
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = days[new Date().getDay()];
+    return DAILY_CHALLENGES[dayName];
+}
+
+function startDailyChallenge() {
+    const challenge = getTodayChallenge();
+    alert("🚀 ¡PREPÁRATE!\n\nTu reto de hoy es: " + challenge.name + "\n\nResuelve 3 puzzles para ganar las estrellas.");
+    showKidsPuzzles();
+}
+
 
 function showWorlds() {
     $('.kids-main > div').hide();
@@ -267,6 +406,89 @@ function showPlayAI() {
     }, 200);
 }
 
+function showKidsPuzzles() {
+    $('.kids-main > div').hide();
+    $('#kids-tactics').show();
+    loadKidsPuzzle();
+}
+
+let solvedKidsPuzzles = [];
+
+function loadKidsPuzzle() {
+    const pDb = (typeof LOCAL_PUZZLES_DB !== 'undefined') ? LOCAL_PUZZLES_DB : [];
+    if (pDb.length === 0) {
+        alert("¡Oh no! No hay puzzles disponibles ahora.");
+        return showHome();
+    }
+
+    // Filtrar puzzles para niños (short, mateIn1, opening) o simplemente aleatorio
+    const candidates = pDb.filter(p => !solvedKidsPuzzles.includes(p.PuzzleId));
+    const p = (candidates.length > 0) ? candidates[Math.floor(Math.random() * candidates.length)] : pDb[Math.floor(Math.random() * pDb.length)];
+
+    currentKidPuzzle = {
+        id: p.PuzzleId,
+        fen: p.FEN,
+        sol: p.Moves.split(' '),
+        goal: "¡Encuentra el mejor movimiento!"
+    };
+
+    game.load(currentKidPuzzle.fen);
+
+    // Aplicar el primer movimiento del oponente
+    const firstMove = currentKidPuzzle.sol[0];
+    game.move({
+        from: firstMove.substring(0, 2),
+        to: firstMove.substring(2, 4),
+        promotion: 'q'
+    });
+
+    $('#kids-puz-task').text(currentKidPuzzle.goal);
+
+    if (kidsPuzBoard) kidsPuzBoard.destroy();
+
+    kidsPuzBoard = Chessboard('kidsPuzBoard', {
+        draggable: true,
+        position: game.fen(),
+        onDrop: handleKidsPuzDrop,
+        pieceTheme: getPieceTheme,
+        onSnapEnd: () => kidsPuzBoard.position(game.fen())
+    });
+
+    const colors = getBoardColors();
+    applyBoardColors('kidsPuzBoard', colors);
+    setTimeout(() => $(window).trigger('resize'), 200);
+}
+
+function handleKidsPuzDrop(source, target) {
+    if (!currentKidPuzzle) return;
+
+    const move = game.move({ from: source, to: target, promotion: 'q' });
+    if (move === null) return 'snapback';
+
+    const solution = currentKidPuzzle.sol[1]; // UCI format like 'd7d8q'
+    const playerMoveUCI = move.from + move.to + (move.promotion || '');
+    const solutionUCI = solution.toLowerCase();
+
+    if (playerMoveUCI === solutionUCI || (move.from + move.to) === solutionUCI.substring(0, 4)) {
+
+        playKidSound('win');
+        createFloatingStar();
+        stars += 5;
+        updateStarDisplay();
+        solvedKidsPuzzles.push(currentKidPuzzle.id);
+
+        setTimeout(() => {
+            alert("✨ ¡EXCELENTE! ✨\nHas ganado 5 estrellas.");
+            loadKidsPuzzle();
+        }, 600);
+    } else {
+        game.undo();
+        playKidSound('loss');
+        return 'snapback';
+    }
+}
+
+
 function showMinigames() {
     $('.kids-main > div').hide();
     $('#kids-minigames').show();
@@ -281,6 +503,7 @@ function showProgress() {
     $('#stat-worlds').text(kid ? kid.unlockedWorlds || Math.floor(stars / 20) + 1 : 1);
     $('#progress-stats').text("¡Vas genial, " + (kid ? kid.name : "") + "!");
 }
+
 
 function renderWorlds() {
     const container = $('#worlds-container');
@@ -346,6 +569,7 @@ function clearArrows(boardId) {
 }
 
 function loadPuzzle() {
+    isKidsLoading = false;
     clearArrows('kidsBoard');
     selectedSquare = null;
     const puzzle = currentWorld.puzzles[currentPuzzleIndex];
@@ -361,21 +585,29 @@ function loadPuzzle() {
     $('#level-task').text(puzzle.goal);
     speak(puzzle.goal);
 
-    if (board) board.destroy();
+    const turnColor = game.turn() === 'w' ? 'white' : 'black';
 
-    const colors = getBoardColors();
+    // Reuse board if possible
+    if (board) {
+        board.orientation(turnColor);
+        board.position(puzzle.fen);
+    } else {
+        const colors = getBoardColors();
+        board = Chessboard('kidsBoard', {
+            draggable: kidsConfig.moveMethod === 'drag',
+            position: puzzle.fen,
+            orientation: turnColor,
+            onDrop: handleDrop,
+            onMouseoutSquare: onMouseoutSquare,
+            onMouseoverSquare: onMouseoverSquare,
+            onSnapEnd: () => {
+                if (board) board.position(game.fen());
+            },
+            pieceTheme: getPieceTheme
+        });
+        applyBoardColors('kidsBoard', colors);
+    }
 
-    board = Chessboard('kidsBoard', {
-        draggable: kidsConfig.moveMethod === 'drag',
-        position: puzzle.fen,
-        onDrop: handleDrop,
-        onMouseoutSquare: onMouseoutSquare,
-        onMouseoverSquare: onMouseoverSquare,
-        onSnapEnd: () => board.position(game.fen()),
-        pieceTheme: getPieceTheme
-    });
-
-    applyBoardColors('kidsBoard', colors);
     setTimeout(() => $(window).trigger('resize'), 100);
 
     $('#btn-hint').off('click').on('click', () => {
@@ -386,24 +618,39 @@ function loadPuzzle() {
 }
 
 function handleDrop(source, target) {
+    if (isKidsLoading) return 'snapback';
+
     const puzzle = currentWorld.puzzles[currentPuzzleIndex];
     const move = game.move({ from: source, to: target, promotion: 'q' });
     if (move === null) return 'snapback';
 
-    const isCorrect = puzzle.moves.some(m => m === move.san || m === (source + target));
+    if (navigator.vibrate) navigator.vibrate(50);
+
+    const isCorrect = puzzle.moves.some(m =>
+        move.san.startsWith(m) ||
+        (source + target) === m ||
+        move.to === m
+    );
+
+
     if (isCorrect) {
+        isKidsLoading = true;
         clearArrows('kidsBoard');
+        playKidSound('win');
+        createFloatingStar();
         stars += 3;
         updateStarDisplay();
         currentPuzzleIndex++;
-        setTimeout(loadPuzzle, 600);
+        setTimeout(loadPuzzle, 800);
     } else {
         game.undo();
+        playKidSound('loss');
         stars = Math.max(0, stars - 1);
         updateStarDisplay();
         return 'snapback';
     }
 }
+
 
 // AI GAME logic
 function resetKidsGame() {
@@ -457,21 +704,24 @@ function handleSquareClick(square, boardId) {
             return;
         }
 
-        const move = game.move({ from: selectedSquare, to: square, promotion: 'q' });
-        if (move) {
-            currentBoard.position(game.fen());
-            if (boardId === 'aiBoard') finalizeUserMove();
-            else handleDrop(selectedSquare, square);
-            selectedSquare = null;
-            removeHighlights();
-            return;
-        } else {
+        // Just call handleDrop for everything, it handles move and logic
+        const dropResult = handleDrop(selectedSquare, square);
+
+        if (dropResult === 'snapback') {
             const piece = game.get(square);
             if (piece && piece.color === game.turn()) {
                 selectedSquare = square;
                 showSelectionHighlights(square, boardId);
                 return;
             }
+            selectedSquare = null;
+            removeHighlights();
+        } else {
+            // Success
+            if (currentBoard) currentBoard.position(game.fen());
+            if (boardId === 'aiBoard') finalizeUserMove();
+            selectedSquare = null;
+            removeHighlights();
         }
     } else {
         const piece = game.get(square);
@@ -486,15 +736,20 @@ function showSelectionHighlights(square, boardId) {
     removeHighlights();
     $(`#${boardId} .square-${square}`).addClass('highlight-maestro');
 
-    const moves = game.moves({ square: square, verbose: true });
-    moves.forEach(m => {
-        $(`#${boardId} .square-${m.to}`).addClass('highlight-possible');
-    });
+    // Only show possible move circles in AI Board (Play mode)
+    if (boardId === 'aiBoard') {
+        const moves = game.moves({ square: square, verbose: true });
+        moves.forEach(m => {
+            $(`#${boardId} .square-${m.to}`).addClass('highlight-possible');
+        });
+    }
 }
+
 
 function onMouseoverSquare(square, piece) {
     if (selectedSquare || kidsConfig.moveMethod === 'click') return;
-    if ($('#kids-game').is(':visible')) return;
+    // Hide in study/puzzle modes
+    if ($('#kids-game').is(':visible') || $('#kids-tactics').is(':visible')) return;
 
     const moves = game.moves({ square: square, verbose: true });
     if (moves.length === 0) return;
@@ -502,6 +757,7 @@ function onMouseoverSquare(square, piece) {
         $('#aiBoard .square-' + m.to).addClass('highlight-possible');
     });
 }
+
 
 function onMouseoutSquare(square, piece) {
     if (selectedSquare || kidsConfig.moveMethod === 'click') return;
@@ -655,15 +911,23 @@ function getRandomAIMessage() {
 function checkGameOverAI() {
     if (game.game_over()) {
         if (game.in_checkmate()) {
-            if (game.turn() === 'b') { speak("¡Increíble! ¡Me has ganado!"); alert("¡HAS GANADO! 🏆"); stars += 20; }
-            else { speak("¡Gané yo! Pero has jugado muy bien."); alert("¡Gané yo! 😜"); }
+            if (game.turn() === 'b') {
+                speak("¡Increíble! ¡Me has ganado!");
+                showKidsReward(20);
+                playKidSound('checkmate');
+            }
+            else {
+                speak("¡Gané yo! Pero has jugado muy bien.");
+                playKidSound('loss');
+            }
         } else {
             speak("¡Es un empate! Choca esos cinco.");
-            alert("¡Empate! 🤝");
+            playKidSound('move');
         }
         updateStarDisplay();
     }
 }
+
 
 function speak(text) {
     if (kidsConfig.sound && 'speechSynthesis' in window) {
@@ -750,28 +1014,27 @@ function checkMinigameGoal() {
     if (isMinigame === 'pawnrace') {
         if (row8.some(s => game.get(s)?.type === 'p' && game.get(s)?.color === 'w')) {
             speak("¡Bravo! Has llegado al final. ¡Has ganado!");
-            alert("¡HAS GANADO LA CARRERA! 🏁🏆");
-            stars += 20; updateStarDisplay();
+            showKidsReward(20);
             showHome(); return;
         }
         if (row1.some(s => game.get(s)?.type === 'p' && game.get(s)?.color === 'b')) {
             speak("¡Oh no! He llegado yo primero. ¡Inténtalo otra vez!");
-            alert("¡He ganado yo! 😜🏁");
+            playKidSound('loss');
             showHome(); return;
         }
     } else if (isMinigame === 'kingmaze') {
         if (center.some(s => game.get(s)?.type === 'k' && game.get(s)?.color === 'w')) {
             speak("¡Perfecto! Tu Rey está a salvo en el centro.");
-            alert("¡OBJETIVO CONSEGUIDO! 🌀🏆");
-            stars += 20; updateStarDisplay();
+            showKidsReward(20);
             showHome(); return;
         }
         if (center.some(s => game.get(s)?.type === 'k' && game.get(s)?.color === 'b')) {
             speak("¡Llegué yo al centro primero!");
-            alert("¡Llegué yo antes! 😜");
+            playKidSound('loss');
             showHome(); return;
         }
     }
+
 
     if (game.turn() === 'b' && !game.game_over()) {
         setTimeout(thinkAI, 1000);
