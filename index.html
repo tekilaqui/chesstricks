@@ -18,7 +18,8 @@
     <script src="puzzles_data.js"></script>
     <script src="openings_enhanced.js"></script>
     <script src="knowledge_base.js"></script>
-    <meta name="theme-color" content="#00bcd4">
+    <meta name="theme-color" content="#32a09b">
+
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -170,6 +171,14 @@
                 <div class="menu-step active" id="menu-home">
                     <div class="hero-section">
                         <div class="hero-content">
+                            <!-- LOGO PREMIUM MÓVIL (SÓLO MOBILE) -->
+                            <div class="mobile-hero-logo">
+                                <div class="logo-circle">
+                                    <span class="logo-icon-main">♟️</span>
+                                </div>
+                                <div class="logo-glow"></div>
+                            </div>
+
                             <h1 class="hero-title">Domina el Tablero con <span class="accent-text">Maestro IA</span>
                             </h1>
                             <p class="hero-subtitle">La plataforma de ajedrez definitiva para aprender, entrenar y
@@ -189,21 +198,38 @@
                                     Zona Niños</button>
                             </div>
 
-                            <!-- MENU MOVIL EXCLUSIVO -->
+                            <!-- NUEVA PORTADA MÓVIL PREMIUM -->
                             <div class="mobile-start-menu">
-                                <button class="btn-mobile-menu primary" onclick="showSubMenu('jugar')">
-                                    <span class="icon">⚔️</span> JUGAR
-                                </button>
-                                <button class="btn-mobile-menu" onclick="showSubMenu('aperturas')">
-                                    <span class="icon">🎓</span> APERTURAS
-                                </button>
-                                <button class="btn-mobile-menu" onclick="showSubMenu('puzzles')">
-                                    <span class="icon">🧩</span> TÁCTICAS
-                                </button>
-                                <button class="btn-mobile-menu" onclick="window.location.href='kids/kids.html'"
-                                    style="background:var(--kids-yellow, #FFD700); color:#000; font-weight:800;">
-                                    <span class="icon">🌟</span> ZONA NIÑOS
-                                </button>
+                                <div class="mobile-main-action" onclick="showSubMenu('jugar')">
+                                    <div class="action-card-bg"></div>
+                                    <div class="action-content">
+                                        <div class="action-icon">⚔️</div>
+                                        <div class="action-text">
+                                            <h3>JUGAR AHORA</h3>
+                                            <p>Maestro IA o Partida Online</p>
+                                        </div>
+                                        <div class="action-arrow">→</div>
+                                    </div>
+                                </div>
+
+                                <div class="mobile-menu-grid">
+                                    <div class="menu-small-card" onclick="showSubMenu('aperturas')">
+                                        <span class="icon">🎓</span>
+                                        <span>Aperturas</span>
+                                    </div>
+                                    <div class="menu-small-card" onclick="showSubMenu('puzzles')">
+                                        <span class="icon">🧩</span>
+                                        <span>Tácticas</span>
+                                    </div>
+                                    <div class="menu-small-card" onclick="showSubMenu('maestro-config')">
+                                        <span class="icon">📊</span>
+                                        <span>Análisis</span>
+                                    </div>
+                                    <div class="menu-small-card kids" onclick="window.location.href='kids/kids.html'">
+                                        <span class="icon">🌟</span>
+                                        <span>Niños</span>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="quick-stats-row mobile-hidden">
@@ -613,92 +639,117 @@
                             style="font-size:0.9em; color:var(--text-dim); letter-spacing:1px; text-transform:uppercase;">Rating
                             Táctico</span>
                     </div>
-
                     <div id="puz-feedback-mobile" style="text-align:center; margin-bottom:15px;"></div>
-
-                    <div class="stats-bars-container">
-                        <!-- Se inyecta dinámicamente el dashboard colapsable -->
-                    </div>
+                    <div class="stats-bars-container"></div>
                 </div>
 
                 <!-- Analysis Section -->
-                <div class="mobile-info-section game-info-only">
-                    <h4>📊 Análisis</h4>
-                    <div id="mobile-eval-display">
+                <div class="panel-section collapsible-panel game-info-only">
+                    <div class="panel-header clickable" onclick="togglePanelSection('mobile-analysis-content')">
+                        <h3>📊 Análisis en Tiempo Real</h3>
+                        <span class="collapse-arrow">▼</span>
+                    </div>
+                    <div id="mobile-analysis-content" class="panel-content">
                         <div class="eval-bar-horizontal">
                             <div id="mobile-eval-fill" class="eval-fill-h"></div>
                             <span id="mobile-eval-text">0.0</span>
                         </div>
-                        <div class="mobile-stats">
-                            <span>Precisión: <strong id="mobile-accuracy">--</strong></span>
-                            <span>Profundidad: <strong id="mobile-depth">--</strong></span>
+                        <div class="eval-stats-grid">
+                            <div class="eval-stat">
+                                <span class="stat-label">Precisión</span>
+                                <span class="stat-value" id="mobile-accuracy">--</span>
+                            </div>
+                            <div class="eval-stat">
+                                <span class="stat-label">Profundidad</span>
+                                <span class="stat-value" id="mobile-depth">18</span>
+                            </div>
                         </div>
-                    </div>
-                    <!-- GRÁFICO MÓVIL -->
-                    <div class="eval-graph-container"
-                        style="margin-top:10px; background:#000; border-radius:8px; height:60px; position:relative; overflow:hidden; border:1px solid var(--border);">
-                        <canvas id="evalChartMobile" style="width:100%; height:100%;"></canvas>
+                        <div class="eval-graph-container"
+                            style="margin-top:10px; background:#000; border-radius:8px; height:80px; position:relative; overflow:hidden; border:1px solid var(--border);">
+                            <canvas id="evalChartMobile" style="width:100%; height:100%;"></canvas>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Best Moves Section -->
-                <div class="mobile-info-section">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <h4 style="margin:0;">🎯 Mejores Jugadas</h4>
-                        <label class="toggle-switch-small">
-                            <input type="checkbox" id="mobile-toggle-best-moves" checked
-                                onchange="toggleBestMoves(this.checked)">
-                            <span class="slider-small"></span>
-                        </label>
+                <div class="panel-section collapsible-panel">
+                    <div class="panel-header clickable" onclick="togglePanelSection('mobile-moves-content')">
+                        <h3>🎯 Mejores Jugadas</h3>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <label class="toggle-switch-small" onclick="event.stopPropagation();">
+                                <input type="checkbox" id="mobile-toggle-best-moves" checked
+                                    onchange="toggleBestMoves(this.checked)">
+                                <span class="slider-small"></span>
+                            </label>
+                            <span class="collapse-arrow">▼</span>
+                        </div>
                     </div>
-                    <div id="mobile-best-moves"></div>
+                    <div id="mobile-moves-content" class="panel-content">
+                        <div id="mobile-best-moves" class="moves-list"></div>
+                    </div>
                 </div>
 
-                <!-- Opening Section -->
-                <div class="mobile-info-section">
-                    <h4>🎓 Perspectiva del Maestro</h4>
-                    <div class="maestro-insight-card-mobile">
-                        <div style="margin-bottom:8px;"><strong>Apertura:</strong> <span
-                                id="mobile-maestro-opening">--</span></div>
-                        <div style="margin-bottom:8px;"><strong>Plan:</strong>
-                            <p id="mobile-maestro-plan" style="font-size:0.85rem; color:var(--text-secondary);">--</p>
-                        </div>
-                        <div id="mobile-maestro-trap-box"
-                            style="display:none; background:rgba(239,68,68,0.1); padding:10px; border-radius:8px; border:1px solid #ef4444;">
-                            <strong style="color:#ef4444;">🚨 Trampa Detectada:</strong>
-                            <p id="mobile-maestro-trap" style="font-size:0.8rem; margin:5px 0 0 0;"></p>
-                        </div>
-                        <!-- FASE 2: STATS MOBILE -->
-                        <div id="mobile-maestro-stats-container" style="display:none; margin-top:10px;">
-                            <div class="stats-bar"
-                                style="display:flex; height:10px; border-radius:4px; overflow:hidden; width:100%;">
-                                <div id="mobile-stat-white" style="background:#fff; width:33%;"></div>
-                                <div id="mobile-stat-draw" style="background:#777; width:33%;"></div>
-                                <div id="mobile-stat-black" style="background:#222; width:34%;"></div>
+                <!-- Opening/Maestro Section -->
+                <div class="panel-section collapsible-panel">
+                    <div class="panel-header clickable" onclick="togglePanelSection('mobile-maestro-content')">
+                        <h3>💡 Perspectiva del Maestro</h3>
+                        <span class="collapse-arrow">▼</span>
+                    </div>
+                    <div id="mobile-maestro-content" class="panel-content">
+                        <div class="maestro-insight-card">
+                            <div class="insight-group">
+                                <span class="insight-label">📊 APERTURA:</span>
+                                <div id="mobile-maestro-opening" class="insight-val">Analizando...</div>
                             </div>
-                            <div
-                                style="display:flex; justify-content:space-between; font-size:0.6rem; color:var(--text-dim); margin-top:2px;">
-                                <span id="mobile-txt-white">W: --%</span>
-                                <span id="mobile-txt-draw">D: --%</span>
-                                <span id="mobile-txt-black">B: --%</span>
+                            <div class="insight-group">
+                                <span class="insight-label">🧠 PLAN:</span>
+                                <div id="mobile-maestro-plan" class="insight-val">--</div>
+                            </div>
+                            <div id="mobile-maestro-trap-box" class="insight-group trap-alert" style="display:none;">
+                                <span class="insight-label">🚨 ALERTA:</span>
+                                <div id="mobile-maestro-trap" class="insight-val warning-text"></div>
+                            </div>
+                            <div id="mobile-maestro-stats-container" class="insight-group"
+                                style="display:none; margin-top:5px;">
+                                <span class="insight-label">ESTADÍSTICAS GLOBALES</span>
+                                <div class="stats-bar"
+                                    style="display:flex; height:12px; border-radius:4px; overflow:hidden; margin-top:5px; width:100%;">
+                                    <div id="mobile-stat-white" style="background:#fff; width:33%;"></div>
+                                    <div id="mobile-stat-draw" style="background:#777; width:33%;"></div>
+                                    <div id="mobile-stat-black" style="background:#222; width:34%;"></div>
+                                </div>
+                                <div
+                                    style="display:flex; justify-content:space-between; font-size:0.6rem; color:var(--text-dim); margin-top:2px;">
+                                    <span id="mobile-txt-white">W: --%</span>
+                                    <span id="mobile-txt-draw">D: --%</span>
+                                    <span id="mobile-txt-black">B: --%</span>
+                                </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Coach Logs Section -->
+                <div class="panel-section collapsible-panel game-info-only">
+                    <div class="panel-header clickable" onclick="togglePanelSection('mobile-logs-content')">
+                        <h3>💬 Comentarios del Maestro</h3>
+                        <span class="collapse-arrow">▼</span>
+                    </div>
+                    <div id="mobile-logs-content" class="panel-content">
+                        <div id="mobile-coach-logs" class="coach-stable-container"></div>
                     </div>
                 </div>
 
                 <!-- Threats Section Mobile -->
-                <div class="mobile-info-section" id="mobile-threats-section"
+                <div id="mobile-threats-section" class="panel-section threats-panel"
                     style="display:none; border-left: 4px solid #ef4444; background: rgba(239, 68, 68, 0.05); margin-top:10px;">
-                    <h4 style="color:#ef4444;">🚨 Amenazas</h4>
-                    <div id="mobile-threats-list" style="font-size:0.8rem; font-weight:600;"></div>
-                </div>
-
-                <!-- Coach Logs Section -->
-                <div class="mobile-info-section game-info-only">
-                    <h4>💬 Logs del Maestro</h4>
-                    <div id="mobile-coach-logs"></div>
+                    <div class="panel-header">
+                        <h4 style="color:#ef4444; margin:0;">🚨 Amenazas</h4>
+                    </div>
+                    <div id="mobile-threats-list" style="padding:10px; font-size:0.8rem; font-weight:600;"></div>
                 </div>
             </div>
+
         </div>
 
         <!-- PANEL LATERAL (DERECHA) - REDISEÑADO CON SECCIONES COLAPSABLES -->

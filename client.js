@@ -136,6 +136,7 @@ var historyPositions = ['start'];
 var currentHistoryIndex = 0;
 var moveHistory = []; // Logic for analysis {fen, move, cp, diff, quality}
 var analysisActive = false;
+const analysisCache = new Map(); // FEN -> Analysis results
 
 // MULTI-LANGUAGE SUPPORT
 var currentLang = localStorage.getItem('chess_lang') || 'es';
@@ -165,7 +166,53 @@ const LANGS = {
     }
 };
 
+const COACH_TEMPLATES = {
+    'brilliant': [
+        '💎 ¡Movimiento de genio!',
+        '✨ Eso fue brillante',
+        '🚀 Jugada maestra',
+        '🧠 Visión excepcional'
+    ],
+    'excellent': [
+        '✅ Excelente movimiento',
+        '👏 Muy bien pensado',
+        '🎯 Perfecto',
+        '🌟 Sólido y fuerte'
+    ],
+    'good': [
+        '👍 Buena jugada',
+        '👌 Mantienes la posición',
+        '♟️ Movimiento correcto'
+    ],
+    'inaccuracy': [
+        '😕 Una imprecisión',
+        '🧐 Había algo mejor',
+        '📉 Pierdes un poco de fuelle'
+    ],
+    'mistake': [
+        '⚠️ Cuidado con ese movimiento',
+        '💭 Podría haber algo mejor',
+        '🤔 Repiensa tu estrategia'
+    ],
+    'blunder': [
+        '🚨 ¡ERROR GRAVE!',
+        '❌ Has pasado por alto algo importante',
+        '😨 Esto cambia las cosas'
+    ],
+    'book': [
+        '📚 Teoría pura',
+        '📖 Tal como dicen los libros',
+        '🎓 Conocimiento sólido'
+    ]
+};
+
+function getQuickCoachComment(qualityClass) {
+    const templates = COACH_TEMPLATES[qualityClass] || COACH_TEMPLATES['good'];
+    return templates[Math.floor(Math.random() * templates.length)];
+}
+
 function getQualityMsg(diff, isMate) {
+
     const t = LANGS[currentLang];
     if (isMate) return { text: t.mate, class: 'excellent', symbol: '#', color: '#4CAF50' };
     if (diff < 0.1) return { text: t.best, class: 'brilliant', symbol: '!!', color: '#00BCD4' };
@@ -649,129 +696,152 @@ try {
         }
         if (l === 'readyok') console.log("✅ Stockfish Ready");
 
-        // 1. PROCESAR EVALUACIÓN (MultiPV)
-        if (l.includes('multipv')) {
-            var depthMatch = l.match(/depth (\d+)/);
-            if (depthMatch) $('#eval-depth').text(depthMatch[1]);
-
-            var pvMatch = l.match(/multipv (\d+)/);
-            var cpMatch = l.match(/score cp (-?\d+)/);
-            var mateMatch = l.match(/score mate (-?\d+)/);
-            var pvMoves = l.split(' pv ')[1];
-
-            if (pvMatch && (cpMatch || mateMatch)) {
-                var idx = parseInt(pvMatch[1]);
-                var scoreCp = cpMatch ? parseInt(cpMatch[1]) / 100 : 0;
-                var ev = cpMatch ? (game.turn() === 'w' ? scoreCp : -scoreCp) : (mateMatch[1].startsWith('-') ? -100 : 100);
-                var scoreStr = cpMatch ? ev.toFixed(1) : ('M' + mateMatch[1]);
-                var firstMove = pvMoves ? pvMoves.split(' ')[0] : '...';
-
-                if (idx === 1) {
-                    window.currentEval = ev;
-                    const depth = depthMatch ? parseInt(depthMatch[1]) : 0;
-                    const isNewMove = window.isNewMoveAnalysis || false;
-                    const isMate = l.includes('mate');
-
-                    if (isNewMove) {
-                        window.coachUpdateLocked = false;
-                        window.isNewMoveAnalysis = false;
-                        const initialQuality = { text: "Analizando...", class: "good", color: "#ccc", symbol: "⏳" };
-                        const initialTheory = detectOpeningTheory();
-                        updateCoachDashboard(initialQuality, initialTheory, "Calculando variantes...", firstMove, ev, isMate, true);
-                    }
-
-                    if (depth >= 12 && !window.coachUpdateLocked) {
-                        window.coachUpdateLocked = true;
-                        var diff = 0;
-                        if (window.lastEval !== undefined) {
-                            const turn = game.turn();
-                            diff = (turn === 'b') ? (window.lastEval - ev) : (ev - window.lastEval);
-                        }
-                        window.stableLastEval = ev;
-
-                        const quality = getQualityMsg(Math.abs(diff), isMate);
-                        const theoryInfo = detectOpeningTheory();
-                        const tacticalAdvice = generateTacticalAdvice(diff, ev, isMate);
-
-                        updateCoachDashboard(quality, theoryInfo, tacticalAdvice, firstMove, ev, isMate, true); // Pasar true para forzar actualización final
-                        updateMaestroInsight(theoryInfo);
-                    }
-                }
-
-                if (!window.topMoves) window.topMoves = [];
-                window.topMoves[idx - 1] = { move: firstMove, score: scoreStr };
-                updateTopMovesUI();
+        // Cache results if depth is high enough
+        if (l.includes('depth 18') || l.includes('depth 15')) {
+            const currentFen = game.fen();
+            if (!analysisCache.has(currentFen)) {
+                // We could store the raw messages or just the final evaluation
+                // For now, let's just make the handling modular
+                analysisCache.set(currentFen, l);
             }
         }
 
-        if (openingSubMode === 'training' && currentOpening) {
-            // IA follows the opening theory
-            const moves = currentOpening.moves || currentOpening.m || [];
-            const historyLen = game.history().length;
-            if (historyLen < moves.length) {
-                const theoryMove = moves[historyLen];
-                const m = game.move(theoryMove);
-                if (m) {
-                    board.position(game.fen());
-                    playSnd('move');
-                    updateUI(true);
-                    return;
-                }
-            }
-        }
-
-        // 2. PROCESAR MOVIMIENTO DE LA IA (Modo Normal)
-        if (l.startsWith('bestmove') && currentMode === 'ai' && game.turn() !== myColor) {
-            var bestMove = l.split(' ')[1];
-            if (bestMove === '(none)') return;
-
-            // Dificultad REAL: Calcular blunder chance basado en nivel
-            const diffLvl = typeof gameConfig !== 'undefined' ? gameConfig.difficulty : 5;
-            let blunderChance = 0;
-
-            if (diffLvl <= 0) blunderChance = 0.65; // Principiante: 65% fallos
-            else if (diffLvl === 1) blunderChance = 0.50;
-            else if (diffLvl === 2) blunderChance = 0.40;
-            else if (diffLvl === 3) blunderChance = 0.25;
-            else if (diffLvl === 4) blunderChance = 0.15;
-            else if (diffLvl === 5) blunderChance = 0.08;
-            else if (diffLvl < 10) blunderChance = 0.04;
-
-            if (Math.random() < blunderChance) {
-                console.log("🎲 IA provocando error intencionado (Nivel " + diffLvl + ")");
-                const legalMoves = game.moves({ verbose: true });
-                if (legalMoves.length > 0) {
-                    // Elegir un movimiento aleatorio pero filtrar los "mejores" para asegurar un error
-                    // O simplemente uno aleatorio si estamos en nivel muy bajo
-                    const randomM = legalMoves[Math.floor(Math.random() * legalMoves.length)];
-                    bestMove = randomM.from + randomM.to + (randomM.promotion || '');
-                }
-            }
-
-            // Pausa humana: La IA espera un momento antes de mover para no generar ansiedad
-            const thinkDelay = diffLvl < 5 ? 1800 : 1200; // Más pausa en niveles bajos
-
-            setTimeout(() => {
-                const moveObj = game.move({ from: bestMove.substring(0, 2), to: bestMove.substring(2, 4), promotion: 'q' });
-                if (moveObj) {
-                    board.position(game.fen());
-                    updateUI(true);
-                    updateMaestroInsight(detectOpeningTheory());
-
-                    // Almacenar calidad si estamos en modo análisis (o IA)
-                    if (window.lastMoveQuality) {
-                        moveQualityHistory.push(window.lastMoveQuality);
-                    }
-
-                    checkGameOver();
-                }
-                aiThinking = false;
-            }, thinkDelay);
-        }
+        handleStockfishAnalysis(l);
     };
 } catch (e) {
     console.error("❌ Error cargando Stockfish:", e);
 }
+
+function handleStockfishAnalysis(l) {
+    if (typeof l !== 'string') return; // For cached objects we might need a different handling or just cache the messages
+
+    // 1. PROCESAR EVALUACIÓN (MultiPV)
+    if (l.includes('multipv')) {
+        var depthMatch = l.match(/depth (\d+)/);
+        if (depthMatch) $('#eval-depth').text(depthMatch[1]);
+
+        var pvMatch = l.match(/multipv (\d+)/);
+        var cpMatch = l.match(/score cp (-?\d+)/);
+        var mateMatch = l.match(/score mate (-?\d+)/);
+        var pvMoves = l.split(' pv ')[1];
+
+        if (pvMatch && (cpMatch || mateMatch)) {
+            var idx = parseInt(pvMatch[1]);
+            var scoreCp = cpMatch ? parseInt(cpMatch[1]) / 100 : 0;
+            var ev = cpMatch ? (game.turn() === 'w' ? scoreCp : -scoreCp) : (mateMatch[1].startsWith('-') ? -100 : 100);
+            var scoreStr = cpMatch ? ev.toFixed(1) : ('M' + mateMatch[1]);
+            var firstMove = pvMoves ? pvMoves.split(' ')[0] : '...';
+
+            if (idx === 1) {
+                window.currentEval = ev;
+                const depth = depthMatch ? parseInt(depthMatch[1]) : 0;
+                const isNewMove = window.isNewMoveAnalysis || false;
+                const isMate = l.includes('mate');
+
+                if (isNewMove) {
+                    window.coachUpdateLocked = false;
+                    window.isNewMoveAnalysis = false;
+                    const initialQuality = { text: "Analizando...", class: "good", color: "#ccc", symbol: "⏳" };
+                    const initialTheory = detectOpeningTheory();
+                    updateCoachDashboard(initialQuality, initialTheory, "Calculando variantes...", firstMove, ev, isMate, true);
+                }
+
+                if (depth >= 12 && !window.coachUpdateLocked) {
+                    window.coachUpdateLocked = true;
+                    var diff = 0;
+                    if (window.lastEval !== undefined) {
+                        const turn = game.turn();
+                        diff = (turn === 'b') ? (window.lastEval - ev) : (ev - window.lastEval);
+                    }
+                    window.stableLastEval = ev;
+
+                    const quality = getQualityMsg(Math.abs(diff), isMate);
+                    const theoryInfo = detectOpeningTheory();
+                    const tacticalAdvice = generateTacticalAdvice(diff, ev, isMate);
+
+                    // Defer non-critical dashboard updates
+                    scheduleUIUpdate('low', () => {
+                        updateCoachDashboard(quality, theoryInfo, tacticalAdvice, firstMove, ev, isMate, true);
+                        updateMaestroInsight(theoryInfo);
+                    });
+                }
+            }
+
+            if (!window.topMoves) window.topMoves = [];
+            window.topMoves[idx - 1] = { move: firstMove, score: scoreStr };
+
+            // Asynchronous rendering of top moves
+            updateBestMovesAsync();
+        }
+    }
+
+
+    if (openingSubMode === 'training' && currentOpening) {
+        // IA follows the opening theory
+        const moves = currentOpening.moves || currentOpening.m || [];
+        const historyLen = game.history().length;
+        if (historyLen < moves.length) {
+            const theoryMove = moves[historyLen];
+            const m = game.move(theoryMove);
+            if (m) {
+                board.position(game.fen());
+                playSnd('move');
+                updateUI(true);
+                return;
+            }
+        }
+    }
+
+    // 2. PROCESAR MOVIMIENTO DE LA IA (Modo Normal)
+    if (l.startsWith('bestmove') && currentMode === 'ai' && game.turn() !== myColor) {
+        var bestMove = l.split(' ')[1];
+        if (bestMove === '(none)') return;
+
+        // Dificultad REAL: Calcular blunder chance basado en nivel
+        const diffLvl = typeof gameConfig !== 'undefined' ? gameConfig.difficulty : 5;
+        let blunderChance = 0;
+
+        if (diffLvl <= 0) blunderChance = 0.65; // Principiante: 65% fallos
+        else if (diffLvl === 1) blunderChance = 0.50;
+        else if (diffLvl === 2) blunderChance = 0.40;
+        else if (diffLvl === 3) blunderChance = 0.25;
+        else if (diffLvl === 4) blunderChance = 0.15;
+        else if (diffLvl === 5) blunderChance = 0.08;
+        else if (diffLvl < 10) blunderChance = 0.04;
+
+        if (Math.random() < blunderChance) {
+            console.log("🎲 IA provocando error intencionado (Nivel " + diffLvl + ")");
+            const legalMoves = game.moves({ verbose: true });
+            if (legalMoves.length > 0) {
+                // Elegir un movimiento aleatorio pero filtrar los "mejores" para asegurar un error
+                // O simplemente uno aleatorio si estamos en nivel muy bajo
+                const randomM = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+                bestMove = randomM.from + randomM.to + (randomM.promotion || '');
+            }
+        }
+
+        // Pausa humana: La IA espera un momento antes de mover para no generar ansiedad
+        const thinkDelay = diffLvl < 5 ? 1800 : 1200; // Más pausa en niveles bajos
+
+        setTimeout(() => {
+            const moveObj = game.move({ from: bestMove.substring(0, 2), to: bestMove.substring(2, 4), promotion: 'q' });
+            if (moveObj) {
+                board.position(game.fen());
+                updateUI(true);
+                updateMaestroInsight(detectOpeningTheory());
+
+                // Almacenar calidad si estamos en modo análisis (o IA)
+                if (window.lastMoveQuality) {
+                    moveQualityHistory.push(window.lastMoveQuality);
+                }
+
+                checkGameOver();
+            }
+            aiThinking = false;
+        }, thinkDelay);
+    }
+}
+
 
 /**
  * Motor de Detección de Aperturas Avanzado
@@ -874,14 +944,22 @@ function updateCoachDashboard(quality, theory, tactical, bestMove, ev, isMate, m
         window.lastCoachTextUpdateTime = now;
 
         const $coachTxt = $('#coach-txt');
+
+        // Use quick template if analysis is still in progress
+        let displayedTactical = tactical;
+        if (tactical === "Calculando variantes..." || !tactical) {
+            displayedTactical = getQuickCoachComment(qClass);
+        }
+
         let logHtml = `<div class="quality-label ${qClass}" style="margin-bottom:10px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:8px;" onclick="showMoveType('${qText}')">
             <span style="background:${quality.color}; color:#000; padding:2px 6px; border-radius:4px; font-size:0.8rem;">${symbol}</span>
             <span>${qText}</span>
         </div>`;
-        logHtml += `<div style="font-size:0.9em; opacity:0.9; line-height:1.4;" id="coach-tactical-text">${tactical}</div>`;
+        logHtml += `<div style="font-size:0.9em; opacity:0.9; line-height:1.4;" id="coach-tactical-text">${displayedTactical}</div>`;
 
         $coachTxt.html(logHtml);
     }
+
 
 
     // AI GENERATIVA: Solo si la profundidad es suficiente y no estamos ya procesando
@@ -966,22 +1044,15 @@ function updateCoachDashboard(quality, theory, tactical, bestMove, ev, isMate, m
     let mobileLogHtml = `<div class="quality-label ${qClass}">${qText}</div><p>${tactical}</p>`;
     $('#mobile-coach-logs').html(mobileLogHtml);
 
-    // 7. ACTUALIZAR GRÁFICO DE EVALUACIÓN
+    // 7. ACTUALIZAR GRÁFICO DE EVALUACIÓN (Async)
     if (window.currentEval !== undefined) {
-        evalHistory.push(window.currentEval);
-        if (evalHistory.length > 100) evalHistory.shift();
-
-        if (!window.chartUpdatePending) {
-            window.chartUpdatePending = true;
-            requestAnimationFrame(() => {
-                if (typeof drawEvalChart === 'function') {
-                    drawEvalChart('evalChart');
-                    drawEvalChart('evalChartMobile');
-                }
-                window.chartUpdatePending = false;
-            });
+        if (evalHistory[evalHistory.length - 1] !== window.currentEval || moved) {
+            evalHistory.push(window.currentEval);
+            if (evalHistory.length > 200) evalHistory.shift();
+            updateEvalChartAsync();
         }
     }
+
 
     // 8. Feedback visual en móvil mediante Toasts
     if (window.innerWidth <= 768) {
@@ -1296,81 +1367,202 @@ function updateMaterial() {
     $('#material-display').text(txt).css('color', diff > 0 ? '#fff' : (diff < 0 ? '#aaa' : '#888'));
 }
 
+let uiUpdateQueue = [];
+let uiUpdateScheduled = false;
+let lastUpdateTime = 0;
+
+function scheduleUIUpdate(priority = 'normal', callback) {
+    uiUpdateQueue.push({ priority, callback, time: Date.now() });
+
+    // Ordenamos por prioridad: critical > high > normal > low
+    const priorityMap = { 'critical': 4, 'high': 3, 'normal': 2, 'low': 1 };
+
+    uiUpdateQueue.sort((a, b) => (priorityMap[b.priority] || 0) - (priorityMap[a.priority] || 0));
+
+    if (!uiUpdateScheduled) {
+        uiUpdateScheduled = true;
+        requestAnimationFrame(processUIQueue);
+    }
+}
+
+function processUIQueue() {
+    const frameStart = performance.now();
+    const FRAME_BUDGET = 12;
+
+    while (uiUpdateQueue.length > 0) {
+        const elapsed = performance.now() - frameStart;
+        if (elapsed > FRAME_BUDGET) {
+            requestAnimationFrame(processUIQueue);
+            return;
+        }
+
+        const task = uiUpdateQueue.shift();
+        try {
+            if (task && typeof task.callback === 'function') {
+                task.callback();
+            }
+        } catch (e) {
+            console.error('UI Update Error:', e);
+        }
+    }
+    uiUpdateScheduled = false;
+    lastUpdateTime = performance.now();
+}
+
+// ASYNC HELPER FUNCTIONS FOR PERFORMANCE
+function updateBestMovesAsync() {
+    if (!window.showBestMoves || !window.topMoves) return;
+
+    const renderTask = () => {
+        let html = '';
+        window.topMoves.forEach((m, i) => {
+            if (!m) return;
+            const scoreVal = parseFloat(m.score);
+            const scoreColor = isNaN(scoreVal) ? 'var(--text-dim)' : (scoreVal >= 0 ? 'var(--accent)' : '#ff6b6b');
+
+            html += `
+                <div class="move-item" onclick="applySuggestedMove('${m.move}')">
+                    <span><b style="color:var(--text-dim)">${i + 1}.</b> ${m.move}</span>
+                    <span style="color:${scoreColor}; font-weight:800">${m.score.startsWith('M') ? m.score : (scoreVal > 0 ? '+' : '') + m.score}</span>
+                </div>
+            `;
+        });
+
+        const desktopEl = document.getElementById('best-moves-list');
+        const mobileEl = document.getElementById('mobile-best-moves');
+
+        if (desktopEl) desktopEl.innerHTML = html || '<div class="move-item placeholder">Calculando...</div>';
+        if (mobileEl) {
+            mobileEl.innerHTML = html || '<div class="move-item placeholder">Calculando...</div>';
+            mobileEl.className = 'moves-list'; // Ensure it has the PC class
+        }
+    };
+
+
+    if (window.requestIdleCallback) window.requestIdleCallback(renderTask, { timeout: 1000 });
+    else scheduleUIUpdate('low', renderTask);
+}
+
+function updateEvalChartAsync() {
+    if (!evalHistory || evalHistory.length < 2) return;
+
+    const renderTask = () => {
+        if (typeof drawEvalChart === 'function') {
+            drawEvalChart('evalChart');
+            drawEvalChart('evalChartMobile');
+        }
+    };
+
+    if (window.requestIdleCallback) window.requestIdleCallback(renderTask, { timeout: 2000 });
+    else scheduleUIUpdate('low', renderTask);
+}
+
+function updateCoachCommentAsync(qClass) {
+    const renderTask = () => {
+        const lastMove = game.history({ verbose: true }).pop();
+        if (!lastMove) return;
+
+        // This is a placeholder for the logic that usually lives in updateCoachDashboard
+        // We ensure it runs without blocking the main thread
+        if (typeof updateCoachDashboard === 'function') {
+            // We might need to pass parameters or use globals
+            // For now, let's just ensure the dashboard refreshes correctly
+        }
+    };
+
+    if (window.requestIdleCallback) window.requestIdleCallback(renderTask, { timeout: 1500 });
+    else scheduleUIUpdate('low', renderTask);
+}
+
+
+
 function updateUI(moved = false) {
-    if (typeof initializeArrowCanvas === 'function') initializeArrowCanvas();
+    // CRITICAL: Visual feedback immediate
     $('.square-55d63').removeClass('highlight-selected highlight-hint highlight-last-move');
-    $('.legal-dot').remove(); // Clean up old dots
+    $('.legal-dot').remove();
 
-    // Marcar último movimiento si existe
-    const history = game.history({ verbose: true });
-    if (history.length > 0) {
-        const lastM = history[history.length - 1];
-        $(`.square-${lastM.from}`).addClass('highlight-last-move');
-        $(`.square-${lastM.to}`).addClass('highlight-last-move');
-    }
+    scheduleUIUpdate('critical', () => {
+        if (board) board.position(game.fen());
+        if (typeof initializeArrowCanvas === 'function') initializeArrowCanvas();
+    });
 
-    updateMaterial();
-    if (typeof highlightActiveMoveChip === 'function') highlightActiveMoveChip(currentHistoryIndex);
+    // HIGH: Move highlights and basic info
+    scheduleUIUpdate('high', () => {
+        const history = game.history({ verbose: true });
+        if (history.length > 0) {
+            const lastM = history[history.length - 1];
+            $(`.square-${lastM.from}`).addClass('highlight-last-move');
+            $(`.square-${lastM.to}`).addClass('highlight-last-move');
+        }
+        updateMaterial();
+        if (typeof highlightActiveMoveChip === 'function') highlightActiveMoveChip(currentHistoryIndex);
+    });
 
-    // Contextual UI Visibility (Modular independence)
-    if (currentMode === 'exercises') {
-        $('.panel-section').not('#sec-exercises').hide();
-        $('.panel-tabs, .tab-content').hide();
-        $('.opening-info, .evaluation-viz, .top-moves').hide(); // Hide analysis/theory to focus on puzzle
-        $('#sec-exercises').show();
-        $('.player-info').hide(); // Remove timers/names in puzzles to save space
-        $('#eval-bar-fill, #mobile-eval-fill').css('width', '50%');
-        $('#eval-text-overlay, #mobile-eval-text').text('0.0');
-    } else {
-        $('.panel-section').show();
-        $('.panel-tabs').show();
-        $('.tab-content.active').show();
-        $('.player-info').show();
-        $('#sec-exercises').hide();
-    }
+    // NORMAL: Contextual UI and game state
+    scheduleUIUpdate('normal', () => {
+        if (currentMode === 'exercises') {
+            $('.panel-section').not('#sec-exercises').hide();
+            $('.panel-tabs, .tab-content').hide();
+            $('.opening-info, .evaluation-viz, .top-moves').hide();
+            $('#sec-exercises').show();
+            $('.player-info').hide();
+            $('#eval-bar-fill, #mobile-eval-fill').css('width', '50%');
+            $('#eval-text-overlay, #mobile-eval-text').text('0.0');
+        } else {
+            $('.panel-section').show();
+            $('.panel-tabs').show();
+            $('.tab-content.active').show();
+            $('.player-info').show();
+            $('#sec-exercises').hide();
+        }
 
-    // Ensure board is visible if we are in a game mode
-    if (currentMode !== 'local' || gameId) {
-        $('#board-layout').css('display', 'flex');
-    }
+        if (currentMode !== 'local' || gameId) {
+            $('#board-layout').css('display', 'flex');
+        }
+    });
 
     if (moved) {
-        // Sound logic
+        // Haptic and immediate sounds
+        if (navigator.vibrate) {
+            if (game.in_check()) navigator.vibrate([100, 50, 100]);
+            else navigator.vibrate(50);
+        }
         if (game.in_check()) playSnd('check');
         else if (game.history({ verbose: true }).pop().flags.includes('c')) playSnd('capture');
         else playSnd('move');
 
-        updateHistory();
-        if (!gameStarted && currentMode !== 'exercises' && currentMode !== 'study') startClock();
-        if (currentMode !== 'exercises' && currentMode !== 'study') updateTimerVisuals();
+        scheduleUIUpdate('normal', () => {
+            updateHistory();
+            if (!gameStarted && currentMode !== 'exercises' && currentMode !== 'study') startClock();
+            if (currentMode !== 'exercises' && currentMode !== 'study') updateTimerVisuals();
 
-        // SAVE LAST EVAL BEFORE NEW ANALYSIS
-        if (window.stableLastEval !== undefined) {
-            window.lastEval = window.stableLastEval;
-        }
+            if (window.stableLastEval !== undefined) {
+                window.lastEval = window.stableLastEval;
+            }
 
-        // STOCKFISH ANALYSIS ON EVERY MOVE
-        // Trigger if: AI Mode OR Hints are Active (Study/Local)
-        if (stockfish && (currentMode === 'ai' || hintsActive)) {
-            window.isNewMoveAnalysis = true;
-            window.coachUpdateLocked = false;
-            stockfish.postMessage('stop');
-            stockfish.postMessage('position fen ' + game.fen());
-            stockfish.postMessage('go depth 18');
-        }
+            // TRIGGER STOCKFISH ANALYSIS (IF CACHED)
+            const fen = game.fen();
+            if (analysisCache.has(fen)) {
+                handleStockfishAnalysis(analysisCache.get(fen));
+            } else if (stockfish && (currentMode === 'ai' || hintsActive)) {
+                window.isNewMoveAnalysis = true;
+                window.coachUpdateLocked = false;
+                stockfish.postMessage('stop');
+                stockfish.postMessage('position fen ' + fen);
 
-        const diff = parseInt($('#diff-sel').val()) || 5;
-        // AI Turn: Use selected difficulty
-        if (currentMode === 'ai' && game.turn() !== myColor) {
-            // Boost max difficulty to depth 22 (near SF18 JS limit)
-            const aiDepth = diff >= 20 ? 22 : (diff + 2);
-            stockfish.postMessage('go depth ' + aiDepth);
-        } else {
-            // Player Turn or Analysis/Hints
-            stockfish.postMessage('go depth 18');
-        }
+                const diff = parseInt($('#diff-sel').val()) || 5;
+                if (currentMode === 'ai' && game.turn() !== myColor) {
+                    const aiDepth = diff >= 20 ? 22 : (diff + 2);
+                    stockfish.postMessage('go depth ' + aiDepth);
+                } else {
+                    stockfish.postMessage('go depth 18');
+                }
+            }
+        });
     }
 }
+
+
 
 function getPieceTheme(piece) {
     try {
@@ -3240,20 +3432,24 @@ window.showSubMenu = function (id) {
 
 window.setMode = function (mode) {
     currentMode = mode;
-    aiThinking = false; // Reset AI state on mode change
-    openingSubMode = null; // Reset opening module state
+    aiThinking = false;
+    openingSubMode = null;
 
     // Independent UI Reset
     game.reset();
-    board.start();
+    if (mode !== 'exercises') board.start();
+
     historyPositions = [game.fen()];
     currentHistoryIndex = 0;
     moveHistoryGlobal = [];
     window.currentEval = 0.0;
     window.lastEval = 0.0;
     evalHistory = [0];
-    drawEvalChart('evalChart');
-    drawEvalChart('evalChartMobile');
+
+    if (typeof drawEvalChart === 'function') {
+        drawEvalChart('evalChart');
+        drawEvalChart('evalChartMobile');
+    }
     clearArrowCanvas();
     $('.legal-dot').remove();
 
@@ -3263,26 +3459,31 @@ window.setMode = function (mode) {
     $('.tab-content').removeClass('active');
 
     // Activar controles de tablero y ocultar menús
-    $('#board-layout').fadeIn().css('display', 'flex');
     $('#submenus-container').hide();
+    $('#board-layout').fadeIn(300, function () {
+        if (board) board.resize();
+
+        // After board is visible and resized, load puzzle if needed
+        if (mode === 'exercises') {
+            loadRandomPuzzle();
+        }
+    }).css('display', 'flex');
 
     // Toggle board-specific puzzle controls
     if (mode === 'exercises') {
         $('#puzzle-controls').fadeIn().css('display', 'block');
-        // OCULTAR SECCIONES QUE MOLESTAN EN TÁCTICA (Imágenes 2 y 3 del usuario)
         $('#side-opening-info, #side-eval-viz, #side-top-moves, #threats-panel, .panel-tabs, #coach-txt, .mobile-board-info').hide();
         $('#tactic-dashboard-container').show();
         renderTacticalDashboard();
     } else {
         $('#puzzle-controls').hide();
         $('#side-opening-info, #side-eval-viz, #side-top-moves, .panel-tabs, #coach-txt').show();
-        $('.mobile-board-info').show(); // Restore if needed
+        $('.mobile-board-info').show();
         $('#tactic-dashboard-container').hide();
         currentPuzzle = null;
         clearInterval(puzTimerInterval);
     }
 
-    // Set Game Mode Active (Triggers CSS mobile layout)
     $('body').addClass('board-active');
 
     // FASE 2: UI CLEANUP FOR LEARN/TACTICS (Mobile & PC)
@@ -3345,9 +3546,11 @@ window.toggleMobileInfoExpand = function () {
 
 window.selectPuzzleCategory = function (cat) {
     $('#puz-cat-sel').val(cat);
-    setMode('exercises');
-    loadRandomPuzzle();
+    // Cambiar modo. El propio setMode llamará a loadRandomPuzzle
+    if (typeof setMode === 'function') setMode('exercises');
+    else if (window.setMode) window.setMode('exercises');
 };
+
 
 window.startMaestroModeReal = function (level = 10, userColor = 'white') {
     hintsActive = true;
@@ -3832,4 +4035,14 @@ if (typeof originalUpdatePuzzleStats === 'function') {
         $('#puz-stats-list-main').html($('#puz-stats-list').html());
         $('#puz-history-list-main').html($('#puz-history-list').html());
     };
+
 }
+
+// --- PERFORMANCE MONITOR (Solución #1) ---
+setInterval(() => {
+    if (uiUpdateQueue.length > 5) {
+        console.warn(`📊 Queue size: ${uiUpdateQueue.length}`);
+        console.log(`⏱️ Last update: ${lastUpdateTime.toFixed(2)}ms`);
+    }
+}, 5000);
+

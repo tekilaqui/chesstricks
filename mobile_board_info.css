@@ -9,7 +9,7 @@
     z-index: 50;
 
     background: rgba(18, 18, 20, 0.95);
-    border: 1px solid rgba(33, 150, 243, 0.3);
+    border: 1px solid var(--border);
     border-radius: 25px;
     /* Pill shape */
     padding: 0 15px;
