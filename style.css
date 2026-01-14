@@ -14,12 +14,13 @@
 
 :root {
     /* CHESS DREZ DESIGN GUIDE PALETTE */
-    --primary: #2196F3;
-    --primary-dark: #1976D2;
-    --accent: #00BCD4;
+    --primary: #00594F;
+    --primary-dark: #003d37;
+    --accent: #00665E;
     --success: #00594F;
     /* Aston Martin F1 Racing Green */
-    --warning: #FF9800;
+    --warning: #c1fb2d;
+    /* Verde Lima F1 para contraste si es necesario */
     --danger: #F44336;
 
     /* Neutrals (Dark Mode) */
@@ -1506,8 +1507,9 @@ body {
 
     .btn-mobile-menu.primary {
         background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-        border: none;
-        box-shadow: 0 8px 15px rgba(33, 150, 243, 0.3);
+        border: 1px solid rgba(193, 251, 45, 0.3);
+        /* Borde lima sutil */
+        box-shadow: 0 8px 15px rgba(0, 89, 79, 0.4);
     }
 
     .btn-mobile-menu .icon {

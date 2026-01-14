@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
 </head>
 
-<body class="kids-body">
+<body class="kids-body theme-space">
     <div class="kids-header">
         <button onclick="goBackStep()" class="btn-back">⬅ VOLVER</button>
         <div class="kids-logo">🌟 ChessdreZ Kids 🌟</div>
@@ -19,6 +19,8 @@
             <span id="current-kid-name" style="font-weight:900;">¿Quién eres?</span>
             <div class="kids-stars">⭐ <span id="star-count">0</span></div>
         </div>
+        <button onclick="showSettings()" class="btn-back"
+            style="background:var(--kids-orange); padding:10px; border-radius:15px; width:45px; margin-left:10px;">⚙️</button>
     </div>
 
     <main class="kids-main">
@@ -27,25 +29,99 @@
 
             <div class="kids-menu-grid">
                 <div class="kids-card learn" onclick="showWorlds()">
-                    <div class="card-icon">👨‍🏫</div>
-                    <div class="card-text">APRENDER (NIVELES)</div>
+                    <div class="card-icon">📚</div>
+                    <div class="card-text">ESCUELA (NIVELES)</div>
                 </div>
                 <div class="kids-card challenges" onclick="showPlayAI()">
                     <div class="card-icon">⚔️</div>
                     <div class="card-text">PARTIDA VS IA</div>
                 </div>
-                <div class="kids-card minigames" onclick="startMode('minigames')">
+                <div class="kids-card minigames" onclick="showMinigames()">
                     <div class="card-icon">🎮</div>
                     <div class="card-text">MINI-JUEGOS</div>
                 </div>
-                <div class="kids-card progress" onclick="startMode('progress')">
-                    <div class="card-icon">⭐</div>
-                    <div class="card-text">PROGRESO</div>
+                <div class="kids-card progress" onclick="showProgress()">
+                    <div class="card-icon">🏆</div>
+                    <div class="card-text">MI PROGRESO</div>
                 </div>
             </div>
 
             <button onclick="window.location.href='../index.html'" class="btn-exit"
                 style="margin-top: 40px; padding: 15px 40px; font-size: 1.2rem;">🚪 SALIR DE LA ZONA NIÑOS</button>
+        </div>
+
+        <!-- SETTINGS AREA -->
+        <div id="kids-settings" style="display:none;">
+            <h2 class="kids-title">Mis Ajustes ⚙️</h2>
+            <div class="settings-grid">
+                <div class="settings-group">
+                    <h3>🔊 Sonido</h3>
+                    <button id="setting-sound-btn" onclick="toggleSound()" class="kids-card"
+                        style="padding:20px; width:100%; border:4px solid var(--kids-green);">
+                        <div style="font-size:2.5rem;" id="setting-sound-icon">🔊</div>
+                        <div id="setting-sound-text" style="font-weight:900;">Sonido Activado</div>
+                    </button>
+                </div>
+
+                <div class="settings-group">
+                    <h3>🖼️ Color de Fondo</h3>
+                    <div class="theme-options">
+                        <div class="theme-btn theme-space active" onclick="changeTheme('space')"
+                            style="background:radial-gradient(circle, #023e8a 0%, #03045e 100%);"></div>
+                        <div class="theme-btn theme-forest" onclick="changeTheme('forest')"
+                            style="background:radial-gradient(circle, #065f46 0%, #064e3b 100%);"></div>
+                        <div class="theme-btn theme-ocean" onclick="changeTheme('ocean')"
+                            style="background:radial-gradient(circle, #0891b2 0%, #164e63 100%);"></div>
+                        <div class="theme-btn theme-candy" onclick="changeTheme('candy')"
+                            style="background:radial-gradient(circle, #db2777 0%, #831843 100%);"></div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <h3>🏰 Estilo de Tablero</h3>
+                    <div class="theme-options">
+                        <div class="theme-btn active" id="board-theme-classic" onclick="changeBoardTheme('classic')"
+                            style="background:#444; border:4px solid #fff;"></div>
+                        <div class="theme-btn" id="board-theme-wood" onclick="changeBoardTheme('wood')"
+                            style="background:#8b4513;"></div>
+                        <div class="theme-btn" id="board-theme-blue" onclick="changeBoardTheme('blue')"
+                            style="background:#1e3a8a;"></div>
+                        <div class="theme-btn" id="board-theme-green" onclick="changeBoardTheme('green')"
+                            style="background:#14532d;"></div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <h3>♟️ Piezas</h3>
+                    <div class="theme-options">
+                        <button class="piece-btn active" id="piece-theme-wikipedia"
+                            onclick="changePieceTheme('wikipedia')">
+                            <img src="https://chessboardjs.com/img/chesspieces/wikipedia/wP.png">
+                            <span>Normal</span>
+                        </button>
+                        <button class="piece-btn" id="piece-theme-kids" onclick="changePieceTheme('kids')">
+                            <img src="https://chessboardjs.com/img/chesspieces/wikipedia/wN.png">
+                            <span>Mágicas</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <h3>👉 Modo de Movimiento</h3>
+                    <div class="theme-options">
+                        <button class="piece-btn" id="move-method-drag" onclick="changeMoveMethod('drag')">
+                            <div style="font-size:1.5rem;">👆</div>
+                            <span>Arrastrar</span>
+                        </button>
+                        <button class="piece-btn" id="move-method-click" onclick="changeMoveMethod('click')">
+                            <div style="font-size:1.5rem;">👇</div>
+                            <span>Dos Clics</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <button onclick="showHome()" class="btn-back" style="margin-top:40px; background:var(--kids-blue);">⬅ VOLVER
+                AL INICIO</button>
         </div>
 
         <!-- PROFILE SELECTOR MODAL -->
@@ -76,8 +152,10 @@
         <div id="kids-game" style="display:none;">
             <div class="game-container">
                 <div class="game-info">
-                    <h2 id="level-name">Mundo 1</h2>
-                    <div id="level-task" class="level-task">Mueve el peón</div>
+                    <h2 id="level-name" style="font-size:1.4rem; opacity:0.8;">Mundo 1</h2>
+                    <div id="level-task" class="level-task"
+                        style="font-size:2.2rem; min-height:80px; display:flex; align-items:center; justify-content:center; padding:10px; line-height:1.2;">
+                        Mueve el peón</div>
                 </div>
 
                 <div id="kidsBoard" class="kids-board-styled"></div>
@@ -94,7 +172,7 @@
         <div id="kids-play-ai" style="display:none;">
             <div class="game-container">
                 <div class="game-info">
-                    <h2 id="ai-level-title" style="margin-bottom: 5px;">Nivel 0: Tortuga Lenta 🐢</h2>
+                    <h2 id="ai-level-title" style="margin-bottom: 5px;">Nivel 0: Bebé 👶</h2>
                     <div id="ai-advice" class="ai-advice-bubble"
                         style="background: white; border-radius: 20px; color: #333; padding: 15px; margin-bottom: 20px; position: relative; font-weight: 700;">
                         ¡Hola! Soy tu oponente. ¿Jugamos?</div>
@@ -131,6 +209,54 @@
                         SALIR</button>
                 </div>
             </div>
+        </div>
+
+        <!-- MINIGAMES AREA -->
+        <div id="kids-minigames" style="display:none;">
+            <h2 class="kids-title">Mini-Juegos 🎮</h2>
+            <div class="kids-menu-grid">
+                <div class="kids-card" onclick="startPawnRace()"
+                    style="border:8px solid var(--kids-green); box-shadow:0 10px 0 var(--kids-green);">
+                    <div class="card-icon">♟️</div>
+                    <div class="card-text">Carrera de Peones</div>
+                    <p style="font-size:0.8rem; margin-top:10px; font-weight:bold;">¡Sé el primero en llegar al final!
+                    </p>
+                </div>
+                <div class="kids-card" onclick="startKingMaze()"
+                    style="border:8px solid var(--kids-purple); box-shadow:0 10px 0 var(--kids-purple);">
+                    <div class="card-icon">🌀</div>
+                    <div class="card-text">Rey al Centro</div>
+                    <p style="font-size:0.8rem; margin-top:10px; font-weight:bold;">¡Lleva a tu Rey a las casillas
+                        mágicas!</p>
+                </div>
+            </div>
+            <button onclick="showHome()" class="btn-back" style="margin-top:40px; background:var(--kids-blue);">⬅ VOLVER
+                AL INICIO</button>
+        </div>
+
+        <!-- PROGRESS AREA -->
+        <div id="kids-progress" style="display:none;">
+            <h2 class="kids-title">Mis Logros 🏆</h2>
+            <div class="game-container" style="max-width:600px; padding:40px;">
+                <div id="progress-stats"
+                    style="color:white; font-size:1.5rem; text-align:center; width:100%; font-weight:900;">
+                    <!-- Populated by JS -->
+                </div>
+                <div style="margin-top:30px; display:grid; grid-template-columns:1fr 1fr; gap:20px; width:100%;">
+                    <div class="kids-card" style="padding:20px; border:4px solid var(--kids-yellow);">
+                        <div style="font-size:2rem;">⭐</div>
+                        <div id="stat-stars">0</div>
+                        <div style="font-size:0.7rem;">ESTRELLAS</div>
+                    </div>
+                    <div class="kids-card" style="padding:20px; border:4px solid var(--kids-green);">
+                        <div style="font-size:2rem;">🔓</div>
+                        <div id="stat-worlds">1</div>
+                        <div style="font-size:0.7rem;">MUNDOS</div>
+                    </div>
+                </div>
+            </div>
+            <button onclick="showHome()" class="btn-back" style="margin-top:40px; background:var(--kids-blue);">⬅ VOLVER
+                AL INICIO</button>
         </div>
     </main>
 
