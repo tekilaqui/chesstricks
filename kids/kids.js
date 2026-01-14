@@ -395,6 +395,7 @@ function showWorlds() {
     $('#kids-worlds').show();
     isMinigame = false;
     renderWorlds();
+    speak("¡Bienvenido a la Escuela de Campeones! Elige una lección para empezar a aprender.");
 }
 
 function showPlayAI() {
@@ -509,17 +510,60 @@ function renderWorlds() {
     const container = $('#worlds-container');
     if (!container.length) return;
     container.empty();
-    KIDS_LEVELS.forEach((world, index) => {
-        const isLocked = index > 0 && stars < (index * 20);
-        const card = $(`
-            <div class="kids-card world-card ${isLocked ? 'locked' : ''}" style="border-color: ${world.color}">
-                <div class="card-icon">${index + 1}</div>
-                <div class="card-text">${world.name}</div>
-                <div style="font-size: 0.8rem; margin-top: 10px; opacity: 0.8;">${world.description}</div>
+
+    // Agrupar niveles por categoría
+    const categories = {};
+    KIDS_LEVELS.forEach(level => {
+        if (!categories[level.category]) categories[level.category] = [];
+        categories[level.category].push(level);
+    });
+
+    const categoryNames = Object.keys(categories);
+
+    categoryNames.forEach(catName => {
+        const catSection = $(`
+            <div class="school-category">
+                <h3 class="school-category-title">${catName}</h3>
+                <div class="school-grid"></div>
             </div>
         `);
-        if (!isLocked) card.click(() => startWorld(world));
-        container.append(card);
+        const grid = catSection.find('.school-grid');
+
+        categories[catName].forEach((level, idx) => {
+            // El bloqueo ahora es por categoría o por estrellas totales
+            // Simplificamos: desbloqueado si tienes suficientes estrellas
+            const levelIdx = KIDS_LEVELS.findIndex(l => l.id === level.id);
+            const isLocked = levelIdx > 0 && stars < (levelIdx * 10); // 10 estrellas por nivel previo
+
+            // Calcular progreso visual (simulado para la demo o basado en puzzles resueltos si existiera el tracking)
+            // Por ahora, si está desbloqueado mostramos algo de progreso
+            const progress = isLocked ? 0 : Math.min(100, Math.floor((stars / ((levelIdx + 1) * 10)) * 100));
+
+            const card = $(`
+                <div class="school-card ${isLocked ? 'locked' : ''}" style="border-bottom: 6px solid ${level.color}">
+                    <div class="school-card-header" style="color: ${level.color}">${level.name.split(' ')[0]}</div>
+                    <div class="school-card-body">
+                        <div>
+                            <div class="school-card-name">${level.name}</div>
+                            <div class="school-card-desc">${level.description}</div>
+                        </div>
+                        <div>
+                            <div class="school-progress-bar">
+                                <div class="school-progress-fill" style="width: ${progress}%"></div>
+                            </div>
+                            <div class="school-stars-info">⭐ ${level.puzzles.length * 3} Estrellas posibles</div>
+                        </div>
+                    </div>
+                </div>
+            `);
+
+            if (!isLocked) {
+                card.click(() => startWorld(level));
+            }
+            grid.append(card);
+        });
+
+        container.append(catSection);
     });
 }
 
@@ -530,6 +574,32 @@ function startWorld(world) {
     $('#kids-game').show();
     isMinigame = false;
     loadPuzzle();
+}
+
+function showTheoryModal(world) {
+    const nextIdx = KIDS_LEVELS.findIndex(l => l.id === world.id) + 1;
+    const nextWorld = KIDS_LEVELS[nextIdx];
+
+    $('#theory-title').text(`¡Dominas ${world.name}! 🌟`);
+    $('#theory-text').html(world.theory || "¡Has hecho un gran trabajo aprendiendo los secretos del ajedrez!");
+
+    if (nextWorld) {
+        $('#btn-next-lesson').show().off('click').on('click', () => {
+            hideTheoryModal();
+            startWorld(nextWorld);
+        });
+    } else {
+        $('#btn-next-lesson').hide();
+    }
+
+    $('#theory-modal').css('display', 'flex').hide().fadeIn(300).addClass('show');
+    speak(world.theory || "¡Excelente! Has completado la lección.");
+}
+
+function hideTheoryModal() {
+    $('#theory-modal').fadeOut(300, function () {
+        $(this).removeClass('show');
+    });
 }
 
 // ARROW DRAWING LOGIC
@@ -574,14 +644,18 @@ function loadPuzzle() {
     selectedSquare = null;
     const puzzle = currentWorld.puzzles[currentPuzzleIndex];
     if (!puzzle) {
-        stars += 10;
+        stars += 15; // Más recompensa por completar sección
         updateStarDisplay();
-        alert("¡CAMPEÓN! 🏆 Has ganado 10 estrellas.");
-        showWorlds();
+        showKidsReward(15);
+
+        // MOSTRAR TEORÍA AL FINALIZAR
+        setTimeout(() => {
+            showTheoryModal(currentWorld);
+        }, 1500);
         return;
     }
     game.load(puzzle.fen);
-    $('#level-name').text(currentWorld.name + " - Nivel " + (currentPuzzleIndex + 1));
+    $('#level-name').text(currentWorld.name + " - Reto " + (currentPuzzleIndex + 1) + " de " + currentWorld.puzzles.length);
     $('#level-task').text(puzzle.goal);
     speak(puzzle.goal);
 
@@ -620,33 +694,59 @@ function loadPuzzle() {
 function handleDrop(source, target) {
     if (isKidsLoading) return 'snapback';
 
+    if ($('#kids-play-ai').is(':visible')) {
+        return handleAIDrop(source, target);
+    }
+
+    if (!currentWorld || !currentWorld.puzzles) return 'snapback';
     const puzzle = currentWorld.puzzles[currentPuzzleIndex];
+    if (!puzzle) return 'snapback';
+
+    // Para puzzles, el siguiente movimiento del jugador está en currentPuzzleStep
+    // currentPuzzleStep suele empezar en 1 (0 fue la máquina)
     const move = game.move({ from: source, to: target, promotion: 'q' });
     if (move === null) return 'snapback';
 
-    if (navigator.vibrate) navigator.vibrate(50);
+    const solution = puzzle.moves;
+    // La secuencia es: 0(IA), 1(YO), 2(IA), 3(YO)...
+    const currentStep = (game.history().length - 1);
+    const expectedMove = solution[currentStep];
 
-    const isCorrect = puzzle.moves.some(m =>
-        move.san.startsWith(m) ||
-        (source + target) === m ||
-        move.to === m
-    );
+    const playerMoveUCI = move.from + move.to + (move.promotion || '');
+    const expectedUCI = expectedMove.replace('#', '').replace('+', '').replace('=', '').toLowerCase(); // Normalizar
 
+    // Validar por UCI o por SAN (ej: e4 o d7d5)
+    if (playerMoveUCI === expectedUCI || move.san === expectedMove || expectedUCI.includes(playerMoveUCI)) {
 
-    if (isCorrect) {
-        isKidsLoading = true;
         clearArrows('kidsBoard');
-        playKidSound('win');
-        createFloatingStar();
-        stars += 3;
-        updateStarDisplay();
-        currentPuzzleIndex++;
-        setTimeout(loadPuzzle, 800);
+
+        // ¿Hay un siguiente movimiento de la IA en la solución?
+        if (solution[currentStep + 1]) {
+            setTimeout(() => {
+                const nextIAMove = solution[currentStep + 1];
+                game.move(nextIAMove);
+                if (board) board.position(game.fen());
+                playKidSound('move');
+                speak("¡Bien! ¿Y ahora?");
+            }, 600);
+        } else {
+            // FIN DEL PUZZLE
+            isKidsLoading = true;
+            playKidSound('win');
+            createFloatingStar();
+            stars += 3;
+            updateStarDisplay();
+            currentPuzzleIndex++;
+            setTimeout(loadPuzzle, 1000);
+        }
+
+        if (navigator.vibrate) navigator.vibrate(50);
+
     } else {
         game.undo();
         playKidSound('loss');
-        stars = Math.max(0, stars - 1);
-        updateStarDisplay();
+        // Pequeño aviso visual o de voz
+        speak("¡Casi! Intenta otro camino.");
         return 'snapback';
     }
 }

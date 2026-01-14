@@ -1,17 +1,4 @@
 {
-  "pepe": {
-    "hash": "b3ecc72bb757f84f2d48b926f029407cf488ee7972b0458196826f3ef828c744cb37dfc1c3b32e30dc90da027c5c8a98a66c385cad9824235f727142f0fba066",
-    "salt": "412604cdd457193e3ee039e9f7845ab8773cd7c04cf9388c6be8fdbaf74bb47e",
-    "email": "pepeguses@gmail.com",
-    "elo": 500,
-    "puzElo": 522,
-    "createdAt": "2025-12-30T00:45:27.201Z",
-    "stats": {
-      "wins": 1,
-      "losses": 5,
-      "draws": 0
-    }
-  },
   "pepegus": {
     "hash": "14727c3d220c0aaf751eb6a5db1f00e6a3e4e07cd9963eb32299ba9f5dc5508e83b138af84833c7bca8a272787dcbc7f32071587fd31b97404c8389cdcfd809d",
     "salt": "4610dc5033f53e73e7c0c332f502aba0f61868259f18ec3d18d493691dd67838",
@@ -22,19 +9,6 @@
     "stats": {
       "wins": 5,
       "losses": 1,
-      "draws": 0
-    }
-  },
-  "Pepegus": {
-    "hash": "d8da4cd6511132b8961435c13cdc490be878fda55eb25e91f44f75056e6b056ab98bd59e9bca64f5957d14f401d8576c4fb016f1c2f11ae7300a2bb322d2b82d",
-    "salt": "b3b329d2396b6316ee6698edf1356d718f998f8f330db1e4ca292eaa1d12a912",
-    "email": "Tekilaqui@gmail.com",
-    "elo": 500,
-    "puzElo": 500,
-    "createdAt": "2026-01-05T22:26:45.680Z",
-    "stats": {
-      "wins": 0,
-      "losses": 0,
       "draws": 0
     }
   },
@@ -72,37 +46,16 @@
       "draws": 0
     }
   },
-  "Pepes": {
-    "hash": "b8395f45c3550d6c11e13ac1339297f0eba5d10f50866338e5d3c1df2243a56340de1f5971686dfc8968b46022c8408dec29fe014100454158ea0e109d0754a3",
-    "salt": "2ec9a50a14c7d48c539fd871e8abf664987db617afef0fdb002f8770ef223f32",
-    "email": "pozuelaco@gmail.com",
+  "pepe": {
+    "hash": "b3ecc72bb757f84f2d48b926f029407cf488ee7972b0458196826f3ef828c744cb37dfc1c3b32e30dc90da027c5c8a98a66c385cad9824235f727142f0fba066",
+    "salt": "412604cdd457193e3ee039e9f7845ab8773cd7c04cf9388c6be8fdbaf74bb47e",
+    "email": "pepeguses@gmail.com",
     "elo": 500,
-    "elo1": 500,
-    "elo3": 500,
-    "elo10": 500,
-    "eloDaily": 500,
-    "puzElo": 500,
-    "createdAt": "2026-01-09T12:05:22.037Z",
+    "puzElo": 522,
+    "createdAt": "2025-12-30T00:45:27.201Z",
     "stats": {
-      "wins": 0,
-      "losses": 0,
-      "draws": 0
-    }
-  },
-  "pepeguses": {
-    "hash": "440977aef1f42ea86825e3d65a8ce2cffde688f1122d36d943a1cb83737095ebe52c7b2d016333d2f7adba68b15259738a98b83cb7d9fd9d0530456408b36b93",
-    "salt": "cbd23a674bbd5a00645839d945a6e3fc5d4854a4af47001952fb0bb5852c7083",
-    "email": "chesstricks71@gmail.com",
-    "elo": 500,
-    "elo1": 500,
-    "elo3": 500,
-    "elo10": 500,
-    "eloDaily": 500,
-    "puzElo": 500,
-    "createdAt": "2026-01-09T12:06:02.773Z",
-    "stats": {
-      "wins": 0,
-      "losses": 0,
+      "wins": 1,
+      "losses": 5,
       "draws": 0
     }
   }

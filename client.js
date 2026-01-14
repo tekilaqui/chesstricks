@@ -351,10 +351,22 @@ function updateElo(opponentElo, result, isPuzzle = false) {
 }
 
 // Mobile Move Timeline - Grouped in pairs
-function addMoveToTimeline(moveSAN, qualityObj) {
+// Mobile Move Timeline - Grouped in pairs
+function addMoveToTimeline(moveData, qualityObj) {
     const mobileTimeline = $('#mobile-move-timeline');
     const desktopTimeline = $('#desktop-move-log');
-    if (!moveSAN) return;
+
+    // 1. DATA EXTRACTION SANITIZATION
+    let moveSAN = '';
+
+    if (typeof moveData === 'string') {
+        moveSAN = moveData;
+    } else if (typeof moveData === 'object' && moveData !== null) {
+        // If it's a Chess.js move object, it has .san property
+        moveSAN = moveData.san || '???';
+    } else {
+        return; // Invalid input
+    }
 
     // Reset initial text if exists
     if (desktopTimeline.text().includes('Sin movimientos')) desktopTimeline.empty();
@@ -365,18 +377,30 @@ function addMoveToTimeline(moveSAN, qualityObj) {
     const turnNumber = Math.ceil(moveCount / 2);
     const moveIndex = moveCount;
 
+    // Prevent duplicates
     if ($(`.move-chip[data-index="${moveIndex}"]`).length > 0) return;
 
-    let qClass = (qualityObj && qualityObj.class) ? qualityObj.class : 'good';
-    let qSymbol = (qualityObj && qualityObj.symbol) ? qualityObj.symbol : '';
-    let qText = (qualityObj && qualityObj.text) ? qualityObj.text : 'Buena';
+    // 2. QUALITY COLORS
+    // Maps analysis quality to CSS classes
+    let qClass = (qualityObj && qualityObj.class) ? qualityObj.class : '';
+    // If no quality provided, default to nothing (neutral) or check previous logic
+    if (!qClass) qClass = 'good'; // Default fallback
 
+    let qSymbol = (qualityObj && qualityObj.symbol) ? qualityObj.symbol : '';
+    let qText = (qualityObj && qualityObj.text) ? qualityObj.text : '';
+
+    // Create the Chip
     const moveChip = `<span class="move-chip ${qClass}" data-index="${moveIndex}" title="${qText}" onclick="goToMove(${moveIndex})">${moveSAN}${qSymbol}</span>`;
 
+    // 3. APPEND TO CONTAINERS
     const targetContainers = [mobileTimeline, desktopTimeline];
 
     targetContainers.forEach(container => {
         if (!container.length) return;
+
+        // For mobile timeline (horizontal), we might want just a flat list or pairs
+        // The user asked for "horizontal line". Pairs are fine if they are inline-flex.
+
         if (isWhite) {
             const pairId = `${container.attr('id')}-pair-${turnNumber}`;
             container.append(`
@@ -389,6 +413,7 @@ function addMoveToTimeline(moveSAN, qualityObj) {
             const pairId = `${container.attr('id')}-pair-${turnNumber}`;
             let pair = container.find(`#${pairId}`);
             if (pair.length === 0) {
+                // If white move missing (e.g. joined late), create pair
                 container.append(`<div class="move-pair" id="${pairId}"><span class="move-pair-number">${turnNumber}.</span><span class="move-chip hidden">...</span>${moveChip}</div>`);
             } else {
                 pair.append(moveChip);
@@ -396,10 +421,36 @@ function addMoveToTimeline(moveSAN, qualityObj) {
         }
     });
 
+    // 4. HIGHLIGHT ACTIVE
     highlightActiveMoveChip(moveIndex);
 
-    if (mobileTimeline.length) mobileTimeline.scrollLeft(mobileTimeline[0].scrollWidth);
-    if (desktopTimeline.length) desktopTimeline.scrollTop(desktopTimeline[0].scrollHeight);
+    // 5. MAX ITEMS LOGIC (Mobile Only)
+    // Remove oldest pairs if too many accumulate to keep the line clean and efficient
+    // User requested "que vayan desapareciendo por orden de llegada" (FIFO)
+    if (mobileTimeline.length) {
+        const MAX_PAIRS_MOBILE = 6; // Increased to 6 per user request
+        const children = mobileTimeline.children('.move-pair');
+        if (children.length > MAX_PAIRS_MOBILE) {
+            const removeCount = children.length - MAX_PAIRS_MOBILE;
+            for (let i = 0; i < removeCount; i++) children.eq(i).remove();
+        }
+        mobileTimeline.scrollLeft(mobileTimeline[0].scrollWidth);
+    }
+
+    if (desktopTimeline.length) {
+        // Apply FIFO logic to Desktop as well per user request (single line ticker)
+        const MAX_PAIRS_DESKTOP = 6;
+        const children = desktopTimeline.children('.move-pair');
+        if (children.length > MAX_PAIRS_DESKTOP) {
+            const removeCount = children.length - MAX_PAIRS_DESKTOP;
+            for (let i = 0; i < removeCount; i++) children.eq(i).remove();
+        }
+        desktopTimeline.scrollLeft(desktopTimeline[0].scrollWidth); // Horizontal scroll
+    }
+
+    if (desktopTimeline.length) {
+        desktopTimeline.scrollTop(desktopTimeline[0].scrollHeight);
+    }
 }
 
 
@@ -1631,7 +1682,19 @@ function updateUI(moved = false) {
 
         // Logic Updates
         if (!gameStarted && currentMode !== 'exercises' && currentMode !== 'study') startClock();
-        if (currentMode !== 'exercises' && currentMode !== 'study') updateTimerVisuals();
+        if (currentMode !== 'exercises' && currentMode !== 'study') {
+            updateTimerVisuals();
+
+            // Add time increment after move (for formats like 3+2)
+            if (window.timeIncrement && window.timeIncrement > 0) {
+                const lastTurn = game.history().length % 2 === 0 ? 'b' : 'w';
+                if (lastTurn === 'w') {
+                    whiteTime += window.timeIncrement;
+                } else {
+                    blackTime += window.timeIncrement;
+                }
+            }
+        }
 
         if (window.stableLastEval !== undefined) {
             window.lastEval = window.stableLastEval;
@@ -2946,11 +3009,36 @@ $('#btn-hint-mobile').click(() => { $('#btn-puz-hint, #btn-ai-hint').click(); $(
 $('#btn-editor-mobile').click(() => { $('#btn-editor').click(); $('#mobile-actions-menu').fadeOut(); });
 
 function resetTimers() {
-    const activeSelector = currentMode === 'ai' ? '#ai-time-selector' : '#local-time-selector';
-    const mins = parseInt($(activeSelector + ' .time-btn.active').data('time')) || 10;
+    // Priority: 1. gameConfig (if set and we are launching new game) 2. DOM active selector
+    let mins = 10;
+    let increment = 0; // Seconds to add per move
+
+    if (currentMode === 'ai' && gameConfig && gameConfig.timeControl) {
+        if (gameConfig.timeControl === 'unlimited') {
+            mins = 999999; // Effectively unlimited
+            increment = 0;
+        } else {
+            // Parse '10+0' or '3+2' format
+            const parts = gameConfig.timeControl.split('+');
+            mins = parseInt(parts[0]);
+            increment = parseInt(parts[1] || 0);
+        }
+    } else {
+        // Fallback or Local mode
+        const activeSelector = currentMode === 'ai' ? '#ai-time-selector' : '#local-time-selector';
+        const btn = $(activeSelector + ' .time-btn.active');
+        if (btn.length) {
+            mins = parseInt(btn.data('time'));
+        }
+    }
+
     whiteTime = mins * 60;
     blackTime = mins * 60;
-    $('#my-timer, #opp-timer').text(formatTime(whiteTime)).removeClass('low-time active');
+    window.timeIncrement = increment; // Store globally for use in game logic
+
+    // Format display
+    const displayTime = mins > 1000 ? "∞" : formatTime(whiteTime);
+    $('#my-timer, #opp-timer').text(displayTime).removeClass('low-time active');
 }
 
 $('.time-btn').click(function () {
@@ -3067,6 +3155,27 @@ window.selectSide = function (side) {
     gameConfig.side = side;
     $('.color-selector .btn-option').removeClass('active');
     $(`.btn-option[onclick*="'${side}'"]`).addClass('active');
+};
+
+window.selectTime = function (time) {
+    gameConfig.timeControl = time;
+    $('.btn-option').each(function () {
+        if ($(this).attr('onclick') && $(this).attr('onclick').includes(`'${time}'`)) {
+            $(this).addClass('active');
+        } else if ($(this).text().includes('min') || $(this).text().includes('3+2') || $(this).text().includes('Límite')) {
+            // Remove active from other time buttons
+            $(this).removeClass('active');
+        }
+    });
+
+    // Specifically target the time selector group if structure allows, 
+    // but the above check is safe enough given the specific text contents or better selection:
+    // Better strategy: Find the parent container of time options and toggle active there
+    const btn = $(`.btn-option[onclick*="'${time}'"]`);
+    if (btn.length) {
+        btn.siblings().removeClass('active');
+        btn.addClass('active');
+    }
 };
 
 window.launchMaestroGame = function () {
@@ -3734,7 +3843,41 @@ setInterval(function () {
 }, 5000);
 
 // Definitive Flip Board Repair
-$(document).on('click', '#btn-flip, #btn-flip-mobile', handleFlipBoard);
+// ✅ UNIVERSAL FLIP HANDLER - UN SOLO LUGAR
+function handleFlipBoard() {
+    if (typeof board !== 'undefined') {
+        board.flip();
+        showToast('📋 Tablero girado');
+    }
+}
+
+// ✅ Usar este handler ÚNICO para TODOS los botones de flip
+const flipSelectors = [
+    'btn-flip',
+    'btn-flip-mobile',
+    'btn-flip-board',
+    'btn-flip-small',
+    'btn-flip-pc-sidebar',
+    'btn-flip-pc-local'
+];
+
+flipSelectors.forEach(selector => {
+    const element = document.getElementById(selector);
+    if (element) {
+        // Remover listeners antiguos (si existieran)
+        // element.removeEventListener('click', handleFlipBoard); // Optional logic
+
+        // Agregar nuevo listener único
+        element.onclick = handleFlipBoard; // Simple assignment to collision
+    }
+});
+
+// Fallback jQuery for dynamic elements
+$(document).on('click', '#btn-flip, #btn-flip-mobile', function (e) {
+    // Only if not handled by native
+    e.preventDefault();
+    handleFlipBoard();
+});
 
 // Sync opening selector
 $('#opening-sel-main').on('change', function () {

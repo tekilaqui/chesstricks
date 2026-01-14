@@ -102,49 +102,63 @@ body.board-active .mobile-board-info.expanded .mobile-coach-comment {
 }
 
 /* Mobile Move Quality Timeline */
+/* Mobile Move Quality Timeline - FIXED DIMENSIONS */
 .mobile-move-timeline {
     display: none;
-    margin-top: 65px;
-    /* Spacer for absolute info card */
+    margin-top: 60px;
+    /* Reduced top margin slightly */
+    /* FORCE FIXED HEIGHT */
+    height: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+
+    /* PREVENT EXPANSION */
+    width: 100%;
+    max-width: 100vw;
+
     overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;
-    padding: 8px 0;
-    margin-bottom: 8px;
+
+    /* ALIGNMENT */
+    padding: 0 10px;
+    margin-bottom: 5px;
+    align-items: center;
+    /* Vertically center items */
+
     background: rgba(0, 0, 0, 0.2);
     border-radius: 8px;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(33, 150, 243, 0.5) transparent;
+    scrollbar-width: none;
+    /* Hide scrollbar for cleaner look */
 }
 
 .mobile-move-timeline::-webkit-scrollbar {
-    height: 4px;
-}
-
-.mobile-move-timeline::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.mobile-move-timeline::-webkit-scrollbar-thumb {
-    background: rgba(33, 150, 243, 0.5);
-    border-radius: 2px;
+    display: none;
+    /* Hide scrollbar completely */
 }
 
 .move-pair {
-    display: inline-flex;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    margin: 0 4px;
-    padding: 4px 6px;
-    border: 1px solid rgba(255, 255, 255, 0.03);
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    white-space: nowrap !important;
+    /* CRITICAL */
+    background: transparent;
+    border-radius: 4px;
+    margin: 0 1px;
+    /* Reduced margin */
+    padding: 0;
+    border: none;
+    min-width: 40px;
+    /* Reduced min-width */
+    justify-content: center;
 }
 
 .move-pair-number {
-    font-size: 10px;
-    color: #888;
-    margin-right: 6px;
-    font-weight: 800;
+    font-size: 9px;
+    color: #666;
+    margin-right: 2px;
+    font-weight: 700;
     font-family: 'Outfit', sans-serif;
 }
 
@@ -180,46 +194,52 @@ body.board-active .mobile-board-info.expanded .mobile-coach-comment {
 }
 
 /* Move quality colors */
+/* Move quality colors - TEXT ONLY version */
+.move-chip {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 2px !important;
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
 .move-chip.brilliant {
-    background: linear-gradient(135deg, #00ffff, #00bcd4);
-    color: #000;
-    box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    color: #00ffff !important;
+    text-shadow: 0 0 5px rgba(0, 255, 255, 0.6);
 }
 
 .move-chip.excellent {
-    background: linear-gradient(135deg, #4caf50, #8bc34a);
-    color: #fff;
+    color: #4caf50 !important;
 }
 
 .move-chip.good {
-    background: linear-gradient(135deg, #2196f3, #03a9f4);
-    color: #fff;
+    color: #2196f3 !important;
 }
 
 .move-chip.inaccuracy {
-    background: linear-gradient(135deg, #ff9800, #ffc107);
-    color: #000;
+    color: #ffeb3b !important;
 }
 
 .move-chip.mistake {
-    background: linear-gradient(135deg, #ff5722, #ff9800);
-    color: #fff;
+    color: #ff9800 !important;
 }
 
 .move-chip.blunder {
-    background: linear-gradient(135deg, #f44336, #e91e63);
-    color: #fff;
-    box-shadow: 0 0 10px rgba(244, 67, 54, 0.5);
+    color: #f44336 !important;
+    font-weight: 800;
 }
 
 .move-chip.book {
-    background: linear-gradient(135deg, #9c27b0, #673ab7);
-    color: #fff;
+    color: #d0a9f5 !important;
 }
 
 /* Show on mobile */
-@media (max-width: 768px) {
+/* Show on mobile - FORCE SINGLE ROW */
+@media (max-width: 900px) {
     body.board-active .mobile-move-timeline {
-        display: block;
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
     }
 }

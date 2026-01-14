@@ -161,8 +161,8 @@
 
         <!-- LEVEL SELECTOR -->
         <div id="kids-worlds" style="display:none;">
-            <h2 class="kids-title">Elige un Mundo</h2>
-            <div id="worlds-container" class="kids-menu-grid"></div>
+            <h2 class="kids-title">🏫 Escuela de Campeones</h2>
+            <div id="worlds-container" class="kids-menu-grid" style="display:block;"></div>
             <button onclick="showHome()" class="btn-back" style="margin-top:40px; background:var(--kids-blue);">⬅ VOLVER
                 AL MENÚ</button>
         </div>
@@ -211,8 +211,9 @@
                         </div>
 
                         <button onclick="maestroGetHint()" class="btn-back"
-                            style="background:#4ade80; color:#000; font-size:0.8rem; padding:8px 15px;">💡 ¿Qué
+                            style="background:#32a09b; color:#fff; font-size:0.8rem; padding:8px 15px;">💡 ¿Qué
                             muevo?</button>
+
                         <button id="btn-toggle-autohelp" onclick="toggleAutoHelp()" class="btn-back"
                             style="background:#fbbf24; color:#000; font-size:0.8rem; padding:8px 15px;">🛡️ Maestro:
                             SI</button>
@@ -300,6 +301,21 @@
                 AL INICIO</button>
         </div>
     </main>
+
+    <div id="theory-modal" class="theory-modal">
+        <div class="theory-content">
+            <h2 id="theory-title" class="theory-title">¡Mundo Completado! 🌟</h2>
+            <div id="theory-text" class="theory-text">
+                Aquí va la explicación teórica de lo que acabas de aprender.
+            </div>
+            <div class="theory-buttons">
+                <button onclick="hideTheoryModal()" class="btn-back"
+                    style="background:var(--kids-orange);">CERRAR</button>
+                <button id="btn-next-lesson" class="btn-back" style="background:var(--kids-green);">PRÓXIMA LECCIÓN
+                    ➡</button>
+            </div>
+        </div>
+    </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>

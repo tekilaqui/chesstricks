@@ -1,253 +1,223 @@
-/* Fix para evitar que el tablero se mueva cuando aparecen/desaparecen comentarios */
+/* ============================================
+   ESTABILIZACIÓN DEL TABLERO - SECCIÓN PRINCIPAL
+   Prevenir saltos y movimientos innecesarios
+   ============================================ */
 
 /* Panel de comentarios del coach - altura mínima fija */
 #coach-txt,
 #mobile-coach-logs,
 .coach-stable-container {
-    min-height: 120px;
-    max-height: 400px;
-    overflow-y: auto;
-    transition: none !important;
+  min-height: 120px;
+  max-height: 400px;
+  overflow-y: auto;
+  transition: none !important;
 }
 
 /* Asegurar que los paneles colapsables no causen desplazamiento del tablero */
 .collapsible-panel {
-    transition: none !important;
+  transition: none !important;
 }
 
 .panel-content {
-    overflow: hidden;
-    transition: max-height 0.3s ease;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
 }
 
-/* Evitar que el contenido colapsado cause saltos */
 .panel-content.collapsed {
-    max-height: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
+  max-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
-/* Estabilizar el board-wrapper para evitar movimientos */
+/* Estabilizar el board-wrapper */
 .board-wrapper {
-    position: relative;
+  position: relative;
 }
 
-/* ESTABILIZAR MODO TÁCTICAS - Evitar movimientos del tablero */
+/* Controles del puzzle - altura mínima fija */
 .puzzle-controls {
-    min-height: 100px !important;
-    /* Altura mínima fija para evitar saltos */
-    max-height: 150px;
-    overflow: visible;
-    transition: none !important;
+  min-height: 100px !important;
+  max-height: 150px;
+  overflow: visible;
+  transition: none !important;
+  flex-shrink: 0 !important;
 }
 
 .puz-info-row {
-    min-height: 30px;
-    /* Altura mínima para la fila de info */
+  min-height: 30px;
 }
 
 .puz-description-main {
-    min-height: 24px;
-    /* Evitar que cambie de altura */
+  min-height: 24px;
 }
 
 /* En móvil, asegurar que el modal de info no afecte el tablero */
 @media (max-width: 900px) {
-    .mobile-info-modal {
-        position: fixed !important;
-    }
+  .mobile-info-modal {
+    position: fixed !important;
+  }
 
-    #mobile-move-timeline {
-        min-height: 40px;
-    }
+  #mobile-move-timeline {
+    min-height: 40px;
+  }
 }
 
 /* Arreglar problema de clase undefined en move-chip */
 .move-chip.undefined {
-    background: rgba(139, 195, 74, 0.2);
-    border-color: rgba(139, 195, 74, 0.4);
+  background: rgba(139, 195, 74, 0.2);
+  border-color: rgba(139, 195, 74, 0.4);
 }
 
 /* ========================================
-   BOTONES DE PUZZLE PREMIUM
+   BOTONES DE PUZZLE - ESTILOS PREMIUM
    ======================================== */
 
 .btn-puzzle-action {
-    position: relative;
-    overflow: hidden;
-    font-weight: 700 !important;
-    font-size: 0.8rem !important;
-    padding: 14px 8px !important;
-    border-radius: 12px !important;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)) !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  position: relative;
+  overflow: hidden;
+  font-weight: 700 !important;
+  font-size: 0.8rem !important;
+  padding: 14px 8px !important;
+  border-radius: 12px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
 }
 
 /* Efecto de brillo al hover */
 .btn-puzzle-action::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s;
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
 }
 
 .btn-puzzle-action:hover::before {
-    left: 100%;
+  left: 100%;
 }
 
 .btn-puzzle-action:hover {
-    transform: translateY(-3px) !important;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4) !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
+  transform: translateY(-3px) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
 }
 
 .btn-puzzle-action:active {
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3) !important;
 }
 
 /* Icono dentro del botón */
 .btn-puzzle-action .icon {
-    font-size: 1.2rem;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  font-size: 1.2rem;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
-/* Botón PRIMARY (Siguiente) - Estilo destacado */
+/* Botón PRIMARY - Estilo destacado */
 .btn-puzzle-action.primary {
-    background: linear-gradient(135deg, #2196f3, #1976d2) !important;
-    border-color: #1976d2 !important;
-    color: #fff !important;
-    box-shadow: 0 6px 16px rgba(33, 150, 243, 0.4),
-        0 0 20px rgba(33, 150, 243, 0.2) !important;
+  background: linear-gradient(135deg, #2196f3, #1976d2) !important;
+  border-color: #1976d2 !important;
+  color: #fff !important;
+  box-shadow: 0 6px 16px rgba(33, 150, 243, 0.4), 0 0 20px rgba(33, 150, 243, 0.2) !important;
+  animation: pulse-glow 2s ease-in-out infinite;
 }
 
 .btn-puzzle-action.primary:hover {
-    background: linear-gradient(135deg, #42a5f5, #2196f3) !important;
-    box-shadow: 0 10px 24px rgba(33, 150, 243, 0.5),
-        0 0 30px rgba(33, 150, 243, 0.3) !important;
+  background: linear-gradient(135deg, #42a5f5, #2196f3) !important;
+  box-shadow: 0 10px 24px rgba(33, 150, 243, 0.5), 0 0 30px rgba(33, 150, 243, 0.3) !important;
 }
 
-/* Botón DANGER (Solución) - Estilo de advertencia */
+/* Botón DANGER - Estilo de advertencia */
 .btn-puzzle-action.danger {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.08)) !important;
-    border-color: rgba(239, 68, 68, 0.4) !important;
-    color: #ef4444 !important;
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2) !important;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.08)) !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  color: #ef4444 !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2) !important;
 }
 
 .btn-puzzle-action.danger:hover {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(239, 68, 68, 0.15)) !important;
-    border-color: rgba(239, 68, 68, 0.6) !important;
-    box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3) !important;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(239, 68, 68, 0.15)) !important;
+  border-color: rgba(239, 68, 68, 0.6) !important;
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3) !important;
 }
 
-/* Botón normal (Pista) - Estilo sutil */
+/* Botón NORMAL - Estilo sutil */
 .btn-puzzle-action:not(.primary):not(.danger) {
-    background: linear-gradient(135deg, rgba(0, 188, 212, 0.12), rgba(0, 188, 212, 0.06)) !important;
-    border-color: rgba(0, 188, 212, 0.3) !important;
-    color: #00bcd4 !important;
-    box-shadow: 0 4px 12px rgba(0, 188, 212, 0.15) !important;
+  background: linear-gradient(135deg, rgba(0, 188, 212, 0.12), rgba(0, 188, 212, 0.06)) !important;
+  border-color: rgba(0, 188, 212, 0.3) !important;
+  color: #00bcd4 !important;
+  box-shadow: 0 4px 12px rgba(0, 188, 212, 0.15) !important;
 }
 
 .btn-puzzle-action:not(.primary):not(.danger):hover {
-    background: linear-gradient(135deg, rgba(0, 188, 212, 0.2), rgba(0, 188, 212, 0.1)) !important;
-    border-color: rgba(0, 188, 212, 0.5) !important;
-    box-shadow: 0 8px 20px rgba(0, 188, 212, 0.25) !important;
+  background: linear-gradient(135deg, rgba(0, 188, 212, 0.2), rgba(0, 188, 212, 0.1)) !important;
+  border-color: rgba(0, 188, 212, 0.5) !important;
+  box-shadow: 0 8px 20px rgba(0, 188, 212, 0.25) !important;
 }
 
-/* Animación de pulso para el botón siguiente */
+/* Animación de pulso */
 @keyframes pulse-glow {
-
-    0%,
-    100% {
-        box-shadow: 0 6px 16px rgba(33, 150, 243, 0.4),
-            0 0 20px rgba(33, 150, 243, 0.2);
-    }
-
-    50% {
-        box-shadow: 0 6px 16px rgba(33, 150, 243, 0.6),
-            0 0 30px rgba(33, 150, 243, 0.4);
-    }
+  0%, 100% {
+    box-shadow: 0 6px 16px rgba(33, 150, 243, 0.4), 0 0 20px rgba(33, 150, 243, 0.2);
+  }
+  50% {
+    box-shadow: 0 6px 16px rgba(33, 150, 243, 0.6), 0 0 30px rgba(33, 150, 243, 0.4);
+  }
 }
 
-.btn-puzzle-action.primary {
-    animation: pulse-glow 2s ease-in-out infinite;
-}
-
-/* Responsive - Ajustes para móvil */
-@media (max-width: 900px) {
-    .btn-puzzle-action {
-        padding: 16px 6px !important;
-        font-size: 0.75rem !important;
-    }
-
-    .btn-puzzle-action .icon {
-        font-size: 1.1rem;
-    }
-}
-
-/* ESTABILIZACIÓN AVANZADA - Evitar saltos por feedback */
-
+/* Panel de feedback de puzzle */
 #puzzle-feedback-panel {
-    min-height: 85px !important;
-    margin-bottom: 15px;
-    display: none;
-    /* Controlado por JS, pero con min-height para minimizar impacto */
-    border-color: var(--primary) !important;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    background: rgba(30, 34, 45, 0.8) !important;
+  min-height: 85px !important;
+  margin-bottom: 15px;
+  display: none;
+  border-color: var(--primary) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  background: rgba(30, 34, 45, 0.8) !important;
 }
 
 #puzzle-feedback-content b {
-    display: block;
-    margin-bottom: 5px;
+  display: block;
+  margin-bottom: 5px;
 }
 
-/* Forzar que el tablero mantenga su proporción y no dependa de fluctuaciones del sidebar */
+/* Forzar estabilización del tablero */
 .game-zone {
-    overflow-x: hidden !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
+  overflow-x: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
 }
 
 .board-container {
-    max-width: 100% !important;
-    margin: 0 auto !important;
+  max-width: 100% !important;
+  margin: 0 auto !important;
 }
 
-/* Evitar que el contenedor de controles inferiores cambie el tamaño del tablero */
-.puzzle-controls {
-    flex-shrink: 0 !important;
-}
-
-/* Forzar que los mensajes flotantes (toasts) sean overlays puros y no desplacen nada */
+/* Toasts como overlay puro */
 #toast-container {
-    position: fixed !important;
-    z-index: 10000 !important;
-    pointer-events: none !important;
-    top: 70px !important;
-    right: 20px !important;
-    height: 0 !important;
-    /* El contenedor no ocupa espacio */
-    overflow: visible !important;
+  position: fixed !important;
+  z-index: 10000 !important;
+  pointer-events: none !important;
+  top: 70px !important;
+  right: 20px !important;
+  height: 0 !important;
+  overflow: visible !important;
 }
 
 .toast {
-    pointer-events: auto !important;
-    margin-bottom: 10px !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+  pointer-events: auto !important;
+  margin-bottom: 10px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
 }
 
-/* LIMPIEZA TOTAL EN TÁCTICAS: Quitar relojes, nombres y avatares */
+/* Limpiar UI en modo tácticas */
 body.mode-exercises .player-top,
 body.mode-exercises .player-bottom,
 body.mode-exercises .timer-display,
@@ -256,19 +226,30 @@ body.mode-exercises #opp-timer,
 body.mode-exercises #my-timer,
 body.mode-exercises #opp-name,
 body.mode-exercises #my-name-display {
-    display: none !important;
-    height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
+  display: none !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
-/* Reducir espacio innecesario para centrar el tablero */
 body.mode-exercises .board-wrapper {
-    gap: 0 !important;
-    justify-content: center !important;
+  gap: 0 !important;
+  justify-content: center !important;
 }
 
 body.mode-exercises .board-container {
-    margin-top: 5px !important;
-    margin-bottom: 5px !important;
+  margin-top: 5px !important;
+  margin-bottom: 5px !important;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .btn-puzzle-action {
+    padding: 16px 6px !important;
+    font-size: 0.75rem !important;
+  }
+
+  .btn-puzzle-action .icon {
+    font-size: 1.1rem;
+  }
 }

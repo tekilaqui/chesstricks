@@ -1,0 +1,14 @@
+/* Hide Historial de Partida panel per user request */
+.desktop-only-panel {
+    display: none !important;
+}
+
+/* Hide mobile move timeline in exercises mode */
+body.mode-exercises .mobile-move-timeline {
+    display: none !important;
+}
+
+/* Hide desktop move log in exercises mode */
+body.mode-exercises #desktop-move-log {
+    display: none !important;
+}
