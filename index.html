@@ -24,6 +24,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="board_stability.css">
+    <link rel="stylesheet" href="academy.css">
 </head>
 
 <body>
@@ -43,6 +45,7 @@
         <nav class="header-center desktop-only" id="main-nav">
             <div class="nav-center-link active" data-section="jugar" onclick="showSubMenu('jugar')">JUGAR</div>
             <div class="nav-center-link" data-section="puzzles" onclick="showSubMenu('puzzles')">TÁCTICAS</div>
+            <div class="nav-center-link" data-section="academia" onclick="showSubMenu('academy')">ACADEMIA</div>
             <div class="nav-center-link" data-section="aperturas" onclick="showSubMenu('aperturas')">APERTURAS</div>
             <div class="nav-center-link" data-section="analisis" onclick="showSubMenu('analisis')">ANÁLISIS</div>
         </nav>
@@ -76,6 +79,10 @@
                 <div class="nav-item" onclick="showSubMenu('jugar')" id="nav-jugar">
                     <span class="nav-icon">⚔️</span>
                     <span class="nav-text">Jugar</span>
+                </div>
+                <div class="nav-item" onclick="showSubMenu('academy')" id="nav-academy">
+                    <span class="nav-icon">🎓</span>
+                    <span class="nav-text">Academia</span>
                 </div>
                 <div class="nav-item" onclick="showSubMenu('aperturas')" id="nav-aperturas">
                     <span class="nav-icon">🎓</span>
@@ -339,6 +346,29 @@
                     </div>
                 </div>
 
+                <div class="menu-step" id="menu-academy">
+                    <div class="academy-container">
+                        <div class="academy-hero">
+                            <h1 class="academy-title">Academia de Campeones</h1>
+                            <p>Convierte tu pasión en maestría. De principiante a Gran Maestro.</p>
+                            <div id="academy-auth-notice" style="margin-top:20px; color:var(--warning); display:none;">
+                                ⚠️ Acceso exclusivo para usuarios registrados.
+                            </div>
+                        </div>
+
+                        <div class="academy-msg-box" id="academy-placement-box" style="display:none;">
+                            <h3>🎯 ¿No sabes por dónde empezar?</h3>
+                            <p>Haz nuestra prueba de nivel para saltar las lecciones que ya conoces.</p>
+                            <button class="btn-hero-primary" style="margin-top:10px; padding:10px 20px;"
+                                onclick="startPlacementTest()">Hacer Prueba de Nivel</button>
+                        </div>
+
+                        <div id="academy-lessons-grid" class="academy-grid">
+                            <!-- Inyectado por JS -->
+                        </div>
+                    </div>
+                </div>
+
                 <div class="menu-step" id="menu-estudio">
                     <div class="menu-header-mobile">
                         <button class="btn-back-arrow" onclick="goBackToMenu()">←</button>
@@ -451,30 +481,40 @@
                                 <h4>Mezclado</h4>
                                 <p style="font-size:0.6rem; opacity:0.6;">Dificultad progresiva</p>
                             </div>
-                            <div class="card-option" onclick="selectPuzzleCategory('mate')">
+                            <div class="card-option category-card" onclick="selectPuzzleCategory('mate')">
                                 <span class="opt-icon">🏁</span>
-                                <h4>Jaque Mate</h4>
-                                <p style="font-size:0.6rem; opacity:0.6;">Encuentra el remate</p>
+                                <h4>Mate</h4>
+                                <p style="font-size:0.5rem; opacity:0.6;">Dar el golpe final</p>
                             </div>
-                            <div class="card-option" onclick="selectPuzzleCategory('fork')">
+                            <div class="card-option category-card" onclick="selectPuzzleCategory('fork')">
                                 <span class="opt-icon">🍴</span>
-                                <h4>Ataque Doble</h4>
-                                <p style="font-size:0.6rem; opacity:0.6;">Gana material</p>
+                                <h4>Doble</h4>
+                                <p style="font-size:0.5rem; opacity:0.6;">Ataque doble</p>
                             </div>
-                            <div class="card-option" onclick="selectPuzzleCategory('pin')">
+                            <div class="card-option category-card" onclick="selectPuzzleCategory('pin')">
                                 <span class="opt-icon">📌</span>
                                 <h4>Clavada</h4>
-                                <p style="font-size:0.6rem; opacity:0.6;">Inmoviliza al rival</p>
+                                <p style="font-size:0.5rem; opacity:0.6;">Pieza inmóvil</p>
                             </div>
-                            <div class="card-option" onclick="selectPuzzleCategory('endgame')">
-                                <span class="opt-icon">⏳</span>
-                                <h4>Finales</h4>
-                                <p style="font-size:0.6rem; opacity:0.6;">Técnica precisa</p>
+                            <div class="card-option category-card" onclick="selectPuzzleCategory('hangingPiece')">
+                                <span class="opt-icon">🍎</span>
+                                <h4>Colgada</h4>
+                                <p style="font-size:0.5rem; opacity:0.6;">Piezas indefensas</p>
                             </div>
-                            <div class="card-option" onclick="selectPuzzleCategory('opening')">
+                            <div class="card-option category-card" onclick="selectPuzzleCategory('discoveredAttack')">
+                                <span class="opt-icon">🎁</span>
+                                <h4>Descubierta</h4>
+                                <p style="font-size:0.5rem; opacity:0.6;">Ataque oculto</p>
+                            </div>
+                            <div class="card-option category-card" onclick="selectPuzzleCategory('opening')">
                                 <span class="opt-icon">📖</span>
                                 <h4>Apertura</h4>
-                                <p style="font-size:0.6rem; opacity:0.6;">Castiga errores</p>
+                                <p style="font-size:0.5rem; opacity:0.6;">Errores iniciales</p>
+                            </div>
+                            <div class="card-option category-card" onclick="selectPuzzleCategory('endgame')">
+                                <span class="opt-icon">⏳</span>
+                                <h4>Final</h4>
+                                <p style="font-size:0.5rem; opacity:0.6;">Técnica última</p>
                             </div>
                         </div>
 
@@ -488,6 +528,10 @@
                             <option value="opening">opening</option>
                             <option value="middlegame">middlegame</option>
                             <option value="endgame">endgame</option>
+                            <option value="hangingPiece">hangingPiece</option>
+                            <option value="discoveredAttack">discoveredAttack</option>
+                            <option value="kingsideAttack">kingsideAttack</option>
+                            <option value="doubleCheck">doubleCheck</option>
                         </select>
                     </div>
 
@@ -604,14 +648,15 @@
                         <div id="puz-timer-main" class="puz-timer-main" style="margin-left:auto;">00:00</div>
                     </div>
                     <div class="puz-actions-row">
-                        <button class="btn-puzzle-action" onclick="showPuzzleHint()">
-                            <span class="icon">💡</span> Pista
+                        <button class="btn-puzzle-action" onclick="showPuzzleHint()" aria-label="Pista">
+                            <span class="icon" aria-hidden="true">💡</span> Pista
                         </button>
-                        <button class="btn-puzzle-action danger" onclick="showPuzzleSolution()">
-                            <span class="icon">🔓</span> Solución
+                        <button class="btn-puzzle-action danger" onclick="showPuzzleSolution()" aria-label="Solución">
+                            <span class="icon" aria-hidden="true">🔓</span> Solución
                         </button>
-                        <button class="btn-puzzle-action primary" onclick="loadRandomPuzzle()">
-                            Siguiente <span class="icon">➔</span>
+                        <button class="btn-puzzle-action primary" onclick="loadRandomPuzzle()"
+                            aria-label="Siguiente puzzle">
+                            Siguiente <span class="icon" aria-hidden="true">➔</span>
                         </button>
                     </div>
                 </div>
@@ -759,6 +804,14 @@
                 <div class="section-header">
                     <h3>🧩 Modo Táctico</h3>
                 </div>
+
+                <!-- Contenedor de Feedback de Puzzle -->
+                <div id="puzzle-feedback-panel"
+                    style="min-height: 80px; margin-bottom: 15px; padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); display: none;">
+                    <div id="puzzle-feedback-content" style="text-align: center; font-size: 0.9rem; font-weight: 600;">
+                    </div>
+                </div>
+
                 <div id="tactic-dashboard-container" style="padding:15px;">
                     <div style="font-size:0.75rem; color:var(--text-dim); text-align:center; padding:20px;">
                         Cargando estadísticas de entrenamiento...
@@ -805,7 +858,23 @@
                 </div>
             </div>
 
-            <!-- 2. ANÁLISIS EN TIEMPO REAL (Colapsable) -->
+            <!-- 2. HISTORIAL DE PARTIDA (Desktop) -->
+            <div class="panel-section collapsible-panel desktop-only-panel">
+                <div class="panel-header clickable" onclick="togglePanelSection('history-content-desktop')">
+                    <h3>📜 Historial de Partida</h3>
+                    <span class="collapse-arrow">▼</span>
+                </div>
+                <div id="history-content-desktop" class="panel-content">
+                    <div id="desktop-move-log" class="desktop-move-log">
+                        <!-- Moves will be shown here as well -->
+                        <div style="font-size:0.75rem; color:var(--text-muted); text-align:center; padding:10px;">
+                            Sin movimientos.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. ANÁLISIS EN TIEMPO REAL (Colapsable) -->
             <div class="panel-section collapsible-panel">
                 <div class="panel-header clickable" onclick="togglePanelSection('analysis-content')">
                     <h3>📊 Análisis en Tiempo Real</h3>
@@ -926,8 +995,18 @@
     </div>
 
     <!-- Toast Container for Notifications -->
-    <div id="toast-container"></div>
+    <!-- Duplicate toast-container removed -->
 
+    <!-- MODAL PRUEBA DE NIVEL -->
+    <div id="placement-modal" class="placement-modal">
+        <div class="placement-card">
+            <div id="placement-content">
+                <!-- Inyectado por JS -->
+            </div>
+        </div>
+    </div>
+
+    <script src="academy_data.js"></script>
     <script src="ai_module.js"></script>
     <script src="client.js?v=2"></script>
     <!-- MODAL DE INFORME DE PARTIDA -->

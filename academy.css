@@ -1,0 +1,140 @@
+/* --- ACADEMY STYLES --- */
+.academy-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.academy-hero {
+    background: linear-gradient(135deg, var(--primary-dark), #000);
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    margin-bottom: 30px;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.academy-title {
+    font-size: 2.5rem;
+    color: var(--accent);
+    margin-bottom: 10px;
+}
+
+.academy-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.academy-card {
+    background: var(--bg-panel);
+    border-radius: 15px;
+    padding: 25px;
+    border: 1px solid var(--border);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.academy-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--accent);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+.academy-card.locked {
+    opacity: 0.6;
+    filter: grayscale(0.8);
+    cursor: not-allowed;
+}
+
+.academy-card.locked::after {
+    content: '🔒';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3rem;
+}
+
+.academy-progress-label {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-bottom: 5px;
+    display: block;
+}
+
+.academy-progress-bar {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    margin-bottom: 15px;
+}
+
+.academy-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width 0.5s ease;
+}
+
+/* Placement Test Modal */
+.placement-modal {
+    background: rgba(0, 0, 0, 0.9);
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.placement-card {
+    background: var(--bg-panel);
+    border-radius: 20px;
+    padding: 40px;
+    max-width: 600px;
+    width: 100%;
+    border: 1px solid var(--accent);
+    text-align: center;
+}
+
+.placement-question {
+    font-size: 1.4rem;
+    margin-bottom: 30px;
+}
+
+.placement-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.placement-option {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    padding: 15px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.placement-option:hover {
+    background: rgba(78, 205, 199, 0.2);
+    border-color: var(--accent);
+}
+
+.academy-msg-box {
+    background: rgba(78, 205, 199, 0.1);
+    border: 1px dashed var(--accent);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}

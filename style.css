@@ -600,8 +600,8 @@ body {
 
 .grid-menu {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 25px;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 15px;
     margin-top: 30px;
 }
 
@@ -609,12 +609,21 @@ body {
     background: linear-gradient(135deg, var(--bg-panel), var(--bg-side));
     border: 1px solid var(--border);
     border-radius: 16px;
-    padding: 30px 20px;
+    padding: 20px 10px;
     text-align: center;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
+}
+
+.category-card .opt-icon {
+    font-size: 1.8rem;
+    margin-bottom: 5px;
+}
+
+.category-card h4 {
+    font-size: 0.9rem;
 }
 
 .card-option:hover {
@@ -3085,23 +3094,21 @@ body {
     }
 
 
-    /* ROOT VARIABLES OVERRIDE FOR PREMIUM NEON THEME */
-    /* ROOT VARIABLES OVERRIDE REMOVED TO UNIFY THEME */
-
-    --text-primary: #ffffff !important;
-    --text-secondary: #94a3b8 !important;
-    --text-dim: #64748b !important;
-    --border: rgba(255, 255, 255, 0.08) !important;
-    --border-light: rgba(255, 255, 255, 0.12) !important;
-    --sidebar-width: 250px !important;
-    --side-panel-width: 380px !important;
-    --header-height: 70px !important;
-    --font-main: 'Outfit',
-    sans-serif !important;
-    --radius-sm: 8px;
-    --radius-md: 14px;
-    --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.5);
-    --glass-blur: blur(20px);
+    :root {
+        --text-primary: #ffffff !important;
+        --text-secondary: #94a3b8 !important;
+        --text-dim: #64748b !important;
+        --border: rgba(255, 255, 255, 0.08) !important;
+        --border-light: rgba(255, 255, 255, 0.12) !important;
+        --sidebar-width: 250px !important;
+        --side-panel-width: 380px !important;
+        --header-height: 70px !important;
+        --font-main: 'Outfit', sans-serif !important;
+        --radius-sm: 8px;
+        --radius-md: 14px;
+        --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.5);
+        --glass-blur: blur(20px);
+    }
 }
 
 
@@ -3111,7 +3118,7 @@ body {
     background: linear-gradient(180deg, rgba(18, 20, 26, 0.95) 0%, rgba(18, 20, 26, 0.85) 100%) !important;
     backdrop-filter: var(--glass-blur) !important;
     border-left: 1px solid var(--border) !important;
-    padding: 24px !important;
+    padding: 12px 16px !important;
     box-shadow: -10px 0 40px rgba(0, 0, 0, 0.2) !important;
 }
 
@@ -3119,11 +3126,25 @@ body {
     background: rgba(30, 34, 45, 0.5) !important;
     border: 1px solid var(--border-light) !important;
     border-radius: var(--radius-md) !important;
-    padding: 20px !important;
-    margin-bottom: 24px !important;
+    padding: 10px 12px !important;
+    margin-bottom: 8px !important;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
     backdrop-filter: blur(10px) !important;
     border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.panel-header h3 {
+    font-size: 0.85rem !important;
+    margin: 0 !important;
+}
+
+.insight-val {
+    font-size: 0.78rem !important;
+    line-height: 1.3 !important;
+}
+
+.insight-group {
+    margin-bottom: 6px !important;
 }
 
 .panel-section:hover {
@@ -3444,5 +3465,75 @@ body {
     min-height: 100px;
     max-height: 600px;
     overflow-y: auto;
+}
+
+/* Move log styling */
+.desktop-move-log,
+.mobile-move-timeline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 5px;
+}
+
+.move-chip {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid transparent;
+}
+
+.move-chip.active-move {
+    border-color: var(--accent);
+    background: rgba(33, 150, 243, 0.2);
+}
+
+.move-chip.brilliant {
+    background: #00e5ff;
+    color: #000;
+}
+
+.move-chip.excellent {
+    background: #76ff03;
+    color: #000;
+}
+
+.move-chip.good {
+    background: #4caf50;
+    color: #fff;
+}
+
+.move-chip.inaccuracy {
+    background: #ffeb3b;
+    color: #000;
+}
+
+.move-chip.mistake {
+    background: #ff9800;
+    color: #fff;
+}
+
+.move-chip.blunder {
+    background: #f44336;
+    color: #fff;
+}
+
+.move-pair {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+.move-pair-number {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-right: 2px;
 }
 }
