@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChessdreZ Kids - ¡Aprende Jugando!</title>
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <link rel="stylesheet" href="kids.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+
+<body class="kids-body">
+    <div class="kids-header">
+        <button onclick="goBackStep()" class="btn-back">⬅ VOLVER</button>
+        <div class="kids-logo">🌟 ChessdreZ Kids 🌟</div>
+        <div class="profile-area" onclick="showProfileSelector()"
+            style="cursor:pointer; display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.1); padding:5px 15px; border-radius:30px;">
+            <span id="current-kid-name" style="font-weight:900;">¿Quién eres?</span>
+            <div class="kids-stars">⭐ <span id="star-count">0</span></div>
+        </div>
+    </div>
+
+    <main class="kids-main">
+        <div id="kids-home">
+            <h1 class="kids-title">¿A qué quieres jugar hoy?</h1>
+
+            <div class="kids-menu-grid">
+                <div class="kids-card learn" onclick="showWorlds()">
+                    <div class="card-icon">👨‍🏫</div>
+                    <div class="card-text">APRENDER (NIVELES)</div>
+                </div>
+                <div class="kids-card challenges" onclick="showPlayAI()">
+                    <div class="card-icon">⚔️</div>
+                    <div class="card-text">PARTIDA VS IA</div>
+                </div>
+                <div class="kids-card minigames" onclick="startMode('minigames')">
+                    <div class="card-icon">🎮</div>
+                    <div class="card-text">MINI-JUEGOS</div>
+                </div>
+                <div class="kids-card progress" onclick="startMode('progress')">
+                    <div class="card-icon">⭐</div>
+                    <div class="card-text">PROGRESO</div>
+                </div>
+            </div>
+
+            <button onclick="window.location.href='../index.html'" class="btn-exit"
+                style="margin-top: 40px; padding: 15px 40px; font-size: 1.2rem;">🚪 SALIR DE LA ZONA NIÑOS</button>
+        </div>
+
+        <!-- PROFILE SELECTOR MODAL -->
+        <div id="kids-profiles"
+            style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; display:flex; align-items:center; justify-content:center;">
+            <div class="game-container" style="max-width:500px; width:90%;">
+                <h2 class="kids-title" style="font-size:2rem;">¿Quién va a jugar? 👋</h2>
+                <div id="profiles-list" class="kids-menu-grid"
+                    style="grid-template-columns: 1fr; gap:15px; margin-bottom:20px;"></div>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="new-kid-name" placeholder="Nombre del niño..."
+                        style="flex:1; padding:15px; border-radius:15px; border:none; font-size:1.1rem; font-weight:700;">
+                    <button onclick="addNewKid()" class="btn-back"
+                        style="background:var(--kids-green); box-shadow:0 4px 0 #15803d;">➕</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- LEVEL SELECTOR -->
+        <div id="kids-worlds" style="display:none;">
+            <h2 class="kids-title">Elige un Mundo</h2>
+            <div id="worlds-container" class="kids-menu-grid"></div>
+            <button onclick="showHome()" class="btn-back" style="margin-top:40px; background:var(--kids-blue);">⬅ VOLVER
+                AL MENÚ</button>
+        </div>
+
+        <!-- GAME AREA (PUZZLES) -->
+        <div id="kids-game" style="display:none;">
+            <div class="game-container">
+                <div class="game-info">
+                    <h2 id="level-name">Mundo 1</h2>
+                    <div id="level-task" class="level-task">Mueve el peón</div>
+                </div>
+
+                <div id="kidsBoard" class="kids-board-styled"></div>
+
+                <div class="game-footer" style="margin-top:20px; display:flex; justify-content:center; gap:15px;">
+                    <button id="btn-hint" class="btn-hint">❓ PISTA</button>
+                    <button onclick="showWorlds()" class="btn-back" style="background:var(--kids-orange);">🚩
+                        RENDIRSE</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PLAY VS AI AREA -->
+        <div id="kids-play-ai" style="display:none;">
+            <div class="game-container">
+                <div class="game-info">
+                    <h2 id="ai-level-title" style="margin-bottom: 5px;">Nivel 0: Tortuga Lenta 🐢</h2>
+                    <div id="ai-advice" class="ai-advice-bubble"
+                        style="background: white; border-radius: 20px; color: #333; padding: 15px; margin-bottom: 20px; position: relative; font-weight: 700;">
+                        ¡Hola! Soy tu oponente. ¿Jugamos?</div>
+
+                    <div class="ai-controls"
+                        style="margin-bottom: 20px; display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">
+                        <div style="width:100%;">
+                            <label style="font-weight: 900;">DIFICULTAD: </label>
+                            <select id="kids-ai-depth" class="kids-select" onchange="changeAIDifficulty(this.value)"
+                                style="padding: 10px; border-radius: 10px; font-weight: 900; background: var(--kids-yellow); border:none;">
+                                <option value="0">Nivel 0: Bebé 👶 (Solo mueve)</option>
+                                <option value="1">Nivel 1: Tortuga 🐢</option>
+                                <option value="3">Nivel 2: Caracol 🐌</option>
+                                <option value="5">Nivel 3: Perrito 🐶</option>
+                                <option value="8">Nivel 4: Zorro 🦊</option>
+                            </select>
+                        </div>
+
+                        <button onclick="maestroGetHint()" class="btn-back"
+                            style="background:#4ade80; color:#000; font-size:0.8rem; padding:8px 15px;">💡 ¿Qué
+                            muevo?</button>
+                        <button id="btn-toggle-autohelp" onclick="toggleAutoHelp()" class="btn-back"
+                            style="background:#fbbf24; color:#000; font-size:0.8rem; padding:8px 15px;">🛡️ Maestro:
+                            SI</button>
+                    </div>
+                </div>
+
+                <div id="aiBoard" class="kids-board-styled"></div>
+
+                <div class="game-footer" style="margin-top:20px; display:flex; justify-content:center; gap:15px;">
+                    <button onclick="resetKidsGame()" class="btn-back" style="background:var(--kids-green);">🔄
+                        NUEVA PARTIDA</button>
+                    <button onclick="showHome()" class="btn-back" style="background:var(--kids-orange);">🚩
+                        SALIR</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    <script src="kids_levels.js"></script>
+    <script src="kids.js"></script>
+</body>
+
+</html>

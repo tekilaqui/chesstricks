@@ -1,0 +1,239 @@
+:root {
+    --kids-yellow: #FFD700;
+    --kids-green: #90EE90;
+    --kids-blue: #38bdf8;
+    --kids-red: #ff4d4d;
+    --kids-purple: #a855f7;
+    --kids-orange: #fb923c;
+}
+
+body.kids-body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Outfit', sans-serif;
+    background: radial-gradient(circle, #023e8a 0%, #03045e 100%);
+    color: white;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+.kids-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 40px;
+    background: rgba(0, 0, 0, 0.4);
+    border-bottom: 4px solid var(--kids-yellow);
+}
+
+.btn-back {
+    background: var(--kids-purple);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 50px;
+    font-weight: 900;
+    cursor: pointer;
+    font-size: 1rem;
+    box-shadow: 0 4px 0 #6b21a8;
+    transition: 0.1s;
+}
+
+.btn-exit {
+    background: var(--kids-red);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 50px;
+    font-weight: 900;
+    cursor: pointer;
+    font-size: 1rem;
+    box-shadow: 0 4px 0 #b91c1c;
+    transition: 0.1s;
+}
+
+.btn-back:active,
+.btn-exit:active {
+    transform: translateY(4px);
+    box-shadow: none;
+}
+
+.kids-logo {
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--kids-yellow);
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.kids-stars {
+    font-size: 1.5rem;
+    font-weight: 900;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px 20px;
+    border-radius: 50px;
+}
+
+.kids-main {
+    max-width: 1000px;
+    margin: 40px auto;
+    text-align: center;
+    padding: 0 20px;
+}
+
+.kids-title {
+    font-size: 3rem;
+    margin-bottom: 50px;
+    text-shadow: 2px 2px 0 var(--kids-blue);
+}
+
+.kids-menu-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 30px;
+}
+
+.kids-card {
+    background: white;
+    border-radius: 30px;
+    padding: 40px 20px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    color: #333;
+}
+
+.kids-card:hover {
+    transform: scale(1.05) rotate(2deg);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+}
+
+.kids-card.learn {
+    border: 8px solid var(--kids-yellow);
+    box-shadow: 0 10px 0 var(--kids-yellow);
+}
+
+.kids-card.challenges {
+    border: 8px solid var(--kids-green);
+    box-shadow: 0 10px 0 var(--kids-green);
+}
+
+.kids-card.minigames {
+    border: 8px solid var(--kids-orange);
+    box-shadow: 0 10px 0 var(--kids-orange);
+}
+
+.kids-card.progress {
+    border: 8px solid var(--kids-purple);
+    box-shadow: 0 10px 0 var(--kids-purple);
+}
+
+.card-icon {
+    font-size: 4rem;
+    margin-bottom: 15px;
+}
+
+.card-text {
+    font-size: 1.5rem;
+    font-weight: 900;
+}
+
+/* Animations */
+@keyframes bounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.kids-logo {
+    animation: bounce 2s infinite ease-in-out;
+}
+
+/* Game Area Styles */
+.game-container {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: 40px;
+    backdrop-filter: blur(10px);
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Estilo unificado para los tableros infantiles */
+.kids-board-styled {
+    width: 90vw !important;
+    max-width: 400px;
+    height: auto;
+    margin: 0 auto;
+    border: 8px solid white;
+    border-radius: 15px;
+    touch-action: none;
+    background-color: #444;
+}
+
+.highlight-possible {
+    box-shadow: inset 0 0 3px 3px rgba(0, 255, 0, 0.5);
+    border-radius: 50%;
+}
+
+.highlight-maestro {
+    box-shadow: inset 0 0 3px 3px rgba(255, 215, 0, 0.8);
+    border: 3px solid var(--kids-yellow);
+}
+
+.highlight-last {
+    background-color: rgba(255, 255, 0, 0.3);
+}
+
+.level-task {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: var(--kids-yellow);
+}
+
+.game-footer {
+    margin-top: 30px;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.btn-hint {
+    background: var(--kids-purple);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 50px;
+    font-weight: 900;
+    cursor: pointer;
+    font-size: 1.2rem;
+    box-shadow: 0 4px 0 #7e22ce;
+}
+
+.btn-hint:active {
+    transform: translateY(4px);
+    box-shadow: none;
+}
+
+.world-card.locked {
+    filter: grayscale(1) opacity(0.5);
+    cursor: not-allowed !important;
+}
+
+.world-card.locked::after {
+    content: '🔒';
+    font-size: 3rem;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
