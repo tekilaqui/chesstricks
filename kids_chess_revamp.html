@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChessdreZ Kids - ¡Aventura de Ajedrez!</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Comic+Neue:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animación de fondo con estrellas */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* Header mejorado */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            position: relative;
+            z-index: 100;
+        }
+
+        .logo {
+            font-family: 'Comic Neue', cursive;
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .stars-counter {
+            background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-size: 1.3rem;
+            font-weight: 700;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Contenedor principal */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Pantalla de inicio */
+        .welcome-screen {
+            text-align: center;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .welcome-title {
+            font-family: 'Comic Neue', cursive;
+            font-size: 3rem;
+            color: white;
+            text-shadow: 3px 3px 0 #ff6b6b, 6px 6px 20px rgba(0, 0, 0, 0.3);
+            margin-bottom: 30px;
+            animation: rainbow 3s infinite;
+        }
+
+        @keyframes rainbow {
+            0%, 100% { color: #ff6b6b; }
+            25% { color: #4ecdc4; }
+            50% { color: #ffe66d; }
+            75% { color: #a8e6cf; }
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-top: 40px;
+        }
+
+        .menu-card {
+            background: white;
+            border-radius: 25px;
+            padding: 30px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .menu-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, transparent, rgba(255, 255, 255, 0.3));
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .menu-card:hover {
+            transform: translateY(-15px) scale(1.05);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .menu-card:hover::before {
+            opacity: 1;
+        }
+
+        .card-icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+            animation: wiggle 1s infinite;
+        }
+
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(-5deg); }
+            50% { transform: rotate(5deg); }
+        }
+
+        .menu-card:hover .card-icon {
+            animation: spin 0.5s;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.2); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .card-description {
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        /* Tablero de ajedrez mejorado */
+        .game-screen {
+            display: none;
+            animation: slideIn 0.5s;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 30px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .board-container {
+            position: relative;
+            max-width: 500px;
+            margin: 20px auto;
+        }
+
+        .chess-board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 2px;
+            background: #8b4513;
+            padding: 10px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .square {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 5px;
+        }
+
+        .square.light {
+            background: #f0d9b5;
+        }
+
+        .square.dark {
+            background: #b58863;
+        }
+
+        .square:hover {
+            transform: scale(0.95);
+            box-shadow: inset 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .square.selected {
+            background: #7fc97f !important;
+            box-shadow: 0 0 20px rgba(127, 201, 127, 0.8);
+            animation: glow 1s infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(127, 201, 127, 0.8); }
+            50% { box-shadow: 0 0 40px rgba(127, 201, 127, 1); }
+        }
+
+        .square.target {
+            background: #ffd700 !important;
+        }
+
+        .piece {
+            transition: transform 0.3s;
+            user-select: none;
+        }
+
+        .piece:hover {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        /* Botones mejorados */
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            font-family: 'Fredoka', sans-serif;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+        }
+
+        /* Sistema de recompensas */
+        .reward-animation {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 5rem;
+            z-index: 1000;
+            animation: celebrate 1s;
+            pointer-events: none;
+        }
+
+        @keyframes celebrate {
+            0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.5) rotate(180deg); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1) rotate(360deg); opacity: 0; }
+        }
+
+        .confetti-piece {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            z-index: 999;
+            animation: confetti-fall 3s linear forwards;
+        }
+
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+
+        /* Mensajes de juego */
+        .game-message {
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+            padding: 20px;
+            border-radius: 20px;
+            margin: 20px 0;
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: 700;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            animation: messageSlide 0.5s;
+        }
+
+        @keyframes messageSlide {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .welcome-title {
+                font-size: 2rem;
+            }
+
+            .menu-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .square {
+                font-size: 1.8rem;
+            }
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Perfil de jugador */
+        .profile-selector {
+            background: white;
+            border-radius: 25px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .profile-input {
+            padding: 15px;
+            border: 3px solid #667eea;
+            border-radius: 15px;
+            font-size: 1.1rem;
+            font-family: 'Fredoka', sans-serif;
+            width: 100%;
+            max-width: 300px;
+            margin-right: 10px;
+        }
+
+        .achievements {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .achievement {
+            background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 15px;
+            font-weight: 700;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <!-- Estrellas de fondo -->
+    <div class="stars" id="stars"></div>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">🌟 ChessdreZ Kids 🌟</div>
+        <div class="stars-counter">
+            ⭐ <span id="starCount">0</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Pantalla de bienvenida -->
+        <div class="welcome-screen" id="welcomeScreen">
+            <div class="profile-selector">
+                <h2 style="margin-bottom: 15px; color: #667eea;">¿Cómo te llamas?</h2>
+                <input type="text" class="profile-input" id="playerName" placeholder="Tu nombre aquí">
+                <button class="btn" onclick="startAdventure()">¡Comenzar Aventura! 🚀</button>
+            </div>
+
+            <h1 class="welcome-title">¡Bienvenido al Reino del Ajedrez!</h1>
+            
+            <div class="menu-grid">
+                <div class="menu-card" onclick="showScreen('learn')" style="border-bottom: 6px solid #ff6b6b;">
+                    <div class="card-icon">📚</div>
+                    <div class="card-title">Academia Mágica</div>
+                    <div class="card-description">Aprende los secretos del ajedrez con lecciones divertidas</div>
+                </div>
+
+                <div class="menu-card" onclick="showScreen('puzzles')" style="border-bottom: 6px solid #4ecdc4;">
+                    <div class="card-icon">🧩</div>
+                    <div class="card-title">Desafíos Épicos</div>
+                    <div class="card-description">Resuelve rompecabezas y gana estrellas brillantes</div>
+                </div>
+
+                <div class="menu-card" onclick="showScreen('minigames')" style="border-bottom: 6px solid #ffe66d;">
+                    <div class="card-icon">🎮</div>
+                    <div class="card-title">Mini-Juegos</div>
+                    <div class="card-description">Diviértete con juegos especiales de ajedrez</div>
+                </div>
+
+                <div class="menu-card" onclick="showScreen('battle')" style="border-bottom: 6px solid #a8e6cf;">
+                    <div class="card-icon">⚔️</div>
+                    <div class="card-title">Batalla Real</div>
+                    <div class="card-description">¡Reta al Gran Maestro del castillo!</div>
+                </div>
+            </div>
+
+            <div class="achievements" id="achievementsDisplay"></div>
+        </div>
+
+        <!-- Pantalla de Academia -->
+        <div class="game-screen" id="learnScreen">
+            <div class="game-container">
+                <h2 style="text-align: center; color: #667eea; margin-bottom: 20px;">📚 Academia Mágica</h2>
+                <div class="game-message" id="learnMessage">¡Selecciona una pieza para aprender!</div>
+                
+                <div class="menu-grid" style="margin-top: 30px;">
+                    <div class="menu-card" onclick="learnPiece('pawn')">
+                        <div class="card-icon">♟️</div>
+                        <div class="card-title">El Peón Valiente</div>
+                    </div>
+                    <div class="menu-card" onclick="learnPiece('knight')">
+                        <div class="card-icon">♞</div>
+                        <div class="card-title">El Caballo Saltarín</div>
+                    </div>
+                    <div class="menu-card" onclick="learnPiece('bishop')">
+                        <div class="card-icon">♝</div>
+                        <div class="card-title">El Alfil Diagonal</div>
+                    </div>
+                    <div class="menu-card" onclick="learnPiece('rook')">
+                        <div class="card-icon">♜</div>
+                        <div class="card-title">La Torre Fuerte</div>
+                    </div>
+                    <div class="menu-card" onclick="learnPiece('queen')">
+                        <div class="card-icon">♛</div>
+                        <div class="card-title">La Reina Poderosa</div>
+                    </div>
+                    <div class="menu-card" onclick="learnPiece('king')">
+                        <div class="card-icon">♚</div>
+                        <div class="card-title">El Rey Importante</div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn btn-danger" onclick="showScreen('welcome')">🏠 Volver al Inicio</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla de Puzzles -->
+        <div class="game-screen" id="puzzlesScreen">
+            <div class="game-container">
+                <h2 style="text-align: center; color: #667eea; margin-bottom: 20px;">🧩 Desafíos Épicos</h2>
+                <div class="game-message" id="puzzleMessage">¡Captura todas las piezas doradas!</div>
+                
+                <div class="board-container">
+                    <div class="chess-board" id="puzzleBoard"></div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn btn-success" onclick="checkPuzzle()">✨ Verificar</button>
+                    <button class="btn" onclick="resetPuzzle()">🔄 Reintentar</button>
+                    <button class="btn btn-danger" onclick="showScreen('welcome')">🏠 Volver</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla de Mini-Juegos -->
+        <div class="game-screen" id="minigamesScreen">
+            <div class="game-container">
+                <h2 style="text-align: center; color: #667eea; margin-bottom: 20px;">🎮 Mini-Juegos</h2>
+                
+                <div class="menu-grid">
+                    <div class="menu-card" onclick="startMemoryGame()">
+                        <div class="card-icon">🧠</div>
+                        <div class="card-title">Memoria de Ajedrez</div>
+                        <div class="card-description">Encuentra las parejas de piezas</div>
+                    </div>
+                    <div class="menu-card" onclick="startSpeedChallenge()">
+                        <div class="card-icon">⚡</div>
+                        <div class="card-title">Desafío Veloz</div>
+                        <div class="card-description">¡Captura rápido antes que el tiempo!</div>
+                    </div>
+                </div>
+
+                <div class="controls" style="margin-top: 30px;">
+                    <button class="btn btn-danger" onclick="showScreen('welcome')">🏠 Volver</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla de Batalla -->
+        <div class="game-screen" id="battleScreen">
+            <div class="game-container">
+                <h2 style="text-align: center; color: #667eea; margin-bottom: 20px;">⚔️ Batalla Real</h2>
+                <div class="game-message" id="battleMessage">¡Próximamente! Esta característica está en desarrollo</div>
+                
+                <div class="controls">
+                    <button class="btn btn-danger" onclick="showScreen('welcome')">🏠 Volver</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Estado del juego
+        let gameState = {
+            playerName: '',
+            stars: 0,
+            achievements: [],
+            currentPuzzle: null,
+            selectedSquare: null
+        };
+
+        // Cargar datos guardados
+        function loadGameState() {
+            const saved = localStorage.getItem('kidsChessGame');
+            if (saved) {
+                gameState = JSON.parse(saved);
+                updateDisplay();
+            }
+        }
+
+        // Guardar progreso
+        function saveGameState() {
+            localStorage.setItem('kidsChessGame', JSON.stringify(gameState));
+        }
+
+        // Crear estrellas de fondo
+        function createStars() {
+            const starsContainer = document.getElementById('stars');
+            for (let i = 0; i < 50; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.width = Math.random() * 3 + 'px';
+                star.style.height = star.style.width;
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.animationDelay = Math.random() * 3 + 's';
+                starsContainer.appendChild(star);
+            }
+        }
+
+        // Iniciar aventura
+        function startAdventure() {
+            const name = document.getElementById('playerName').value.trim();
+            if (name) {
+                gameState.playerName = name;
+                saveGameState();
+                updateDisplay();
+                playSound('success');
+            } else {
+                alert('¡Por favor escribe tu nombre primero! 😊');
+            }
+        }
+
+        // Actualizar pantalla
+        function updateDisplay() {
+            document.getElementById('starCount').textContent = gameState.stars;
+            if (gameState.playerName) {
+                document.getElementById('playerName').value = gameState.playerName;
+            }
+            updateAchievements();
+        }
+
+        // Mostrar pantalla
+        function showScreen(screen) {
+            document.querySelectorAll('.welcome-screen, .game-screen').forEach(s => s.classList.add('hidden'));
+            
+            if (screen === 'welcome') {
+                document.getElementById('welcomeScreen').classList.remove('hidden');
+            } else if (screen === 'learn') {
+                document.getElementById('learnScreen').classList.remove('hidden');
+            } else if (screen === 'puzzles') {
+                document.getElementById('puzzlesScreen').classList.remove('hidden');
+                initPuzzle();
+            } else if (screen === 'minigames') {
+                document.getElementById('minigamesScreen').classList.remove('hidden');
+            } else if (screen === 'battle') {
+                document.getElementById('battleScreen').classList.remove('hidden');
+            }
+        }
+
+        // Aprender pieza
+        function learnPiece(piece) {
+            const lessons = {
+                pawn: '¡El peón se mueve hacia adelante! Captura en diagonal. Si llega al final, ¡se convierte en reina! 👑',
+                knight: '¡El caballo salta en forma de L! Es el único que puede saltar sobre otras piezas. 🐴',
+                bishop: '¡El alfil se mueve en diagonal! Puede recorrer todo el tablero en línea diagonal. 🎯',
+                rook: '¡La torre se mueve en línea recta! Puede ir hacia arriba, abajo, izquierda o derecha. 🏰',
+                queen: '¡La reina es la más poderosa! Se mueve como la torre y el alfil combinados. 👸',
+                king: '¡El rey es el más importante! Se mueve un paso en cualquier dirección. ¡Protégelo! 🤴'
+            };
+
+            document.getElementById('learnMessage').textContent = lessons[piece];
+            addStars(5);
+            playSound('success');
+            
+            if (!gameState.achievements.includes(`learn_${piece}`)) {
+                gameState.achievements.push(`learn_${piece}`);
+                saveGameState();
+                showReward('¡Has aprendido sobre ' + piece + '! 🎉');
+            }
+        }
+
+        // Inicializar puzzle
+        function initPuzzle() {
+            const board = document.getElementById('puzzleBoard');
+            board.innerHTML = '';
+            
+            // Crear tablero 8x8
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = document.createElement('div');
+                    square.className = 'square ' + ((row + col) % 2 === 0 ? 'light' : 'dark');
+                    square.dataset.row = row;
+                    square.dataset.col = col;
+                    square.onclick = () => selectSquare(row, col);
+                    
+                    // Añadir algunas piezas aleatorias
+                    if (Math.random() > 0.8) {
+                        const pieces = ['♟️', '♞', '♝', '♜'];
+                        square.innerHTML = '<span class="piece">' + pieces[Math.floor(Math.random() * pieces.length)] + '</span>';
+                    }
+                    
+                    board.appendChild(square);
+                }
+            }
+            
+            // Añadir objetivo dorado
+            const targetSquares = board.querySelectorAll('.square');
+            const randomSquare = targetSquares[Math.floor(Math.random() * targetSquares.length)];
+            randomSquare.classList.add('target');
+            randomSquare.innerHTML = '<span class="piece">⭐</span>';
+        }
+
+        // Seleccionar casilla
+        function selectSquare(row, col) {
+            const square = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            
+            if (gameState.selectedSquare) {
+                gameState.selectedSquare.classList.remove('selected');
+            }
+            
+            square.classList.add('selected');
+            gameState.selectedSquare = square;
+        }
+
+        // Verificar puzzle
+        function checkPuzzle() {
+            if (gameState.selectedSquare && gameState.selectedSquare.classList.contains('target')) {
+                addStars(10);
+                showReward('¡Fantástico! ¡Has completado el desafío! 🌟');
+                playSound('win');
+                setTimeout(() => initPuzzle(), 2000);
+            } else {
+                playSound('error');
+                document.getElementById('puzzleMessage').textContent = '¡Intenta de nuevo! Busca la estrella dorada ⭐';
+            }
+        }
+
+        // Reiniciar puzzle
+        function resetPuzzle() {
+            initPuzzle();
+            gameState.selectedSquare = null;
+        }
+
+        // Juego de memoria
+        function startMemoryGame() {
+            alert('🧠 Juego de Memoria\n\n¡Próximamente! Esta característica está siendo desarrollada para ti. 🎮');
+        }
+
+        // Desafío veloz
+        function startSpeedChallenge() {
+            alert('⚡ Desafío Veloz\n\n¡Próximamente! Prepárate para una aventura rápida y emocionante. 🚀');
+        }
+
+        // Añadir estrellas
+        function addStars(amount) {
+            gameState.stars += amount;
+            updateDisplay();
+            saveGameState();
+        }
+
+        // Mostrar recompensa
+        function showReward(message) {
+            const reward = document.createElement('div');
+            reward.className = 'reward-animation';
+            reward.textContent = '🌟';
+            document.body.appendChild(reward);
+            
+            // Confeti
+            for (let i = 0; i < 30; i++) {
+                setTimeout(() => createConfetti(), i * 50);
+            }
+            
+            setTimeout(() => reward.remove(), 1000);
+            
+            if (message) {
+                setTimeout(() => alert(message), 500);
+            }
+        }
+
+        // Crear confeti
+        function createConfetti() {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti-piece';
+            const colors = ['#ff6b6b', '#4ecdc4', '#ffe66d', '#a8e6cf', '#ff8ed4'];
+            confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            confetti.style.left = Math.random() * 100 + 'vw';
+            document.body.appendChild(confetti);
+            setTimeout(() => conf
